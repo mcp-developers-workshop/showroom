@@ -1,0 +1,88 @@
+<header class="header">
+  <script type="text/javascript">
+
+    document.addEventListener('DOMContentLoaded', function () {
+      const currentUrl = window.location.href;
+      const urlParams = new URLSearchParams(window.location.search);
+      const userId = urlParams.get('USER_ID');
+
+      const subroute = currentUrl.split('?');
+      const subdomain = subroute[0].replace(/^.*?apps\./, "apps.");
+
+      if (userId!=null) {
+        showParams( userId );
+      } else {
+        document.getElementById('navbar-form-empty').style.display = "flex";
+        document.getElementById('navbar-form-filled').style.display = "none";
+      }
+    } );
+
+
+    function showParams( userId ) {
+      document.getElementById('navbar-form-empty').style.display = "none";
+      document.getElementById('navbar-form-filled').style.display = "flex";
+      document.getElementById('userIdLabel').textContent = "USER ID: " + userId;
+      document.body.innerHTML = document.body.innerHTML.replace(/%USERID%/g, userId.replaceAll("@","-").replaceAll(".","-").toLowerCase());
+    }
+
+
+
+    function goWithCreds() {
+      elUserId = document.getElementById('userId');
+      window.location.search = ('USER_ID=' + elUserId.value);
+    }
+
+    function recycle() {
+      document.getElementById('userId').value='';
+      window.location.search = ('');
+    }
+
+
+  </script>
+
+  <nav class="navbar">
+    <div class="navbar-brand">
+      <a class="navbar-item" href="https://techzone.ibm.com" target="_blank" style="margin-left: 5%;">
+        <img src="/content/modules/_images/ibm-logo.png" style="width: 5em;" alt="IBM TechZone">
+      </a>
+      <a class="navbar-item site-title" target="__blank" style="color: #fff !important;" href="https://redhat-scholars.github.io/course-template">Basic Quarkus Hands-on Lab</a>
+    </div>
+    <div id="topbar-nav" class="navbar-menu">
+      <div class="navbar-end">
+        <div class="navbar-item navbar-item-right-dropdown has-dropdown is-hoverable">
+          <a class="navbar-link" href="#">Links</a>
+          <div class="navbar-dropdown navbar-dropdown-right">
+            <a class="navbar-item navbar-item-right-content" href="https://ibm.com" target="_blank">IBM</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </nav>
+  <div class="navbar-item" style="background-color: black;float:right">
+    <div id="navbar-form-empty">
+        <span>
+          <span>
+            &nbsp;
+            <i style="color: orange;" class="fa fa-exclamation-triangle" aria-hidden="true"></i>
+          </span>
+          Your Workshop Access
+        <form action="javascript:void(0);">
+          <input size="20" id="userId" type="text" placeholder="IBM USER ID">
+          <button type="hidden" class="btn btn-sm" onclick="goWithCreds();">Set</button>
+        </form>
+        </span>
+      </div>
+
+      <div id="navbar-form-filled">
+        <span>
+        <span>
+            Your Workshop Access:  <i alt="Clear details" title="Clear details" onclick="recycle();" style="color: green;" class="fa fa-recycle" aria-hidden="true"></i>
+            <br>
+            <span class="navbar-text" style="margin-left: 1rem; margin-right: 1rem;">
+              <span id="userIdLabel"></span>
+            </span>
+
+
+      </div>
+  </div>
+</header>

@@ -1,47 +1,81 @@
-= RHDP default showroom theme
-// Settings:
-:experimental:
-:hide-uri-scheme:
-// Project URLs:
-:url-project: https://github.com/rhpds/rhdp_showroom_theme
-:url-ci-pipelines: {url-project}/pipelines
-:img-ci-status: {url-project}/badges/master/pipeline.svg
-// External URLs:
-:url-antora: https://antora.org
-:url-antora-docs: https://docs.antora.org
-:url-git: https://git-scm.com
-:url-git-dl: {url-git}/downloads
-:url-gulp: http://gulpjs.com
-:url-opendevise: https://opendevise.com
-:url-nodejs: https://nodejs.org
-:url-nvm: https://github.com/creationix/nvm
-:url-nvm-install: {url-nvm}#installation
-:url-source-maps: https://developer.mozilla.org/en-US/docs/Tools/Debugger/How_to/Use_a_source_map
+=== Getting Started
 
+This template is designed to be used as a base for your showroom lab guides.
 
-== Use the Default UI
+The content is built using Antora, a static site generator for creating documentation sites from AsciiDoc documents.
 
-If you want to simply use the default UI for your Antora-generated site, add the following UI configuration to your playbook:
+This git repo template was created to make it easy for you to start developing your lab instructions.
 
-[source,yaml]
+Features:
+
+. 0% cruft
+. Red Hat Demo Platform UI Bundle default
+. Dev Mode extension that displays the asciidoc attributes you have to work with
+. Content is generated using Antora, a static site generator for creating documentation sites from AsciiDoc documents.
+
+== Getting Started
+
+=== Using Containers (Recommended)
+
+In order to test and develop on your local machine, you can use a specially built container with Podman or Docker as follows.
+
+. Create a git repo from this template
+.. Suggested naming: `showroom_<lab-name>`
+. Clone your new repo and `cd` into it
+. When you make changes to the content, all you need is to kill the container and run it again.
++
+[source,sh]
 ----
-ui:
-  bundle:
-    url: https://github.com/rhpds/rhdp_showroom_theme/releases/download/v0.0.1/ui-bundle.zip
-    snapshot: true
+podman run --rm --name antora -v $PWD:/antora -p 8080:8080 -i -t ghcr.io/juliaaano/antora-viewer
 ----
 
-NOTE: The `snapshot` flag tells Antora to fetch the UI when the `--fetch` command-line flag is present.
-This setting is required because updates to the UI bundle are pushed to the same URL.
-If the URL were to be unique, this setting would not be required.
+For SELinux environments, `:z` may need to be appended to the volume mount:
 
-Read on to learn how to customize the default UI for your own documentation.
+----
+podman run --rm --name antora -v $PWD:/antora:z -p 8080:8080 -i -t ghcr.io/juliaaano/antora-viewer
+----
 
-== How to use the theme
+Live-reload is not supported.
 
-=== Add Additional Links
+=== Using Local Files (Less Recommended)
 
-You can add links to external content in the convenient "Links" drop-down on the upper-right of the UI.
+. Create a git repo from this template
+. Clone the repo and `cd` into it
+. Run ./utilities/lab-serve
+. Open http://localhost:8080 in your browser
+. Run ./utilities/lab-build to build your html
+
+To rebuild your html, run `./utilites/build`.
+
+== Editing Files
+
+Now you are ready to go!
+You can start editing the files in the `content/modules/ROOT/pages/` directory.
+
+Many modern editors such as Visual Studio Code offer live Asciidoc Preview extensions.
+
+=== Understanding the Basic Template Directory Structure
+
+[source,sh]
+----
+./content/modules/ROOT/
+├── assets
+│   └── images                       # Images used in your content
+│       └── example-image.png
+├── examples                         # You can add downloadable assets here
+│   └── example-bash-script.sh       # e.g. an example bash script
+├── nav.adoc                         # Navigation for your lab
+├── pages                            # Your content goes here
+│   ├── index.adoc                   # First page of your lab, e.g. overview etc
+│   ├── module-01.adoc
+│   └── module-02.adoc               # Sample lab has 2 modules including index.adoc
+└── partials                         # You can add partials here, reusable content inserted inline into your modules
+    └── example_partial.adoc
+----
+
+== Adding Additional Links
+
+You can add links to external content in the convenient "Links" drop-down on the upper-right of the Showroom Summit 2024 UI.
 
 ../content/antora.yml
 [source,yaml]
@@ -51,24 +85,25 @@ asciidoc:
     page-links:
     - url: https://redhat.com
       text: Red Hat
-    - url: https://www.redhat.com/en/summit
-      text: Summit
 ----
 
-=== Add a User menu entry
+image::.images/ui-links.png[]
 
-Similar to the external links, you can have a new menu entry with the name of the user
+== Dev Mode
 
-../content/antora.yml
+As a convenience to developers, the Dev Mode Extention (disabled by default) displays the asciidoc attributes you have to work with while writing your lab instructions.
+
+. Disable/Enable Dev Mode by changing `enabled: true` or `enabled: false`
++
+.default-site.yml
 [source,yaml]
 ----
-asciidoc:
-  attributes:
-    user: 'User X'
+extensions:
+  - id: dev-mode
+    require: ./content/lib/dev-mode.js
+    enabled: false
 ----
 
-
-Package for Use with Antora
-If you need to package the UI so you can use it to generate the documentation site locally, run the following command:
-
-$ gulp bundle
+. Produces
++
+image::.images/dev-mode.png[]

@@ -1,5 +1,0 @@
-name: redhat-scholars-ui
-title: RedHat Scholars UI
-version: master
-nav:
-  - modules/ROOT/nav.adoc

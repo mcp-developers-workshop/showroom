@@ -1,0 +1,24 @@
+name: modules
+title: Quarkus Fundamentals Hands-on Lab
+version: master
+nav:
+  - modules/ROOT/nav.adoc
+
+asciidoc:
+  attributes:
+    # page-toclevels: -1               # <- This will remove the TOC that appear in the right sidebar at wider resolutions
+    lab_name: "Quarkus Fundamentals Hands-on Lab"
+    release-version: master
+    page-pagination: true # enables navigation at bottom of each instruction page.
+    my_var: "foo"
+    guid: my-guid
+    ssh_user: developer
+    ssh_password: developer
+    ssh_command: ssh someone@example.com
+    ROUTE_SUBDOMAIN: example.com
+    MASTER_URL: api.example.com
+    USER_ID: "%USERID%"
+    
+    page-links:
+    - url: https://ibm.com
+      text: IBM

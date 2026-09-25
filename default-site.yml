@@ -1,0 +1,29 @@
+---
+site:
+  title: Quarkus Fundamentals Hands-on Lab
+  url: https://redhat-scholars.github.io/course-template
+  start_page: modules::index.adoc
+
+content:
+  sources:
+    - url: .
+      start_path: content
+
+ui:
+  bundle:
+    url: https://github.com/itz-showroom/ibm_showroom_theme/releases/download/v1.0/ui-bundle.zip
+    snapshot: true
+  supplemental_files:
+    - path: partials/header-content.hbs
+      contents: ./content/supplemental-ui/partials/header-content.hbs
+    
+runtime:
+  cache_dir: ./.cache/antora
+
+antora:
+  extensions:
+    - require: ./content/lib/dev-mode.js
+      enabled: false
+
+output:
+  dir: ./www
