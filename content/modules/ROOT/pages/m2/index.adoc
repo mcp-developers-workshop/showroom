@@ -1,0 +1,40 @@
+:experimental:
+:imagesdir: ../assets/images
+
+= Module 2: Expand Agent Capability with MCP Server
+:toc: left
+:toclevels: 3
+:numbered:
+:icons: font
+:source-highlighter: highlight.js
+
+== Overview & Objectives
+This module focuses on connecting pre-deployed AI agents to newly created MCP servers. You will learn how to configure an agent locally, update system prompts, register new MCP tools (Order History & Complaints), manage secrets securely, and deploy updated agent configurations to OpenShift.
+
+=== Learning Objectives
+* Understand agentic tool discovery and dynamic tool registration via MCP.
+* Configure local agent properties (`application.properties`) to reference remote MCP endpoints.
+* Manage environment secrets and MCP server URLs securely without hardcoding in Git.
+* Modify system prompts to guide the agent in selecting appropriate tools.
+* Test agent interactions locally before deploying updates to OpenShift.
+
+== Architecture & Components
+* *AI Agent:* Globex Complaints & Order Assistant (LangChain4j / Quarkus Agent)
+* *MCP Servers:* Order History MCP Server (OpenShift) & Complaints MCP Server
+* *Configuration:* `application.properties`, Kubernetes Secrets
+* *Deployment Pipeline:* GitLab CI/CD, ArgoCD Sync
+
+== Prerequisites
+* Successful completion of Module 1 (Order History MCP Server deployed)
+* Local development environment with Java 21 / Quarkus runtime
+* Access to OpenShift namespace secrets and deployment tools
+
+== Lab Agenda & Sub-Sections
+1. `01-agent-overview.adoc` - Analyzing the Pre-deployed Agent Architecture
+2. `02-tool-registration.adoc` - Registering Order History MCP Tools in the Agent
+3. `03-configuration-secrets.adoc` - Managing MCP Server Endpoints in Secrets and Properties
+4. `04-prompt-tuning.adoc` - Refining Agent System Prompts for Tool Selection
+5. `05-local-testing-deploy.adoc` - Testing Agent Locally and Syncing to OpenShift via ArgoCD
+
+== Expected Outcomes
+An AI agent running on OpenShift capable of dynamically calling external MCP server tools to resolve user queries and handle order history and complaint actions.

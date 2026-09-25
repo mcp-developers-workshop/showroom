@@ -1,13 +1,95 @@
-= {lab_name}
-
-== What is Quarkus?
 :experimental:
 :imagesdir: ../assets/images
 
-image::logo.png[quarkus-logo, 900]
+= Workshop Overview: MCP in Practice for Developers
+:toc: left
+:toclevels: 3
+:numbered:
+:icons: font
+:source-highlighter: highlight.js
 
-Quarkus is a Kubernetes Native Java stack tailored for GraalVM & OpenJDK HotSpot, crafted from the best of breed Java libraries and standards. Amazingly fast boot time, incredibly low RSS memory (not just heap size!) offering near instant scale up and high density memory utilization in container orchestration platforms like Kubernetes. Quarkus uses a technique called https://quarkus.io/container-first[compile time boot^] and offers a unified imperative and reactive programming model and a number of other https://quarkus.io/developer-joy/[developer features^] like Live Reload to bring _real joy_ to your development.
+== Executive Summary & Vision
+Welcome to the *MCP in Practice for Developers* hands-on workshop. This workshop is engineered to guide software architects, platform engineers, and developers from initial local prototyping ("laptops") to deploying secure, observable, and enterprise-ready Model Context Protocol (MCP) servers and AI agents in production ("production").
 
-*IBM* offers the fully supported https://www.ibm.com/products/enterprise-build-of-quarkus[IBM Enterprise Build of Quarkus^] with support and maintenance of Quarkus. In this workshop, you will use Quarkus to develop Kubernetes-native microservices and deploy them to OpenShift.
+As enterprises rush to adopt Generative AI and agentic workflows, connecting LLM agents directly to backend infrastructure introduces significant security, governance, and architectural challenges. This workshop demonstrates how to use the *Model Context Protocol (MCP)* as a standardized control plane that exposes intent rather than raw resources, enforces zero-trust boundaries, and integrates cleanly with modern enterprise platforms like Red Hat OpenShift.
 
-Throughout this lab you'll discover how Quarkus can make your development of cloud native apps faster and more productive.
+== The Enterprise Challenge
+Enterprise software teams face a converging storm of demands:
+
+* *Accelerated Application Modernization:* 80% of enterprise technologists plan to modernize more than half of their legacy applications within two years [1].
+* *Developer Cognitive Overload:* 76% of organizations cite high cognitive load and fragmented tooling as a primary cause of low developer productivity [1].
+* *Rapid AI Agent Adoption:* 80% of enterprise applications are projected to incorporate Generative AI and agentic capabilities by 2026 [1].
+* *The Agent Security Gap:* Directly exposing REST APIs or databases to AI agents leads to data over-fetching, credential exposure, and prompt injection vulnerabilities [1].
+
+== The Solution: Model Context Protocol (MCP)
+This workshop addresses these challenges by establishing an *Intentional Agent Architecture*:
+
+1. *Exposing Intent over Resources:* Standardize agent capabilities into well-defined MCP tools rather than granting raw API access [1].
+2. *Data Minimization & Sanitization:* Filter and massage backend payloads before they enter the LLM context window.
+3. *Zero-Trust Security & Identity:* Authenticate agents using cryptographic SPIFFE/SPIRE workload identities and Keycloak OIDC service accounts.
+4. *Centralized Governance:* Control tool sprawl using an enterprise MCP Gateway (ContextForge) with fine-grained policy enforcement.
+5. *Full-Stack Observability:* Audit agent execution, trace LLM calls, and monitor system health with LangFuse and the LGTM stack.
+
+== Target Audience & Prerequisites
+
+=== Target Audience
+* Backend Developers & Java Engineers (Quarkus / Spring)
+* AI / ML Engineers integrating agents with enterprise APIs
+* Cloud Platform Engineers & Architects (OpenShift / Kubernetes / GitOps)
+* Enterprise Security & IAM Specialists
+
+=== Technical Prerequisites
+* Basic familiarity with Java/Quarkus or microservices concepts
+* Fundamental knowledge of Docker/Containers and OpenShift/Kubernetes
+* Understanding of basic REST APIs, OpenAPI specs, and OAuth2/OIDC concepts
+* Access to the provided Red Hat OpenShift Sandbox environment
+
+== Workshop Structure & Module Index
+
+The workshop is structured into 5 progressive, hands-on modules:
+
+[cols="1,3,2,2", options="header"]
+|===
+| Module | Title | Key Technologies | Master Index File
+
+| *Module 1*
+| Build Your First MCP Server
+| Quarkus CLI, AI Code Assist, OpenAPI, ArgoCD
+| `module-1-index.adoc`
+
+| *Module 2*
+| Expand Agent Capability with MCP Server
+| LangChain4j Agent, OpenShift Secrets, Prompt Tuning
+| `module-2-index.adoc`
+
+| *Module 3*
+| Enable Security & Identity (Zero-Trust)
+| Native SPIFFE/SPIRE, Keycloak OIDC, Guardrails
+| `module-3-index.adoc`
+
+| *Module 4*
+| Full-Stack Observability
+| LangFuse, LGTM Stack (Loki, Grafana, Tempo, Mimir)
+| `module-4-index.adoc`
+
+| *Module 5*
+| Manage Sprawl with an MCP Gateway
+| ContextForge Gateway, Virtual Servers, Tool Filtering
+| `module-5-index.adoc`
+|===
+
+== Environment & Architecture Overview
+
+During this workshop, you will work within a dedicated Red Hat OpenShift Sandbox environment equipped with:
+
+* *OpenShift Cluster Namespace:* Pre-provisioned workspace for building, running, and deploying microservices.
+* *Quarkus Runtime & AI Assistance:* Modern Java framework with Quarkus MCP extensions and AI-assisted developer tooling.
+* *Keycloak IAM & SPIRE Provider:* Identity management pre-configured for OIDC service accounts and native SPIFFE workload attestation.
+* *Observability Suite:* Pre-installed LangFuse instance and LGTM telemetry stack with pre-built Grafana dashboards.
+* *ContextForge MCP Gateway:* Centralized proxy and policy engine for managing agent-to-server connections.
+
+== How to Use the Lab Guides
+
+1. Review this introductory document to understand the overarching architecture and zero-trust philosophy.
+2. Proceed through the module directories sequentially, starting with `module-1-index.adoc`.
+3. Complete each lab exercise in your OpenShift Sandbox environment, verifying outcomes before advancing to the next module.

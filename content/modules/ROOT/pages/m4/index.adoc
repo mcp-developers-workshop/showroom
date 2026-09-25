@@ -1,0 +1,38 @@
+:experimental:
+:imagesdir: ../assets/images
+
+= Module 4: Full-Stack Observability
+:toc: left
+:toclevels: 3
+:numbered:
+:icons: font
+:source-highlighter: highlight.js
+
+== Overview & Objectives
+This module establishes full-stack transparency across both AI Agents and MCP Servers. You will learn how to capture LLM execution traces, monitor prompt inputs/outputs, track latency, stream runtime logs, and visualize aggregate metrics using LangFuse and the LGTM (Loki, Grafana, Tempo, Mimir) observability stack.
+
+=== Learning Objectives
+* Configure LLM call tracing to inspect prompt structures, system instruction evaluations, and model latencies.
+* Integrate LangFuse tracing into agent execution pipelines.
+* Stream telemetry (logs and metrics) from agents and MCP servers to Loki and Mimir.
+* Utilize pre-built Grafana dashboards to monitor request rates, error codes, and token utilization.
+* Audit agentic tool execution flows for performance bottlenecks and compliance.
+
+== Architecture & Components
+* *LLM Tracing:* LangFuse Platform
+* *Telemetry Stack:* LGTM (Loki for logs, Grafana for visualization, Tempo for distributed traces, Mimir for metrics)
+* *Monitored Assets:* Globex AI Agent and Quarkus MCP Servers
+
+== Prerequisites
+* Module 1-3 completed and services running on OpenShift
+* Access to LangFuse Dashboard and Grafana Workspace in OpenShift namespace
+
+== Lab Agenda & Sub-Sections
+1. `01-observability-overview.adoc` - Architecture of Agentic & MCP Telemetry
+2. `02-langfuse-llm-tracing.adoc` - Setting Up Prompt Tracing and Token Auditing with LangFuse
+3. `03-lgtm-telemetry-setup.adoc` - Routing Logs and Metrics from Quarkus Services
+4. `04-grafana-dashboards.adoc` - Monitoring System Health and Operational Metrics in Grafana
+5. `05-end-to-end-audit.adoc` - Executing End-to-End Traced User Transactions
+
+== Expected Outcomes
+Complete observability across the AI stack, allowing engineers to audit agent reasoning steps, trace MCP tool calls, and monitor resource usage and costs in real time.

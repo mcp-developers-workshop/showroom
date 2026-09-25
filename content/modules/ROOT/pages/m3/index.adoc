@@ -1,0 +1,40 @@
+:experimental:
+:imagesdir: ../assets/images
+
+= Module 3: Enable Security & Identity (Zero-Trust)
+:toc: left
+:toclevels: 3
+:numbered:
+:icons: font
+:source-highlighter: highlight.js
+
+== Overview & Objectives
+This module shifts the workshop from unauthenticated agent calls to a hardened Zero-Trust enterprise security posture. You will implement cryptographic Native Agentic Identity using SPIFFE/SPIRE (without sidecars), federate identity with Keycloak OIDC Service Accounts, enable downstream token exchange for backend REST calls, and establish strict tool guardrails against prompt injection hazards.
+
+=== Learning Objectives
+* Understand the security hazards of direct, unauthenticated agentic access.
+* Implement Native Workload Identity for AI Agents using SPIFFE/SPIRE (attestation via SPIRE workload socket).
+* Map SPIFFE SVIDs to Keycloak Service Accounts for OIDC authentication and authorization.
+* Enable secure downstream Token Exchange in Quarkus MCP Servers for backend API calls.
+* Implement and validate Tool Guardrails to prevent unauthorized parameters and prompt injection attacks.
+
+== Architecture & Components
+* *Identity Provider:* Keycloak with OIDC Service Accounts & SPIRE Trust Provider
+* *Workload Attestation:* SPIFFE/SPIRE Workload API (Native SDK integration, no sidecar)
+* *MCP Servers:* Quarkus Orders & Complaints MCP Servers with `@Authenticated` endpoints
+* *Security Mechanisms:* OAuth2 Token Exchange, SPIFFE SVID validation, Tool Execution Guardrails
+
+== Prerequisites
+* Module 1 and Module 2 completed
+* Pre-configured Keycloak instance with SPIRE integration in OpenShift
+* Access to `globex-agent` source repository
+
+== Lab Agenda & Sub-Sections
+1. `01-security-baseline.adoc` - Demonstrating Unauthenticated Vulnerabilities
+2. `02-spiffe-native-identity.adoc` - Configuring Native SPIFFE/SPIRE Workload Attestation
+3. `03-keycloak-oidc-mapping.adoc` - Mapping SVIDs to Keycloak Service Accounts & Tokens
+4. `04-downstream-token-exchange.adoc` - Enabling Token Exchange in MCP Servers for Backend APIs
+5. `05-tool-guardrails.adoc` - Implementing and Testing Prompt Injection & Tool Execution Guardrails
+
+== Expected Outcomes
+A Zero-Trust agentic ecosystem where agents prove workload identity natively via SPIFFE/SPIRE, acquire Keycloak OIDC tokens, and safely call protected MCP endpoints enforcing strict tool guardrails.

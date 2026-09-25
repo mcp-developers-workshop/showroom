@@ -1,32 +1,8 @@
-* xref:intro.adoc[Navigating this lab]
-* xref:dev-env.adoc[Access your Dev Environment]
+* xref:index.adoc[Workshop Overview]
+* xref:dev-setup-intro.adoc[Navigating this Lab]
 
-* xref:basics.adoc[The Basics]
-** xref:basics/dev-mode.adoc[Quarkus Dev Mode]
-** xref:basics/live-coding.adoc[Quarkus Live Coding]
-** xref:basics/package-app.adoc[Packaging the application]
-
-* xref:cdi.adoc[Dependency Injection]
-
-* xref:testing.adoc[Testing]
-** xref:testing/01-continuous-testing.adoc[Starting Continuous Testing]
-** xref:testing/02-control-continuous-testing.adoc[Controlling Continuous Testing]
-** xref:testing/03-devui-testing.adoc[Quarkus Dev UI for Testing]
-** xref:testing/04-inject-uri.adoc[Injecting a URI]
-** xref:testing/05-injection-into-tests.adoc[Injection into tests]
-** xref:testing/06-mock-support.adoc[Mock support ]
-
-
-* xref:debugging.adoc[Debugging in Dev Mode]
-
-* xref:native-images.adoc[Building Native Images]
-
-* xref:cloudnative.adoc[Cloud Native]
-** xref:cloudnative/custom-data-healthcheck.adoc[Custom data in health checks]
-** xref:cloudnative/negative-healthcheck.adoc[Negative Health Checks]
-** xref:cloudnative/liveliness-readiness.adoc[Accessing Liveness and Readiness]
-** xref:cloudnative/eternal-config.adoc[Externalized Configuration]
-** xref:cloudnative/config-options.adoc[Quarkus Configuration options]
-
-
-* xref:deploy.adoc[Deploy to OpenShift]
+* xref:m1/index.adoc[Module 1: Build Your First MCP Server]
+* xref:m2/index.adoc[Module 2: Expand Agent Capability with MCP Server]
+* xref:m3/index.adoc[Module 3: Enable Security & Identity (Zero-Trust)]
+* xref:m4/index.adoc[Module 4: Full-Stack Observability]
+* xref:m5/index.adoc[Module 5: Manage Sprawl with an MCP Gateway]

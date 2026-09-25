@@ -1,0 +1,40 @@
+
+:experimental:
+:imagesdir: ../assets/images
+
+= Module 5: Manage Sprawl with an MCP Gateway
+:toc: left
+:toclevels: 3
+:numbered:
+:icons: font
+:source-highlighter: highlight.js
+
+== Overview & Objectives
+This final module addresses enterprise tool sprawl and centralized governance by introducing an MCP Gateway (ContextForge). You will configure the gateway to aggregate multiple downstream MCP servers (GitLab, Complaints DB), create isolated Virtual Servers, enforce granular tool filtering rules, and connect personal productivity agents securely.
+
+=== Learning Objectives
+* Understand the challenges of enterprise tool sprawl and decentralized agent access.
+* Configure ContextForge MCP Gateway as a centralized reverse proxy and governance layer.
+* Register downstream enterprise MCP servers (GitLab MCP Server, Complaints DB MCP Server).
+* Implement strict Tool Filtering (e.g., exposing only `create_issue` and `get_issue` from GitLab).
+* Set up Virtual Servers with dedicated authentication for personal productivity agents (Bob CLI / watsonx Orchestrate).
+
+== Architecture & Components
+* *MCP Gateway:* ContextForge Gateway
+* *Downstream MCP Servers:* GitLab MCP Server, Complaints DB MCP Server
+* *Client Agents:* Personal Productivity Agents (Bob CLI, watsonx Orchestrate)
+* *Governance Features:* Virtual Servers, Tool Filtering Policies, Centralized AuthN/AuthZ
+
+== Prerequisites
+* OpenShift environment with ContextForge Gateway deployed
+* Access to enterprise GitLab repository and Complaints DB MCP Server
+
+== Lab Agenda & Sub-Sections
+1. `01-gateway-concepts.adoc` - Why Enterprise MCP Gateways Are Needed
+2. `02-register-mcp-servers.adoc` - Connecting Downstream Servers to ContextForge
+3. `03-tool-filtering-policies.adoc` - Applying Fine-Grained Tool Access Controls
+4. `04-virtual-servers.adoc` - Creating Isolated Virtual Endpoints for Agents
+5. `05-agent-gateway-integration.adoc` - Connecting Personal Productivity Agents via Gateway Auth
+
+== Expected Outcomes
+A centralized, governed MCP Gateway architecture enforcing tool access policies and providing single-pane-of-glass management for enterprise AI integrations.

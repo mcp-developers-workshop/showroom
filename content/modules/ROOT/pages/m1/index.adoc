@@ -1,0 +1,44 @@
+
+:experimental:
+:imagesdir: ../assets/images
+
+= Module 1: Build Your First MCP Server
+:toc: left
+:toclevels: 3
+:numbered:
+:icons: font
+:source-highlighter: highlight.js
+
+== Overview & Objectives
+This module guides developers through creating, configuring, and deploying an initial Model Context Protocol (MCP) server using Quarkus and AI code assistance. You will apply a "brownfield" architectural pattern by wrapping a legacy REST API with a standalone MCP server, implementing data minimization, and deploying to Red Hat OpenShift via ArgoCD.
+
+=== Learning Objectives
+* Create a Quarkus application using Quarkus CLI and AI code assist.
+* Implement a brownfield OpenAPI-to-MCP wrapper in front of legacy REST endpoints.
+* Apply tool minimization and data massaging techniques to restrict data over-fetching.
+* Handle confidential identifiers using MCP headers ().
+* Test MCP tools locally with the MCP Inspector.
+* Deploy the server to OpenShift via GitOps (GitLab and ArgoCD).
+
+== Architecture & Components
+* *AI Code Assistant:* Bob / GenAI Assistant
+* *Framework:* Quarkus with Quarkus MCP extension
+* *Backend System:* Legacy User History REST API
+* *Deployment Target:* Red Hat OpenShift Sandbox via ArgoCD
+* *Tooling:* MCP Inspector, Quarkus CLI, Git, ArgoCD
+
+== Prerequisites
+* OpenShift Sandbox cluster access
+* Quarkus CLI installed
+* Access to workshop GitLab repository and ArgoCD dashboard
+* MCP Inspector running locally or via container
+
+== Lab Agenda & Sub-Sections
+1.  - Initializing Quarkus MCP Server with CLI
+2.  - Wrapping Legacy OpenAPI Spec with AI Code Assistance
+3.  - Implementing Data Massaging & Header-based Identifiers
+4.  - Testing Tools with MCP Inspector
+5.  - Pushing to GitLab and Triggering ArgoCD Sync
+
+== Expected Outcomes
+A fully functional, standalone Quarkus MCP server deployed on OpenShift that safely exposes sanitized user history tools to upstream AI agents.
