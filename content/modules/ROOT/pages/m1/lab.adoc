@@ -14,7 +14,7 @@ Your workshop environment includes a GitLab instance. This is where you will pus
 
 Open the following URL in a new browser tab:
 
-[source,text,role="copypaste",subs="attributes+"]
+[source,bash,role=execute,subs="attributes"]
 ----
 https://gitlab-gitlab.{openshift_subdomain}
 ----
@@ -101,7 +101,7 @@ This is the *brownfield* pattern: the existing API stays untouched, and the MCP 
 
 Before prompting Bob, take a look at the specification the tool will be built against:
 
-[source,text,role="copypaste",subs="attributes+"]
+[source,bash,role=execute,subs="attributes"]
 ----
 https://globex-store.{openshift_subdomain}/q/openapi
 ----
@@ -110,7 +110,7 @@ https://globex-store.{openshift_subdomain}/q/openapi
 
 In IBM Bob, make sure the `globex-store-mcp` folder is your working context, then enter the following prompt:
 
-[source,text,role="copypaste",subs="attributes+"]
+[source,bash,role=execute,subs="attributes"]
 ----
 Within the globex-store-mcp folder, Download the openapi spec document located at https://globex-store.{openshift_subdomain}/q/openapi . Create a mcp server which exposes a tool to get the orders for a given customerId. The tool implementation should connect to the API described in the openAPI spec document and return the API response. The mcp server should use the streamable http transport. Use the appropriate quarkus extension for the mcp server.
 ----
@@ -220,7 +220,7 @@ In this section you apply *data massaging* -- trimming and reshaping the payload
 
 Enter the following prompt in IBM Bob:
 
-[source,text,role="copypaste",subs="attributes+"]
+[source,bash,role=execute,subs="attributes"]
 ----
 Change the contents of the JSON data returned by the mcp server. The orders in the history should not contain the shipping address. The product line items should not contain the price, but they should contain the product code, quantity and the product name. This might need additional calls to the backend api described in https://globex-store.{openshift_subdomain}/q/openapi
 ----
@@ -383,7 +383,7 @@ With your code in GitLab, deployment is handled by GitOps. *ArgoCD* (Red Hat Ope
 
 Open the ArgoCD console in a new browser tab:
 
-[source,text,role="copypaste",subs="attributes+"]
+[source,bash,role=execute,subs="attributes"]
 ----
 https://openshift-gitops-server-openshift-gitops.{openshift_subdomain}/
 ----
