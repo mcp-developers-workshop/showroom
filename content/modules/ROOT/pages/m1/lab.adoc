@@ -1,0 +1,378 @@
+:experimental:
+:imagesdir: ../../assets/images
+
+= Module 1 Lab: Build Your First MCP Server
+:toc: left
+:toclevels: 3
+:numbered:
+:icons: font
+:source-highlighter: highlight.js
+
+== Log in to GitLab
+
+Your workshop environment includes a GitLab instance. This is where you will push your MCP server source code later in this module, and it is the repository that ArgoCD watches to deploy your application to OpenShift.
+
+Open the following URL in a new browser tab:
+
+[source,text,role="copypaste"]
+----
+https://gitlab-gitlab.{{ openshift_subdomain }}
+----
+
+Sign in with the workshop developer account:
+
+image::m1/gitlab-login.png[]
+
+[cols="1,2", options="header"]
+|===
+| Field | Value
+
+| Username
+| `developer`
+
+| Password
+| `{{ common_password }}`
+|===
+
+[NOTE]
+====
+If the page shows a certificate warning the first time you open it, accept it and continue -- the workshop cluster uses a self-signed certificate.
+====
+
+Once you are signed in you should land on the GitLab *Projects* dashboard.
+
+== Open IBM Bob and Clone the Repository
+
+*IBM Bob* is the AI code assistant you will use throughout this workshop. Next you open Bob, create the working folder for the lab, and clone the (currently empty) GitLab repository that will hold your first MCP server.
+
+=== Open IBM Bob
+
+On the desktop of your workshop VM, double-click the *IBM Bob* shortcut.
+
+Wait for the workbench to finish loading before continuing.
+
+=== Create and open the workshop folder
+
+Create a folder named `workshop` and open it as your working folder in Bob:
+
+1. Select *File* -> *Open Folder*.
+2. Create a new folder called `workshop` in your home directory.
+3. Select the `workshop` folder and confirm to open it.
+
+Bob reloads with `workshop` as the active folder. Everything you build in this module lives inside this folder.
+
+=== Clone the Globex MCP repository
+
+Open a terminal inside IBM Bob (*Terminal* -> *New Terminal*). The terminal opens in the `workshop` folder.
+
+Clone the workshop repository:
+
+[source,sh,role="copypaste"]
+----
+git clone https://gitlab-gitlab.{{ openshift_subdomain }}/globex/globex-store-mcp
+----
+
+If you are prompted for credentials, use the same GitLab account you signed in with earlier:
+
+* Username: `developer`
+* Password: `{{ common_password }}`
+
+[NOTE]
+====
+`globex-store-mcp` is an *empty* repository -- the clone will warn that you appear to have cloned an empty repository. That is expected. You will build the MCP server into this repository over the next sections, then push it back to GitLab so ArgoCD can deploy it.
+====
+
+Confirm the folder is in place:
+
+[source,sh,role="copypaste"]
+----
+cd globex-store-mcp && ls -la
+----
+
+You should see the `.git` directory and nothing else.
+
+== Generate the MCP Server with IBM Bob
+
+The Globex store already exposes a legacy REST API described by an OpenAPI specification. Rather than writing the MCP server by hand, you will ask *IBM Bob* to build a Quarkus MCP server that wraps that API and exposes a single, purpose-built tool.
+
+This is the *brownfield* pattern: the existing API stays untouched, and the MCP server becomes the AI-facing façade in front of it.
+
+=== Review the OpenAPI specification
+
+Before prompting Bob, take a look at the specification the tool will be built against:
+
+[source,text,role="copypaste"]
+----
+https://globex-store.{{ openshift_subdomain }}/q/openapi
+----
+
+=== Prompt IBM Bob
+
+In IBM Bob, make sure the `globex-store-mcp` folder is your working context, then enter the following prompt:
+
+[source,text,role="copypaste"]
+----
+Within the globex-store-mcp folder, Download the openapi spec document located at https://globex-store.{{ openshift_subdomain }}/q/openapi . Create a mcp server which exposes a tool to get the orders for a given customerId. The tool implementation should connect to the API described in the openAPI spec document and return the API response. The mcp server should use the streamable http transport. Use the appropriate quarkus extension for the mcp server.
+----
+
+=== Approve Bob's tasks
+
+As Bob works through the request it breaks the work into tasks and pauses for your confirmation before running them. Expect a number of these prompts -- Bob will ask before downloading the specification, adding the Quarkus extension, creating files, and running commands.
+
+Read each question, then click *Approve* and let Bob carry on. Keep approving until Bob reports that it has finished.
+
+[NOTE]
+====
+Read the questions rather than clicking through blindly. They are a useful window into how Bob is interpreting your prompt, and they tell you which extension and project layout it has settled on.
+====
+
+=== What the prompt is asking for
+
+Each sentence in the prompt pins down a decision you would otherwise have to make yourself:
+
+[cols="1,2", options="header"]
+|===
+| Instruction | Why it matters
+
+| Download the OpenAPI spec
+| Bob generates the client from the real contract instead of guessing endpoint shapes.
+
+| Expose a tool to get orders for a given `customerId`
+| One narrow tool, not a blanket mapping of every REST endpoint -- this is *tool minimization*.
+
+| Connect to the API described in the spec and return the response
+| The MCP server is a wrapper, not a reimplementation of the business logic.
+
+| Use the streamable HTTP transport
+| Required for the server to be reachable once it is deployed on OpenShift.
+
+| Use the appropriate Quarkus extension
+| Steers Bob to the Quarkus MCP server extension rather than a hand-rolled protocol implementation.
+|===
+
+=== Review Bob's summary
+
+When Bob has generated the project it builds and tests it, then prints a summary of *what was created*.
+
+Read through that summary before moving on. It is your inventory of the generated MCP server -- check that it lines up with what you asked for:
+
+* A Quarkus project inside the `globex-store-mcp` folder.
+* The `quarkus-mcp-server-http` extension added to the build file.
+* A `getOrdersByCustomerId` tool that takes a customer ID and returns that customer's orders.
+* A client generated from (or written against) the downloaded OpenAPI specification.
+* Configuration selecting the *streamable HTTP* transport.
+* A passing build and test run.
+
+If anything in the summary is missing or does not match, tell Bob what is wrong in a follow-up prompt and let it correct the project before you continue.
+
+== Verify the Tool in the Quarkus Dev UI
+
+Quarkus ships a *Dev UI* that is available whenever the application runs in dev mode. The MCP server extension contributes its own page to it, which lets you confirm that your tool was registered correctly -- before you ever connect a client.
+
+=== Start the application in dev mode
+
+If Bob left the application running after its test run, dev mode is already up. Otherwise, start it from a terminal in the `globex-store-mcp` folder:
+
+[source,sh,role="copypaste"]
+----
+./mvnw quarkus:dev
+----
+
+Wait for the Quarkus banner and the `Listening on: http://localhost:8080` message.
+
+=== Open the MCP tools page
+
+In the browser on your workshop VM, open:
+
+[source,text,role="copypaste"]
+----
+http://localhost:8080/q/dev-ui/quarkus-mcp-server-http/tools
+----
+
+This is the *MCP Server - HTTP* section of the Dev UI, on the *Tools* page.
+
+=== Confirm your tool is registered
+
+You should see a single tool listed:
+
+[cols="1,2", options="header"]
+|===
+| Tool | Description
+
+| `getOrdersByCustomerId`
+| Get all orders for a given customer ID from the Globex Store
+|===
+
+That one entry is the whole point of the brownfield exercise. The Globex Store REST API exposes many endpoints, but your MCP server publishes exactly one narrowly scoped tool to the agent.
+
+[NOTE]
+====
+If the page loads but lists no tools, the tool class is most likely missing its MCP tool annotation, or the application failed to restart after the last edit. Check the dev mode terminal output for errors.
+====
+
+== Shape the Data Returned by the Tool
+
+Right now your tool hands the agent whatever the Globex Store API returns. That is convenient, but it is also *over-fetching*: the agent receives customer shipping addresses and pricing data it has no business seeing in order to answer a question about order history.
+
+In this section you apply *data massaging* -- trimming and reshaping the payload so the tool returns only the fields the agent actually needs.
+
+=== Prompt IBM Bob
+
+Enter the following prompt in IBM Bob:
+
+[source,text,role="copypaste"]
+----
+Change the contents of the JSON data returned by the mcp server. The orders in the history should not contain the shipping address. The product line items should not contain the price, but they should contain the product code, quantity and the product name. This might need additional calls to the backend api described in https://globex-store.{{ openshift_subdomain }}/q/openapi
+----
+
+As before, read Bob's questions and click *Approve* to let it work through the changes.
+
+=== What changes and why
+
+[cols="1,1,2", options="header"]
+|===
+| Field | Action | Reason
+
+| Shipping address
+| Removed
+| Personally identifiable information the agent does not need to describe an order.
+
+| Line item price
+| Removed
+| Commercially sensitive, and irrelevant to an order-history question.
+
+| Product code
+| Kept
+| Identifies the item without leaking anything sensitive.
+
+| Quantity
+| Kept
+| Core to describing what was ordered.
+
+| Product name
+| Added
+| Human-readable -- and the reason an *extra* backend call may be needed.
+|===
+
+[NOTE]
+====
+The last sentence of the prompt matters. The orders endpoint returns product *codes*, not names, so Bob has to call a second endpoint from the same OpenAPI specification to resolve each code into a product name. Shaping data for an agent is not always a matter of deleting fields -- sometimes you enrich them.
+====
+
+=== Verify the new response shape
+
+Bob rebuilds and re-tests the project. Once dev mode has restarted, go back to the Dev UI tools page and invoke the tool again:
+
+[source,text,role="copypaste"]
+----
+http://localhost:8080/q/dev-ui/quarkus-mcp-server-http/tools
+----
+
+Check the returned JSON:
+
+* No shipping address anywhere in the order history.
+* No price on any line item.
+* Every line item carries a product code, a quantity, and a product name.
+
+== Pass the Customer Identifier as an HTTP Header
+
+The tool currently accepts `customerId` as a parameter. That means the *model* decides which customer's orders to fetch -- and a model can be talked into asking for somebody else's.
+
+The fix is to move the identifier out of the model's reach. The caller supplies it as an HTTP header on the MCP request, and the tool reads it from there. The model never sees it and cannot change it.
+
+=== Prompt IBM Bob
+
+Enter the following prompt in IBM Bob:
+
+[source,text,role="copypaste"]
+----
+The 'getOrders' tool in src/main/java/org/globex/mcp/server/GlobexStoreMcpServer.java takes the customerId as parameter. Change the implementation so that the customerId is passed as a HTTP header. The name of the header is 'X-User-Id'. Throw an exception if the header is not present or is empty.
+----
+
+Read Bob's questions and click *Approve* as it works through the change.
+
+=== Why this matters
+
+[cols="1,2", options="header"]
+|===
+| Change | Effect
+
+| `customerId` removed from the tool signature
+| The identifier is no longer part of the tool contract the model sees, so the model cannot supply or spoof it.
+
+| Read from the `X-User-Id` header
+| The identity travels on the transport, set by the trusted caller rather than by the LLM.
+
+| Exception when the header is missing or empty
+| The tool fails closed. No header means no data -- never a default or an unfiltered result set.
+|===
+
+[NOTE]
+====
+This is the foundation for the zero-trust work in Module 3. There, `X-User-Id` gets replaced by a verified identity carried in a token -- but the principle set up here is the same: *confidential identifiers belong in the transport, not in the tool parameters*.
+====
+
+=== Verify the change
+
+Once dev mode restarts, open the Dev UI tools page again:
+
+[source,text,role="copypaste"]
+----
+http://localhost:8080/q/dev-ui/quarkus-mcp-server-http/tools
+----
+
+Confirm that:
+
+* The tool no longer lists `customerId` as an input parameter.
+* Invoking the tool *without* the `X-User-Id` header raises an error rather than returning data.
+* Invoking it *with* a valid `X-User-Id` header returns that customer's shaped order history.
+
+== Commit Your MCP Server
+
+Your MCP server works locally. Commit it so the code lives in GitLab rather than only on your VM.
+
+=== Stage and commit
+
+In the IBM Bob terminal, from inside the `globex-store-mcp` folder:
+
+[source,sh,role="copypaste"]
+----
+git add .
+git commit -m "my first MCP server"
+----
+
+[TIP]
+====
+You can do the same thing from Bob's *Source Control* panel: stage the changed files, type the commit message, and commit.
+====
+
+If Bob prompts you for Git credentials while committing, use the workshop developer account:
+
+[cols="1,2", options="header"]
+|===
+| Field | Value
+
+| Username
+| `developer`
+
+| Password
+| `{{ common_password }}`
+|===
+
+=== Push to GitLab
+
+Send the commit up to the repository you cloned at the start of the module:
+
+[source,sh,role="copypaste"]
+----
+git push -u origin main
+----
+
+Use the `developer` / `{{ common_password }}` credentials if you are prompted.
+
+[NOTE]
+====
+`-u origin main` is needed on this first push because the repository was empty when you cloned it, so the branch has no upstream yet. Later pushes are just `git push`.
+====
+
+Refresh your project in GitLab -- the repository that was empty at the start of the module now holds your Quarkus MCP server.

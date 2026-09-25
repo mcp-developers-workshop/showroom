@@ -2,6 +2,8 @@
 * xref:dev-setup-intro.adoc[Navigating this Lab]
 
 * xref:m1/index.adoc[Module 1: Build Your First MCP Server]
+** xref:m1/lab.adoc[Module 1 Lab]
+
 * xref:m2/index.adoc[Module 2: Expand Agent Capability with MCP Server]
 * xref:m3/index.adoc[Module 3: Enable Security & Identity (Zero-Trust)]
 * xref:m4/index.adoc[Module 4: Full-Stack Observability]

@@ -25,3 +25,87 @@ There are also Linux shell commands that can also be copied and pasted into a Te
 echo "This is a bash shell command that you can copy/paste by clicking"
 ----
 
+== Create your watsonx.ai API Key
+
+Several modules in this workshop call a Large Language Model hosted on *IBM watsonx.ai*. Before you start Module 1, create an IBM Cloud API key and note your watsonx.ai project details. You only need to do this once.
+
+=== Create the IBM Cloud API key
+
+1. Open https://cloud.ibm.com[IBM Cloud^] and log in with the account that has watsonx.ai access.
+2. From the top menu bar, select *Manage* -> *Access (IAM)*.
+3. In the left-hand navigation, click *API keys*.
+4. Make sure *My IBM Cloud API keys* is selected, then click *Create*.
+5. Give the key a name such as `mcp-workshop` and an optional description, then click *Create*.
+6. Click *Copy* (or *Download*) to save the key somewhere safe.
+
+[IMPORTANT]
+====
+The API key value is shown *only once*. If you close the dialog without copying it, delete the key and create a new one. Treat the key like a password: never commit it to Git and never paste it into a source file.
+====
+
+=== Find your project ID and region endpoint
+
+The watsonx.ai API needs a project ID alongside the API key:
+
+1. Open https://dataplatform.cloud.ibm.com[IBM watsonx^] and open (or create) the project you will use for this workshop.
+2. Go to the *Manage* tab, then *General*.
+3. Copy the value shown under *Project ID*.
+
+Your region endpoint is the base URL for the region hosting your watsonx.ai instance, for example:
+
+[cols="1,2", options="header"]
+|===
+| Region | Base URL
+
+| Dallas (us-south)
+| `https://us-south.ml.cloud.ibm.com`
+
+| Frankfurt (eu-de)
+| `https://eu-de.ml.cloud.ibm.com`
+
+| London (eu-gb)
+| `https://eu-gb.ml.cloud.ibm.com`
+
+| Tokyo (jp-tok)
+| `https://jp-tok.ml.cloud.ibm.com`
+|===
+
+=== Export the values in your Dev Environment
+
+Open a Terminal in your Development Environment and export the three values, replacing the placeholders with your own:
+
+[source,sh,role="copypaste"]
+----
+export WATSONX_API_KEY="<your-ibm-cloud-api-key>"
+export WATSONX_PROJECT_ID="<your-watsonx-project-id>"
+export WATSONX_BASE_URL="https://us-south.ml.cloud.ibm.com"
+----
+
+The Quarkus LangChain4j watsonx extension picks these up through the following configuration properties, so no code changes are needed:
+
+[source,properties,role="copypaste"]
+----
+quarkus.langchain4j.watsonx.base-url=${WATSONX_BASE_URL}
+quarkus.langchain4j.watsonx.api-key=${WATSONX_API_KEY}
+quarkus.langchain4j.watsonx.project-id=${WATSONX_PROJECT_ID}
+----
+
+[NOTE]
+====
+The exports above only last for the lifetime of that Terminal session. When you deploy to OpenShift in later modules, you will store the same values in an OpenShift Secret instead.
+====
+
+=== Verify the key works
+
+Exchange the API key for a short-lived IAM token. A successful call returns a JSON document containing an `access_token` field:
+
+[source,sh,role="copypaste"]
+----
+curl -s -X POST https://iam.cloud.ibm.com/identity/token \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -d "grant_type=urn:ibm:params:oauth:grant-type:apikey&apikey=${WATSONX_API_KEY}" \
+  | head -c 200
+----
+
+If you get an `BXNIM0415E` / "Provided API key could not be found" error, the key was copied incorrectly or has been deleted -- create a new one and export it again.
+

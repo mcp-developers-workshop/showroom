@@ -86,5 +86,6 @@ During this workshop, you will work within a dedicated Red Hat OpenShift Sandbox
 == How to Use the Lab Guides
 
 1. Review this introductory document to understand the overarching architecture and zero-trust philosophy.
-2. Proceed through the module directories sequentially, starting with `module-1-index.adoc`.
-3. Complete each lab exercise in your OpenShift Sandbox environment, verifying outcomes before advancing to the next module.
+2. Work through xref:dev-setup-intro.adoc[Navigating this Lab] to learn how the click-to-copy blocks work and to create your watsonx.ai API key.
+3. Proceed through the modules sequentially using the left-hand navigation, starting with xref:m1/index.adoc[Module 1: Build Your First MCP Server].
+4. Complete each lab exercise in your OpenShift Sandbox environment, verifying outcomes before advancing to the next module.
