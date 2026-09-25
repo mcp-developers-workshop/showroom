@@ -48,34 +48,29 @@ This workshop addresses these challenges by establishing an *Intentional Agent A
 
 The workshop is structured into 5 progressive, hands-on modules:
 
-[cols="1,3,2,2", options="header"]
+[cols="1,3,3", options="header"]
 |===
-| Module | Title | Key Technologies | Master Index File
+| Module | Title | Key Technologies
 
 | *Module 1*
-| Build Your First MCP Server
+| xref:m1/index.adoc[Build Your First MCP Server]
 | Quarkus CLI, AI Code Assist, OpenAPI, ArgoCD
-| `module-1-index.adoc`
 
 | *Module 2*
-| Expand Agent Capability with MCP Server
+| xref:m2/index.adoc[Expand Agent Capability with MCP Server]
 | LangChain4j Agent, OpenShift Secrets, Prompt Tuning
-| `module-2-index.adoc`
 
 | *Module 3*
-| Enable Security & Identity (Zero-Trust)
+| xref:m3/index.adoc[Enable Security & Identity (Zero-Trust)]
 | Native SPIFFE/SPIRE, Keycloak OIDC, Guardrails
-| `module-3-index.adoc`
 
 | *Module 4*
-| Full-Stack Observability
+| xref:m4/index.adoc[Full-Stack Observability]
 | LangFuse, LGTM Stack (Loki, Grafana, Tempo, Mimir)
-| `module-4-index.adoc`
 
 | *Module 5*
-| Manage Sprawl with an MCP Gateway
-| ContextForge Gateway, Virtual Servers, Tool Filtering
-| `module-5-index.adoc`
+| xref:m5/index.adoc[Manage Sprawl with an MCP Gateway]
+| Watsonx Orchestrator, Virtual Servers, Tool Filtering
 |===
 
 == Environment & Architecture Overview
