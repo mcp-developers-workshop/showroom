@@ -8,3 +8,4 @@
 * xref:m3/index.adoc[Module 3: Enable Security & Identity (Zero-Trust)]
 * xref:m4/index.adoc[Module 4: Full-Stack Observability]
 * xref:m5/index.adoc[Module 5: Manage Sprawl with an MCP Gateway]
+** xref:m5/lab.adoc[Module 5 Lab]
