@@ -70,7 +70,7 @@ If you are prompted for credentials, use the same account as above: `developer` 
 
 [NOTE]
 ====
-`globex-store-mcp` is empty, so the clone warns that you appear to have cloned an empty repository. That is expected. You build the MCP server into it over the next sections and push it back to GitLab.
+`globex-store-mcp` holds only a few starter files at this point. You build the MCP server into it over the next sections and push it back to GitLab.
 ====
 
 Confirm the folder is in place:
@@ -80,7 +80,7 @@ Confirm the folder is in place:
 cd globex-store-mcp && ls -la
 ----
 
-You should see the `.git` directory and nothing else.
+You should see a listing for the cloned folder.
 
 == Generate the MCP Server with IBM Bob
 
@@ -101,7 +101,7 @@ In IBM Bob, make sure the `globex-store-mcp` folder is your working context, the
 
 [source,bash,role=execute,subs="attributes"]
 ----
-Within the globex-store-mcp folder, Download the openapi spec document located at https://globex-store.{openshift_subdomain}/q/openapi . Create a mcp server called GlobexStoreMcpServer which exposes a tool to get the orders for a given customerId. The tool implementation should connect to the API described in the openAPI spec document and return the API response. The mcp server should use the streamable http transport. Use the appropriate quarkus extension for the mcp server.
+Within the globex-store-mcp folder, Download the openapi spec document located at https://globex-store.{openshift_subdomain}/q/openapi . Create a mcp server called "GlobexStoreMcpServer" which exposes a tool called "getOrdersByCustomerId" to get the orders for a given customerId. The tool implementation should connect to the API described in the openAPI spec document and return the API response. The mcp server should use the streamable http transport. Use the appropriate quarkus extension for the mcp server.
 ----
 
 === Approve Bob's tasks
@@ -286,7 +286,7 @@ Read Bob's questions and click *Approve*.
 
 [NOTE]
 ====
-Module 3 replaces `X-User-Id` with a verified identity carried in a token.
+`X-User-Id` is unverified -- the caller can set it to anything. It gets replaced with a verified identity later in the workshop.
 ====
 
 === Verify the change
@@ -300,84 +300,142 @@ http://localhost:8080/q/dev-ui/quarkus-mcp-server-http/tools
 
 Confirm that the tool no longer lists `customerId` as an input parameter.
 
-=== Test the header with curl
+=== Test the header with MCP Inspector
 
-The Dev UI does not let you set request headers, so use `curl` to check the header handling.
+The Dev UI does not let you set request headers, so use the *MCP Inspector* to check the header handling. The Inspector is a standalone MCP client with a browser UI, so it connects to your server the same way an agent would.
 
-The streamable HTTP transport is JSON-RPC over `POST`, and it is session based: you open a session with `initialize`, then send requests with the session ID the server returned.
+Leave dev mode running and open a second terminal.
 
-Open a second terminal, leaving dev mode running in the first.
-
-Start a session and capture the session ID:
+Start the Inspector:
 
 [source,sh,role="copypaste"]
 ----
-MCP_URL=http://localhost:8080/mcp
-
-MCP_SESSION=$(curl -s -D - -o /dev/null -X POST $MCP_URL \
-  -H "Content-Type: application/json" \
-  -H "Accept: application/json, text/event-stream" \
-  -d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"curl","version":"1.0"}}}' \
-  | tr -d '\r' | awk -F': ' '/^[Mm]cp-[Ss]ession-[Ii]d/ {print $2}')
-
-echo "session: $MCP_SESSION"
+npx @modelcontextprotocol/inspector
 ----
 
-Tell the server the session is ready:
+It starts a local proxy and prints a URL for the UI (default `http://localhost:6274`) and the inspector is opened in the browser.
 
-[source,sh,role="copypaste"]
-----
-curl -s -X POST $MCP_URL \
-  -H "Content-Type: application/json" \
-  -H "Accept: application/json, text/event-stream" \
-  -H "Mcp-Session-Id: $MCP_SESSION" \
-  -d '{"jsonrpc":"2.0","method":"notifications/initialized"}'
-----
+The landing page lists the servers the Inspector knows about, all disconnected:
 
-List the tools and check the input schema:
-
-[source,sh,role="copypaste"]
-----
-curl -s -X POST $MCP_URL \
-  -H "Content-Type: application/json" \
-  -H "Accept: application/json, text/event-stream" \
-  -H "Mcp-Session-Id: $MCP_SESSION" \
-  -d '{"jsonrpc":"2.0","id":2,"method":"tools/list"}'
-----
-
-The `inputSchema` for the tool has no `customerId` property.
-
-Call the tool *without* the header:
-
-[source,sh,role="copypaste"]
-----
-curl -s -X POST $MCP_URL \
-  -H "Content-Type: application/json" \
-  -H "Accept: application/json, text/event-stream" \
-  -H "Mcp-Session-Id: $MCP_SESSION" \
-  -d '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"getOrders","arguments":{}}}'
-----
-
-The response is an error, because the tool throws when `X-User-Id` is missing.
-
-Call it again *with* the header, using `asilva` as the customer ID:
-
-[source,sh,role="copypaste"]
-----
-curl -s -X POST $MCP_URL \
-  -H "Content-Type: application/json" \
-  -H "Accept: application/json, text/event-stream" \
-  -H "Mcp-Session-Id: $MCP_SESSION" \
-  -H "X-User-Id: asilva" \
-  -d '{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"getOrdersByCustomerId","arguments":{}}}'
-----
-
-This returns the shaped order history for `asilva`: no shipping address, no prices, and a product code, quantity and product name on each line item.
+image::m1/mcp-inspector-servers.png[]
 
 [NOTE]
 ====
-Use the tool name exactly as `tools/list` reports it, and `/mcp` is the default endpoint path -- check `application.properties` if Bob configured a different one.
+The printed URL carries an `MCP_INSPECTOR_API_TOKEN` query parameter. Use the URL exactly as printed -- opening `http://localhost:6274` on its own does not authenticate against the proxy.
 ====
+
+==== Add your server
+
+The three entries on the page are the Inspector's built-in examples. Add your own.
+
+Click *Add Servers* -> *Add Manually* and fill in the dialog:
+
+image::m1/mcp-inspector-add-server.png[]
+
+[cols="1,2", options="header"]
+|===
+| Field | Value
+
+| Server ID
+| `order-mcp-local`
+
+| Transport
+| `streamable-http`
+
+| URL
+| `http://localhost:8080/mcp`
+|===
+
+Click *Add*.
+
+[NOTE]
+====
+*Server ID* is the key the entry is stored under in `~/.mcp-inspector/mcp.json`; any name works. `/mcp` is the default endpoint path -- check `application.properties` if Bob configured a different one.
+====
+
+==== Connect to the server
+
+A card for `order-mcp-local` appears alongside the examples, marked *Disconnected*:
+
+image::m1/mcp-inspector-server-added.png[]
+
+Click the *Disconnected* toggle on that card to connect.
+
+The card turns green and reads *Connected*, the server's name (`GlobexStoreMcpServer`) appears in the top-left, the negotiated protocol version is shown on the card, and a *Tools* tab appears next to *Servers*:
+
+image::m1/mcp-inspector-connected.png[]
+
+==== Check the tool schema
+
+Open the *Tools* tab. The left-hand panel lists the tools the server advertises -- just `getOrdersByCustomerId`:
+
+image::m1/mcp-inspector-tools-list.png[]
+
+Click the tool to see its details:
+
+image::m1/mcp-inspector-tool-detail.png[]
+
+The panel shows the description and an *Execute Tool* button, and nothing else. There are no input fields, because the tool no longer declares any parameters -- the customer ID comes from the `X-User-Id` header instead.
+
+==== Call the tool without the header
+
+Click *Execute Tool*.
+
+The call fails with *Tool Call Failed* / *Internal error*, because the tool throws when `X-User-Id` is missing:
+
+image::m1/mcp-inspector-tool-error.png[]
+
+[NOTE]
+====
+The *Network* panel on the right records the request as `200 OK`. The HTTP request itself succeeded; the failure is carried inside the MCP response, which is how tool errors are reported.
+====
+
+==== Add the header
+
+Go back to the *Servers* tab and click *Settings* on the `order-mcp-local` card:
+
+image::m1/mcp-inspector-card-settings.png[]
+
+The *Server Settings* dialog opens on the *Options* section. Scroll to the bottom and expand *Custom Headers*:
+
+image::m1/mcp-inspector-server-settings.png[]
+
+Click *+ Add Header* and fill in the two fields:
+
+[cols="1,2", options="header"]
+|===
+| Field | Value
+
+| Header name
+| `X-User-Id`
+
+| Header value
+| `asilva`
+|===
+
+image::m1/mcp-inspector-custom-header.png[]
+
+Close the dialog.
+
+[IMPORTANT]
+====
+Custom headers only take effect on a new connection, and the Inspector does not pick them up on a reconnect alone. Reload the browser page, then connect to `order-mcp-local` again as you did earlier.
+====
+
+==== Call the tool with the header
+
+Go to the *Tools* tab, select `getOrdersByCustomerId`, and click *Execute Tool*.
+
+The call succeeds and the *Results* panel shows the shaped order history for `asilva`:
+
+image::m1/mcp-inspector-tool-result.png[]
+
+Check the JSON against the two changes you made:
+
+* No shipping address on any order.
+* No price on any line item, and every line item has `productCode`, `productName` and `quantity`.
+
+The tool took no arguments. The customer whose orders came back was determined entirely by the `X-User-Id` header, which the model never sees and cannot change.
 
 == Commit Your MCP Server
 
@@ -396,7 +454,18 @@ git commit -m "my first MCP server"
 Bob's *Source Control* panel does the same thing: stage the changed files, type the commit message, and commit.
 ====
 
-If Bob prompts for Git credentials, use the workshop developer account:
+=== Push to GitLab
+
+[source,sh,role="copypaste"]
+----
+git push
+----
+
+The push is the first command that talks to GitLab, so this is where you are prompted for credentials. Bob asks for them in an input box at the top of the window, username first and then password, each confirmed with kbd:[Enter]:
+
+image::m1/bob-git-credentials.png[]
+
+Use the workshop developer account:
 
 [cols="1,2", options="header"]
 |===
@@ -409,25 +478,13 @@ If Bob prompts for Git credentials, use the workshop developer account:
 | `{common_password}`
 |===
 
-=== Push to GitLab
-
-[source,sh,role="copypaste"]
-----
-git push -u origin main
-----
-
-Use the `developer` / `{common_password}` credentials if you are prompted.
-
-[NOTE]
-====
-`-u origin main` is needed on this first push because the repository was empty when you cloned it, so the branch has no upstream. Later pushes are just `git push`.
-====
-
 Refresh the project in GitLab to see the pushed code.
 
-== Log in to ArgoCD
+== Watch the Deployment in ArgoCD
 
-ArgoCD (Red Hat OpenShift GitOps) watches the GitLab repository and reconciles the cluster with what is committed.
+ArgoCD (Red Hat OpenShift GitOps) manages both the build and the deployment of the MCP server. Your push triggers a build, and the deployment rolls out the image the build produces.
+
+=== Log in
 
 Open the ArgoCD console in a new browser tab:
 
@@ -454,4 +511,116 @@ Sign in with the workshop GitOps account:
 Accept the certificate warning if your browser shows one. If the page shows a *Log in via OpenShift* button instead of a login form, use the plain login option below it.
 ====
 
-You land on the ArgoCD *Applications* dashboard.
+=== Find the application
+
+You land on the *Applications* dashboard, which lists every application the workshop environment manages:
+
+image::m1/argocd-applications.png[]
+
+Two of them relate to what you just pushed:
+
+[cols="1,2", options="header"]
+|===
+| Application | Role
+
+| `globex-store-mcp-build`
+| The build. It picks up your commit from GitLab and pushes a container image to the internal OpenShift registry, tagged `globex-store-mcp-build/globex-store-mcp:latest`.
+
+| `globex-store-mcp`
+| The deployment. Its pod spec points at `image-registry.openshift-image-registry.svc:5000/globex-store-mcp-build/globex-store-mcp:latest`, so it rolls out whenever the build pushes a new image to that tag.
+|===
+
+[NOTE]
+====
+Neither application syncs from your GitLab repository -- both are defined in the workshop install repository. Your code reaches the cluster through the image tag, not through an ArgoCD sync.
+====
+
+Click the `globex-store-mcp` tile.
+
+=== Check the rollout
+
+The application details tree opens:
+
+image::m1/argocd-globex-store-mcp.png[]
+
+The tree shows the resources that make up the application -- deployment, replica set, pod, service, route, service account. When the build pushes the new image, a new replica set and pod appear with an age of a few seconds while the older ones are scaled down.
+
+*App Health* reads *Progressing* while the new pod starts, then switches to *Healthy* once the new image is serving.
+
+[NOTE]
+====
+If nothing has changed, the build has not finished yet. Open the `globex-store-mcp-build` application to check the pipeline run, then come back.
+====
+
+== Test the Deployed MCP Server
+
+The deployment exposes the MCP server on an OpenShift route. Point the Inspector at that route instead of `localhost` and run the same checks against the version running on the cluster.
+
+=== Add the deployed server
+
+In the Inspector, click *Add Servers* -> *Add Manually* and fill in the dialog:
+
+[cols="1,2", options="header"]
+|===
+| Field | Value
+
+| Server ID
+| `order-mcp-remote`
+
+| Transport
+| `streamable-http`
+
+| URL
+| `https://globex-store-mcp.{openshift_subdomain}/mcp`
+|===
+
+image::m1/mcp-inspector-add-remote-server.png[]
+
+Click *Add*.
+
+=== Set the header
+
+The deployed server reads `X-User-Id` exactly as the local one does, so it needs the same header. On the `order-mcp-remote` card, click *Settings*, expand *Custom Headers*, click *+ Add Header* and add:
+
+[cols="1,2", options="header"]
+|===
+| Field | Value
+
+| Header name
+| `X-User-Id`
+
+| Header value
+| `asilva`
+|===
+
+Close the dialog and reload the browser page.
+
+=== Call the tool
+
+Turn off the toggle on the `order-mcp-local` card to disconnect from dev mode, then connect to `order-mcp-remote`.
+
+Open the *Tools* tab, select `getOrdersByCustomerId` and click *Execute Tool*.
+
+The result matches what the local server returned: the same orders for `asilva`, with no shipping address and no prices. The code you wrote in Bob is now running on the cluster.
+
+[NOTE]
+====
+Leave both entries in place. `order-mcp-local` points at dev mode on your VM, `order-mcp-remote` at the deployed route, which makes it easy to compare the two as you change the server in later modules.
+====
+
+[IMPORTANT]
+====
+The deployed server is not secured. The route is open, and anything that can reach it can set `X-User-Id` to any value and read that customer's orders. You fix this later in the workshop.
+====
+
+== Summary
+
+You built an MCP server over an existing REST API and got it running on OpenShift:
+
+* Generated a Quarkus MCP server from the Globex Store OpenAPI specification with IBM Bob, exposing one tool over the streamable HTTP transport.
+* Trimmed the tool's response to the fields an agent needs -- no shipping address, no prices, product names resolved from a second endpoint.
+* Moved the customer identifier out of the tool signature and onto the `X-User-Id` HTTP header, so the caller sets it and the model cannot.
+* Verified all three changes with the MCP Inspector against dev mode.
+* Pushed to GitLab, watched the build produce an image and the deployment roll it out, and ran the same tool call against the deployed route.
+
+Three things carried the design: the API was left untouched and wrapped, the tool was kept narrow and its payload minimised, and the identity was moved off the model's contract. The remaining gap is that nothing verifies `X-User-Id`.
