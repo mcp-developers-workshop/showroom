@@ -2,7 +2,13 @@
 * xref:dev-setup-intro.adoc[Navigating this Lab]
 
 * xref:m1/index.adoc[Module 1: Build Your First MCP Server]
-** xref:m1/lab.adoc[Module 1 Lab]
+** xref:m1/01-setup.adoc[Set Up the Workshop Environment]
+** xref:m1/02-generate.adoc[Generate the MCP Server]
+** xref:m1/03-shape-data.adoc[Shape the Data Returned by the Tool]
+** xref:m1/04-header.adoc[Pass the Customer Identifier as an HTTP Header]
+** xref:m1/05-deploy.adoc[Commit and Deploy]
+** xref:m1/06-test-deployed.adoc[Test the Deployed MCP Server]
+** xref:m1/07-summary.adoc[Summary]
 
 * xref:m2/index.adoc[Module 2: Expand Agent Capability with MCP Server]
 * xref:m3/index.adoc[Module 3: Enable Security & Identity (Zero-Trust)]

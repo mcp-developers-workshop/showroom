@@ -1,0 +1,83 @@
+:experimental:
+:imagesdir: ../../assets/images
+
+= Set Up the Workshop Environment
+:toc: left
+:toclevels: 2
+:numbered:
+:icons: font
+:source-highlighter: highlight.js
+
+== Log in to GitLab
+
+The workshop environment includes a GitLab instance. You will push your MCP server to it later in this module, and ArgoCD deploys from it.
+
+Open the following URL in a new browser tab:
+
+[source,bash,role=execute,subs="attributes"]
+----
+https://gitlab-gitlab.{openshift_subdomain}
+----
+
+Sign in with the workshop developer account:
+
+image::m1/gitlab-login.png[]
+
+[cols="1,2", options="header"]
+|===
+| Field | Value
+
+| Username
+| `developer`
+
+| Password
+| `{common_password}`
+|===
+
+[NOTE]
+====
+The workshop cluster uses a self-signed certificate. Accept the browser warning if you see one.
+====
+
+You land on the GitLab *Projects* dashboard.
+
+== Open IBM Bob and Clone the Repository
+
+*IBM Bob* is the AI code assistant used throughout this workshop.
+
+=== Open IBM Bob
+
+On the desktop of your workshop VM, double-click the *IBM Bob* shortcut and wait for the workbench to load.
+
+=== Create and open the workshop folder
+
+1. Select *File* -> *Open Folder*.
+2. Create a new folder called `workshop` in your home directory.
+3. Select the `workshop` folder and confirm to open it.
+
+Bob reloads with `workshop` as the active folder.
+
+=== Clone the Globex MCP repository
+
+Open a terminal inside IBM Bob (*Terminal* -> *New Terminal*). It opens in the `workshop` folder.
+
+[source,sh,role="copypaste",subs="attributes+"]
+----
+git clone https://gitlab-gitlab.{openshift_subdomain}/globex/globex-store-mcp
+----
+
+If you are prompted for credentials, use the same account as above: `developer` / `{common_password}`.
+
+[NOTE]
+====
+`globex-store-mcp` holds only a few starter files at this point. You build the MCP server into it over the next sections and push it back to GitLab.
+====
+
+Confirm the folder is in place:
+
+[source,sh,role="copypaste"]
+----
+cd globex-store-mcp && ls -la
+----
+
+You should see a listing for the cloned folder.

@@ -1,0 +1,120 @@
+:experimental:
+:imagesdir: ../../assets/images
+
+= Generate the MCP Server
+:toc: left
+:toclevels: 2
+:numbered:
+:icons: font
+:source-highlighter: highlight.js
+
+== Generate the MCP Server with IBM Bob
+
+The Globex store exposes a REST API described by an OpenAPI specification. Instead of writing the MCP server by hand, you ask Bob to build a Quarkus MCP server that wraps that API and exposes one tool.
+
+This is the brownfield pattern: the existing API is untouched, and the MCP server sits in front of it.
+
+=== Review the OpenAPI specification
+
+[source,bash,role=execute,subs="attributes"]
+----
+https://globex-store.{openshift_subdomain}/q/openapi
+----
+
+=== Prompt IBM Bob
+
+In IBM Bob, make sure the `globex-store-mcp` folder is your working context, then enter the following prompt:
+
+[source,bash,role=execute,subs="attributes"]
+----
+Within the globex-store-mcp folder, Download the openapi spec document located at https://globex-store.{openshift_subdomain}/q/openapi . Create a mcp server called "GlobexStoreMcpServer" which exposes a tool called "getOrdersByCustomerId" to get the orders for a given customerId. The tool implementation should connect to the API described in the openAPI spec document and return the API response. The mcp server should use the streamable http transport. Use the appropriate quarkus extension for the mcp server.
+----
+
+=== Approve Bob's tasks
+
+Bob breaks the request into tasks and asks for confirmation before running them -- downloading the specification, adding the Quarkus extension, creating files, running commands. Expect several prompts.
+
+Read each question, click *Approve*, and keep going until Bob reports that it has finished.
+
+[NOTE]
+====
+The questions tell you which extension and project layout Bob has settled on.
+====
+
+=== What the prompt specifies
+
+[cols="1,2", options="header"]
+|===
+| Instruction | Effect
+
+| Download the OpenAPI spec
+| Bob generates the client from the actual contract instead of guessing endpoint shapes.
+
+| Expose a tool to get orders for a given `customerId` 
+| One narrow tool rather than a mapping of every REST endpoint.
+
+| Connect to the API described in the spec and return the response
+| The MCP server wraps the API; it does not reimplement the logic.
+
+| Use the streamable HTTP transport
+| Needed for the server to be reachable once deployed on OpenShift.
+
+| Use the appropriate Quarkus extension
+| Points Bob at the Quarkus MCP server extension instead of a hand-rolled protocol implementation.
+|===
+
+=== Review Bob's summary
+
+Bob builds and tests the project, then prints a summary of what was created. Check it against what you asked for:
+
+* A Quarkus project inside the `globex-store-mcp` folder.
+* The `quarkus-mcp-server-http` extension in the build file.
+* A `getOrdersByCustomerId` tool that takes a customer ID and returns that customer's orders.
+* A client generated from the downloaded OpenAPI specification.
+* Configuration selecting the streamable HTTP transport.
+* A passing build and test run.
+
+If something is missing, tell Bob in a follow-up prompt and let it correct the project before continuing.
+
+== Verify the Tool in the Quarkus Dev UI
+
+The Quarkus Dev UI is available whenever the application runs in dev mode. The MCP server extension adds its own page, which lists the registered tools.
+
+=== Start the application in dev mode
+
+If Bob left the application running after its test run, dev mode is already up. Otherwise start it from a terminal in the `globex-store-mcp` folder:
+
+[source,sh,role="copypaste"]
+----
+./mvnw quarkus:dev
+----
+
+Wait for the `Listening on: http://localhost:8080` message.
+
+=== Open the MCP tools page
+
+[source,text,role="copypaste"]
+----
+http://localhost:8080/q/dev-ui/quarkus-mcp-server-http/tools
+----
+
+This is the *Tools* page of the *MCP Server - HTTP* section.
+
+=== Confirm the tool is registered
+
+One tool is listed:
+
+[cols="1,2", options="header"]
+|===
+| Tool | Description
+
+| `getOrdersByCustomerId`
+| Get all orders for a given customer ID from the Globex Store
+|===
+
+The Globex Store REST API exposes many endpoints; the MCP server publishes this one.
+
+[NOTE]
+====
+If the page loads but lists no tools, the tool class is probably missing its MCP tool annotation, or the application failed to restart after the last edit. Check the dev mode terminal output.
+====

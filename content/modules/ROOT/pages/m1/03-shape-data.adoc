@@ -1,0 +1,69 @@
+:experimental:
+:imagesdir: ../../assets/images
+
+= Shape the Data Returned by the Tool
+:toc: left
+:toclevels: 2
+:numbered:
+:icons: font
+:source-highlighter: highlight.js
+
+The tool currently returns whatever the Globex Store API returns, including shipping addresses and prices that an agent does not need to answer a question about order history.
+
+Next you trim and reshape the payload so the tool returns only the required fields.
+
+== Prompt IBM Bob
+
+[source,bash,role=execute,subs="attributes"]
+----
+Change the contents of the JSON data returned by the mcp server. The orders in the history should not contain the shipping address. The product line items should not contain the price, but they should contain the product code, quantity and the product name. This might need additional calls to the backend api described in https://globex-store.{openshift_subdomain}/q/openapi
+----
+
+As before, read Bob's questions and click *Approve*.
+
+== What changes
+
+[cols="1,1,2", options="header"]
+|===
+| Field | Action | Reason
+
+| Shipping address
+| Removed
+| Personally identifiable information, not needed to describe an order.
+
+| Line item price
+| Removed
+| Commercially sensitive, not needed for an order-history question.
+
+| Product code
+| Kept
+| Identifies the item.
+
+| Quantity
+| Kept
+| Describes what was ordered.
+
+| Product name
+| Added
+| Human-readable label for the product code.
+|===
+
+[NOTE]
+====
+The orders endpoint returns product codes, not names, so Bob has to call a second endpoint from the same OpenAPI specification to resolve each code into a product name. That is what the last sentence of the prompt allows for.
+====
+
+== Verify the new response shape
+
+Bob rebuilds and re-tests. Once dev mode has restarted, invoke the tool again from the Dev UI:
+
+[source,text,role="copypaste"]
+----
+http://localhost:8080/q/dev-ui/quarkus-mcp-server-http/tools
+----
+
+Check the returned JSON:
+
+* No shipping address in the order history.
+* No price on any line item.
+* Every line item has a product code, a quantity, and a product name.

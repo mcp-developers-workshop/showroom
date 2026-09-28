@@ -1,0 +1,124 @@
+:experimental:
+:imagesdir: ../../assets/images
+
+= Commit and Deploy
+:toc: left
+:toclevels: 2
+:numbered:
+:icons: font
+:source-highlighter: highlight.js
+
+== Commit Your MCP Server
+
+=== Stage and commit
+
+In the IBM Bob terminal, from inside the `globex-store-mcp` folder:
+
+[source,sh,role="copypaste"]
+----
+git add .
+git commit -m "my first MCP server"
+----
+
+[TIP]
+====
+Bob's *Source Control* panel does the same thing: stage the changed files, type the commit message, and commit.
+====
+
+=== Push to GitLab
+
+[source,sh,role="copypaste"]
+----
+git push
+----
+
+The push is the first command that talks to GitLab, so this is where you are prompted for credentials. Bob asks for them in an input box at the top of the window, username first and then password, each confirmed with kbd:[Enter]:
+
+image::m1/bob-git-credentials.png[]
+
+Use the workshop developer account:
+
+[cols="1,2", options="header"]
+|===
+| Field | Value
+
+| Username
+| `developer`
+
+| Password
+| `{common_password}`
+|===
+
+Refresh the project in GitLab to see the pushed code.
+
+== Watch the Deployment in ArgoCD
+
+ArgoCD (Red Hat OpenShift GitOps) manages both the build and the deployment of the MCP server. Your push triggers a build, and the deployment rolls out the image the build produces.
+
+=== Log in
+
+Open the ArgoCD console in a new browser tab:
+
+[source,bash,role=execute,subs="attributes"]
+----
+https://openshift-gitops-server-openshift-gitops.{openshift_subdomain}/
+----
+
+Sign in with the workshop GitOps account:
+
+[cols="1,2", options="header"]
+|===
+| Field | Value
+
+| Username
+| `{openshift_gitops_user}`
+
+| Password
+| `{openshift_gitops_password}`
+|===
+
+[NOTE]
+====
+Accept the certificate warning if your browser shows one. If the page shows a *Log in via OpenShift* button instead of a login form, use the plain login option below it.
+====
+
+=== Find the application
+
+You land on the *Applications* dashboard, which lists every application the workshop environment manages:
+
+image::m1/argocd-applications.png[]
+
+Two of them relate to what you just pushed:
+
+[cols="1,2", options="header"]
+|===
+| Application | Role
+
+| `globex-store-mcp-build`
+| The build. It picks up your commit from GitLab and pushes a container image to the internal OpenShift registry, tagged `globex-store-mcp-build/globex-store-mcp:latest`.
+
+| `globex-store-mcp`
+| The deployment. Its pod spec points at `image-registry.openshift-image-registry.svc:5000/globex-store-mcp-build/globex-store-mcp:latest`, so it rolls out whenever the build pushes a new image to that tag.
+|===
+
+[NOTE]
+====
+Neither application syncs from your GitLab repository -- both are defined in the workshop install repository. Your code reaches the cluster through the image tag, not through an ArgoCD sync.
+====
+
+Click the `globex-store-mcp` tile.
+
+=== Check the rollout
+
+The application details tree opens:
+
+image::m1/argocd-globex-store-mcp.png[]
+
+The tree shows the resources that make up the application -- deployment, replica set, pod, service, route, service account. When the build pushes the new image, a new replica set and pod appear with an age of a few seconds while the older ones are scaled down.
+
+*App Health* reads *Progressing* while the new pod starts, then switches to *Healthy* once the new image is serving.
+
+[NOTE]
+====
+If nothing has changed, the build has not finished yet. Open the `globex-store-mcp-build` application to check the pipeline run, then come back.
+====

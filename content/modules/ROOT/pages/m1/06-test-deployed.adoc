@@ -1,0 +1,70 @@
+:experimental:
+:imagesdir: ../../assets/images
+
+= Test the Deployed MCP Server
+:toc: left
+:toclevels: 2
+:numbered:
+:icons: font
+:source-highlighter: highlight.js
+
+The deployment exposes the MCP server on an OpenShift route. Point the Inspector at that route instead of `localhost` and run the same checks against the version running on the cluster.
+
+The steps are the ones you used in xref:m1/04-header.adoc[Pass the Customer Identifier as an HTTP Header], with a different URL.
+
+== Add the deployed server
+
+In the Inspector, click *Add Servers* -> *Add Manually* and fill in the dialog:
+
+[cols="1,2", options="header"]
+|===
+| Field | Value
+
+| Server ID
+| `order-mcp-remote`
+
+| Transport
+| `streamable-http`
+
+| URL
+| `https://globex-store-mcp.{openshift_subdomain}/mcp`
+|===
+
+image::m1/mcp-inspector-add-remote-server.png[]
+
+Click *Add*.
+
+== Set the header
+
+The deployed server reads `X-User-Id` exactly as the local one does, so it needs the same header. On the `order-mcp-remote` card, click *Settings*, expand *Custom Headers*, click *+ Add Header* and add:
+
+[cols="1,2", options="header"]
+|===
+| Field | Value
+
+| Header name
+| `X-User-Id`
+
+| Header value
+| `asilva`
+|===
+
+Close the dialog and reload the browser page.
+
+== Call the tool
+
+Turn off the toggle on the `order-mcp-local` card to disconnect from dev mode, then connect to `order-mcp-remote`.
+
+Open the *Tools* tab, select `getOrdersByCustomerId` and click *Execute Tool*.
+
+The result matches what the local server returned: the same orders for `asilva`, with no shipping address and no prices. The code you wrote in Bob is now running on the cluster.
+
+[NOTE]
+====
+Leave both entries in place. `order-mcp-local` points at dev mode on your VM, `order-mcp-remote` at the deployed route, which makes it easy to compare the two as you change the server in later modules.
+====
+
+[IMPORTANT]
+====
+The deployed server is not secured. The route is open, and anything that can reach it can set `X-User-Id` to any value and read that customer's orders. You fix this later in the workshop.
+====

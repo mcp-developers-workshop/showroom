@@ -1,0 +1,19 @@
+:experimental:
+:imagesdir: ../../assets/images
+
+= Summary
+:toc: left
+:toclevels: 2
+:numbered:
+:icons: font
+:source-highlighter: highlight.js
+
+You built an MCP server over an existing REST API and got it running on OpenShift:
+
+* Generated a Quarkus MCP server from the Globex Store OpenAPI specification with IBM Bob, exposing one tool over the streamable HTTP transport.
+* Trimmed the tool's response to the fields an agent needs -- no shipping address, no prices, product names resolved from a second endpoint.
+* Moved the customer identifier out of the tool signature and onto the `X-User-Id` HTTP header, so the caller sets it and the model cannot.
+* Verified all three changes with the MCP Inspector against dev mode.
+* Pushed to GitLab, watched the build produce an image and the deployment roll it out, and ran the same tool call against the deployed route.
+
+Three things carried the design: the API was left untouched and wrapped, the tool was kept narrow and its payload minimised, and the identity was moved off the model's contract. The remaining gap is that nothing verifies `X-User-Id`.
