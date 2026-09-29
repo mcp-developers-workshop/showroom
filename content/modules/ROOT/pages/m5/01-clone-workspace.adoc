@@ -1,0 +1,60 @@
+:experimental:
+:imagesdir: ../../assets/images
+
+= Clone the Orchestrate Workspace
+
+:numbered:
+:icons: font
+:source-highlighter: highlight.js
+
+You put the Globex complaints MCP server behind a watsonx Orchestrate agent with three artefacts: a *connection* that authenticates to Keycloak, an *MCP toolkit* that registers the remote server, and a *native agent* that uses its tools.
+
+Each is a YAML file imported with the `orchestrate` CLI, and the order matters. The toolkit's `app_id` refers to the connection, so the connection must exist and hold valid credentials first. The agent's `tools` refer to the toolkit's tools, so the toolkit must be imported before the agent.
+
+[NOTE]
+====
+The commands in this module use the watsonx Orchestrate ADK CLI (`orchestrate`). It must be installed and pointed at an active environment before you start.
+====
+
+== Clone the workspace
+
+The three YAML files are written for you. Clone them, from the `workshop` folder:
+
+[source,sh,role="copypaste"]
+----
+git clone https://github.com/mcp-developers-workshop/globex-complaints-orchestrate
+cd globex-complaints-orchestrate
+----
+
+[source,text]
+----
+├── connections/
+│   └── globex-complaints-connection.yaml
+├── toolkits/
+│   └── globex-complaints.yaml
+├── agents/
+│   └── complaints_analyser.yaml
+└── workspace_config.yaml
+----
+
+One folder per artefact kind, which is how the `orchestrate` CLI expects a workspace to be laid out.
+
+== Set your cluster subdomain
+
+Two of the files point at services on your cluster, and ship with `<OPENSHIFT_SUBDOMAIN>` where the address goes. Replace it:
+
+[source,sh,role="copypaste",subs="attributes+"]
+----
+grep -rl '<OPENSHIFT_SUBDOMAIN>' . | xargs sed -i '' 's|<OPENSHIFT_SUBDOMAIN>|{openshift_subdomain}|g'
+----
+
+On Linux, drop the `''` after `-i`.
+
+Check nothing is left:
+
+[source,sh,role="copypaste"]
+----
+grep -rn '<OPENSHIFT_SUBDOMAIN>' .
+----
+
+No output means you are done. The agent file has no addresses in it, so it needs no change.

@@ -2,8 +2,6 @@
 :imagesdir: ../../assets/images
 
 = Set Up the Workshop Environment
-:toc: left
-:toclevels: 2
 :numbered:
 :icons: font
 :source-highlighter: highlight.js
@@ -12,12 +10,7 @@
 
 The workshop environment includes a GitLab instance. You will push your MCP server to it later in this module, and ArgoCD deploys from it.
 
-Open the following URL in a new browser tab:
-
-[source,bash,role=execute,subs="attributes"]
-----
-https://gitlab-gitlab.{openshift_subdomain}
-----
+Open https://gitlab-gitlab.{openshift_subdomain}[GitLab^].
 
 Sign in with the workshop developer account:
 

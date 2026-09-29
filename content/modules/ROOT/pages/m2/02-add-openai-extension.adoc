@@ -1,0 +1,38 @@
+:experimental:
+:imagesdir: ../../assets/images
+
+= Connect the Agent to the Model
+:numbered:
+:icons: font
+:source-highlighter: highlight.js
+
+The agent talks to the model through the Quarkus LangChain4j OpenAI extension, which is already in `pom.xml`:
+
+[source,xml]
+----
+        <dependency>
+            <groupId>io.quarkiverse.langchain4j</groupId>
+            <artifactId>quarkus-langchain4j-openai</artifactId>
+        </dependency>
+----
+
+What it does not have is an API key.
+
+== Add the API key
+
+The key is not in the repository. Create a `.env` file in the root of `globex-complaint-agent`, next to `pom.xml`:
+
+[source,properties,role="copypaste"]
+----
+QUARKUS_LANGCHAIN4J_OPENAI_API_KEY=<replace-me>
+quarkus.langchain4j.openai.complaint.api-key=<replace-me>
+----
+
+Replace both occurrences of `<replace-me>` with the API key your proctor gives you.
+
+Both lines are needed. `quarkus.langchain4j.openai.complaint.api-key` matches `modelName = "complaint"` on `ComplaintAgent`, so it is the key that agent authenticates with. `QUARKUS_LANGCHAIN4J_OPENAI_API_KEY` is the environment-variable form of `quarkus.langchain4j.openai.api-key` and sets the key for the default OpenAI configuration.
+
+[NOTE]
+====
+Quarkus reads `.env` from the project root at startup and treats each line as a configuration property, so nothing else needs to change. `.env` is already in `.gitignore`, which keeps the key out of your commits.
+====

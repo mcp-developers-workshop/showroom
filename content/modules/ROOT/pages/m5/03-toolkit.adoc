@@ -1,0 +1,79 @@
+:experimental:
+:imagesdir: ../../assets/images
+
+= Register the MCP Toolkit
+
+:numbered:
+:icons: font
+:source-highlighter: highlight.js
+
+The MCP toolkit connects to the remote MCP server using the connection you just configured.
+
+== The toolkit specification
+
+.toolkits/globex-complaints.yaml
+[source,yaml,subs="attributes+"]
+----
+spec_version: v1
+kind: mcp
+name: globex-complaints
+description: This MCP server helps in getting details about complaints that were raised and also provide a nice summary for product improvement perspective.
+transport: streamable_http
+url: https://globex-complaints.{openshift_subdomain}/read/mcp
+app_id:
+  - globex-complaints-connection
+tools:
+  - "*"
+----
+
+[cols="1,2", options="header"]
+|===
+| Field | Meaning
+
+| `kind: mcp`
+| Registers a remote MCP server rather than a local Python or OpenAPI tool.
+
+| `transport: streamable_http`
+| Matches the transport the MCP server was built with in Module 1.
+
+| `url`
+| The MCP endpoint on the complaints server. The `/read/mcp` path exposes the read-only tools.
+
+| `app_id`
+| References the connection created above. Orchestrate attaches a token from that connection to every call.
+
+| `tools: "*"`
+| Imports every tool the server advertises. Naming tools individually here is one way to limit what an agent can reach; the gateway covered in this module is the other.
+|===
+
+Import it:
+
+[source,bash,role=execute]
+----
+orchestrate toolkits import -f toolkits/globex-complaints.yaml
+----
+
+== Verify the imported tools
+
+The import succeeds even if the server is unreachable, so list the tools to confirm Orchestrate actually connected and read the tool definitions:
+
+[source,bash,role=execute]
+----
+orchestrate tools list
+----
+
+You should see:
+
+* `globex-complaints:get_last_1000_complaints`
+* `globex-complaints:read_query`
+* `globex-complaints:list_tables`
+* `globex-complaints:describe_tables`
+
+Tools are namespaced by toolkit name, which is why each entry is prefixed with `globex-complaints:`.
+
+_TBC: screenshot -- `orchestrate tools list` output with the four globex-complaints tools._
+
+[NOTE]
+====
+If no tools are listed, the toolkit imported but Orchestrate could not reach the MCP server or could not authenticate. Check the `url` and re-run the `set-credentials` step.
+====

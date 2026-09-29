@@ -1,0 +1,22 @@
+:experimental:
+:imagesdir: ../../assets/images
+
+= Summary
+
+:numbered:
+:icons: font
+:source-highlighter: highlight.js
+
+You put the Globex complaints MCP server behind a watsonx Orchestrate agent without writing any code:
+
+* Cloned a workspace of three YAML files, one folder per artefact kind, and pointed two of them at your cluster.
+* Created a connection holding the Keycloak realm and the client credentials grant, then set the client ID and secret as flags so they live in Orchestrate rather than in the repository.
+* Registered the complaints MCP server as a toolkit backed by that connection, and listed the tools to prove Orchestrate had really reached the server rather than just accepted the file.
+* Defined a native agent naming the four tools it may call, with its own instructions, welcome message and starter prompts.
+* Chatted with it and watched a question about severity turn into a schema inspection, a query, and a summary.
+
+The split between the connection and the toolkit is the part worth keeping. The toolkit says where the server is and what it offers; the connection says how to authenticate to it. Credentials can be rotated, or swapped for a different environment's, without touching the tool definitions -- and the agent never sees them at all, because Orchestrate attaches the token on the way out.
+
+Note too that the reach of the agent is limited in two separate places. The toolkit took `tools: "*"` and imported everything the server advertises, but the agent lists its four tools explicitly and cannot call anything outside that list. Narrowing at the toolkit controls what exists in the workspace; narrowing at the agent controls what one agent can do with it.
+
+The same MCP server you built and secured in earlier modules is being consumed here by something that is not a Quarkus application and shares no code with one. That is the protocol doing its job. What it does not solve is what happens when there are twenty servers and thirty agents, each with its own connection and its own copy of the rules about who may call what -- which is the problem the gateway exists to address.

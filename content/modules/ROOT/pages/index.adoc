@@ -58,7 +58,7 @@ The workshop is structured into 5 progressive, hands-on modules:
 
 | *Module 2*
 | xref:m2/index.adoc[Expand Agent Capability with MCP Server]
-| LangChain4j Agent, OpenShift Secrets, Prompt Tuning
+| LangChain4j Agent, MCP Client, Prompt Tuning, Helm, ArgoCD
 
 | *Module 3*
 | xref:m3/index.adoc[Enable Security & Identity (Zero-Trust)]

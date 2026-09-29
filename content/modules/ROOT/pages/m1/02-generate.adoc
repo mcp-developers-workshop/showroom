@@ -2,8 +2,6 @@
 :imagesdir: ../../assets/images
 
 = Generate the MCP Server
-:toc: left
-:toclevels: 2
 :numbered:
 :icons: font
 :source-highlighter: highlight.js
@@ -16,10 +14,7 @@ This is the brownfield pattern: the existing API is untouched, and the MCP serve
 
 === Review the OpenAPI specification
 
-[source,bash,role=execute,subs="attributes"]
-----
-https://globex-store.{openshift_subdomain}/q/openapi
-----
+Open https://globex-store.{openshift_subdomain}/q/openapi[the Globex Store OpenAPI specification^].
 
 === Prompt IBM Bob
 
@@ -76,6 +71,27 @@ Bob builds and tests the project, then prints a summary of what was created. Che
 
 If something is missing, tell Bob in a follow-up prompt and let it correct the project before continuing.
 
+=== The generated configuration
+
+Open `src/main/resources/application.properties`. Bob has written the server's identity and the base URL of the API it wraps:
+
+[source,properties,subs="attributes+"]
+----
+# MCP Server identity
+quarkus.mcp.server.server-info.name=GlobexStoreMcpServer
+quarkus.mcp.server.server-info.version=1.0.0-SNAPSHOT
+
+# Globex Store REST client base URL
+quarkus.rest-client.globex-store-api.url=https://globex-store.{openshift_subdomain}
+----
+
+The URL came from the `servers` block of the OpenAPI document Bob downloaded.
+
+[NOTE]
+====
+That URL is hardcoded because this is a workshop and there is one environment. In production the base URL of a backing service is environment configuration -- a ConfigMap, a Secret or an environment variable -- so the same image can run against dev, test and production without being rebuilt. Leave it as it is here.
+====
+
 == Verify the Tool in the Quarkus Dev UI
 
 The Quarkus Dev UI is available whenever the application runs in dev mode. The MCP server extension adds its own page, which lists the registered tools.
@@ -93,10 +109,7 @@ Wait for the `Listening on: http://localhost:8080` message.
 
 === Open the MCP tools page
 
-[source,text,role="copypaste"]
-----
-http://localhost:8080/q/dev-ui/quarkus-mcp-server-http/tools
-----
+Open http://localhost:8080/q/dev-ui/quarkus-mcp-server-http/tools[the Dev UI tools page^].
 
 This is the *Tools* page of the *MCP Server - HTTP* section.
 

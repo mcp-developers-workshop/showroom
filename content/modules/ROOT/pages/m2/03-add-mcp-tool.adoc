@@ -1,0 +1,107 @@
+:experimental:
+:imagesdir: ../../assets/images
+
+= Give the Agent the Orders Tool
+:numbered:
+:icons: font
+:source-highlighter: highlight.js
+
+The agent can hold a conversation about a complaint but has no way to look up an order, so it asks the customer for the order ID and takes their word for it. Connect it to the MCP server you built in Module 1 and let it fetch the orders itself.
+
+Three changes: add the MCP client extension, point it at your server, and tell the agent to use the tool.
+
+== Add the MCP client extension
+
+From the `globex-complaint-agent` folder:
+
+[source,sh,role="copypaste"]
+----
+mvn quarkus:add-extension -Dextensions="langchain4j-mcp"
+----
+
+This is the client side of MCP. It connects to an MCP server, lists its tools and exposes them to the agent as tools the model can call.
+
+== Point the client at your MCP server
+
+A client needs two settings, and they go in different files, because Quarkus reads them at different times.
+
+The *transport type* is fixed when the application is built, so it belongs in the source. Add it to `src/main/resources/application.properties`:
+
+[source,properties,role="copypaste"]
+----
+quarkus.langchain4j.mcp.orders.transport-type=streamable-http
+----
+
+The *URL* is read at startup and changes from one environment to the next, so it belongs in configuration. Add it to the `.env` file you created in the previous step:
+
+[source,properties,role="copypaste",subs="attributes+"]
+----
+quarkus.langchain4j.mcp.orders.url=https://globex-store-mcp.{openshift_subdomain}/mcp
+----
+
+`orders` is the name of the client, and it is the same name in both files. You use that name in the agent to say which tools it gets.
+
+The URL is the deployed route you tested at the end of Module 1.
+
+[IMPORTANT]
+====
+Quarkus works out which MCP clients exist at *build time*, from the `transport-type` entries it can see then. A client whose transport type only appears at runtime is never created at all -- and because the agent then simply has no tools, nothing fails: the model answers from its own head and invents an order.
+
+That is why `transport-type` goes in `application.properties`, which is part of the source and therefore part of the build, while the URL can come from `.env` now and from a Secret once the agent runs on OpenShift.
+====
+
+== Give the tool to the agent
+
+Open `ComplaintAgent.java`. Add the import:
+
+[source,java,role="copypaste"]
+----
+import io.quarkiverse.langchain4j.mcp.runtime.McpToolBox;
+----
+
+Then annotate the existing `process` method. Do not add a new method -- this is the same `process` that is already there, with one annotation added and the signature unchanged:
+
+[source,java,role="copypaste"]
+----
+    @McpToolBox("orders")
+    String process(String userMessage, @MemoryId String memoryId);
+----
+
+The name in the annotation matches the name in the configuration. At startup the client connects to the server, reads the tool list and hands `getOrdersByCustomerId` to the model. Nothing else in the agent changes -- LangChain4j runs the tool call loop for you: the model asks for the tool, the client calls it, the result goes back to the model, and the model carries on with the conversation.
+
+== Change the prompt to use the tool
+
+Handing a tool to the model is not enough. The prompt still tells it to ask the customer for the order ID, so that is what it will do. Edit the `@SystemMessage` in `ComplaintAgent.java` and replace step 1 of the conversation flow:
+
+.Before
+[source,text]
+----
+1. **Product Confirmation**:
+   - start the conversation by asking the order id and the product code for which they want to file a complaint.
+----
+
+.After
+[source,text,role="copypaste"]
+----
+1. **Product Confirmation**:
+   - Start the conversation by calling the getOrdersByCustomerId tool to fetch the customer's orders.
+   - Do not ask the customer who they are or for their customer id. The tool already knows.
+   - Show them the orders it returns and ask which order, and which product in that order, the complaint is about.
+   - Only ever refer to orders and products the tool returned. Never invent an order id or a product.
+   - If the tool returns no orders, tell them you cannot find any orders on their account and stop there.
+----
+
+The last two lines matter. The model will happily make up a plausible order number if the prompt leaves room for it, and a complaint filed against an order that does not exist is worse than no complaint at all.
+
+Add the same rule at the top of the prompt, so it holds for the whole conversation and not just the first step. In the opening paragraph of the `@SystemMessage`, after `CRITICAL do not share your internal thinking.`:
+
+[source,text,role="copypaste"]
+----
+            Don't makeup your own order numbers.
+            If you are unable to raise a complaints return with an error. Do not make up your own complaint numbers
+----
+
+[NOTE]
+====
+This is the pattern for adding any MCP server to an agent: configure the client, name it in `@McpToolBox`, then say in the prompt when the tool should be used and what the model may not do without it.
+====

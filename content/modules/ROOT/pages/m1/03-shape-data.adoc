@@ -2,8 +2,6 @@
 :imagesdir: ../../assets/images
 
 = Shape the Data Returned by the Tool
-:toc: left
-:toclevels: 2
 :numbered:
 :icons: font
 :source-highlighter: highlight.js
@@ -55,12 +53,7 @@ The orders endpoint returns product codes, not names, so Bob has to call a secon
 
 == Verify the new response shape
 
-Bob rebuilds and re-tests. Once dev mode has restarted, invoke the tool again from the Dev UI:
-
-[source,text,role="copypaste"]
-----
-http://localhost:8080/q/dev-ui/quarkus-mcp-server-http/tools
-----
+Bob rebuilds and re-tests. Once dev mode has restarted, invoke the tool again from http://localhost:8080/q/dev-ui/quarkus-mcp-server-http/tools[the Dev UI tools page^].
 
 Check the returned JSON:
 

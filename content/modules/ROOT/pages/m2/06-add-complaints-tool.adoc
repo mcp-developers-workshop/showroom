@@ -1,0 +1,74 @@
+:experimental:
+:imagesdir: ../../assets/images
+
+= Give the Agent the Complaints Tool
+:numbered:
+:icons: font
+:source-highlighter: highlight.js
+
+The agent can read orders but has nothing to file a complaint with. A second MCP server, already running on the cluster, does exactly that. Connect it the same way you connected the orders server.
+
+== What the complaints server offers
+
+The server is at `https://globex-complaints.{openshift_subdomain}/mcp` and exposes three tools:
+
+[cols="1,2", options="header"]
+|===
+| Tool | What it does
+
+| `create_complaint`
+| Creates a complaint. Requires `orderId`, `productCode`, `issueType` and `description`; `severity` and `resolution` are optional.
+
+| `get_complaint`
+| Returns complaints for a product over a date range, sorted by severity.
+
+| `update_complaint`
+| Updates an existing complaint by ID.
+|===
+
+Note what `create_complaint` needs: an order ID and a product code. Both come out of `getOrdersByCustomerId` -- the product code is in the response because you kept it there when you shaped the payload in Module 1. The two tools fit together.
+
+== Add a second MCP client
+
+Same two files as before. The transport type goes in `src/main/resources/application.properties`, next to the one for `orders`:
+
+[source,properties,role="copypaste"]
+----
+quarkus.langchain4j.mcp.complaint.transport-type=streamable-http
+----
+
+The URL goes in `.env`:
+
+[source,properties,role="copypaste",subs="attributes+"]
+----
+quarkus.langchain4j.mcp.complaint.url=https://globex-complaints.{openshift_subdomain}/mcp
+----
+
+The client is named `complaint`. Nothing is shared with the `orders` client -- each has its own name, URL and connection.
+
+== Give both toolboxes to the agent
+
+In `ComplaintAgent.java`, list both client names in `@McpToolBox`:
+
+[source,java,role="copypaste"]
+----
+    @McpToolBox({"orders", "complaint"})
+    String process(String userMessage, @MemoryId String memoryId);
+----
+
+The agent now sees four tools: `getOrdersByCustomerId` from one server and the three complaints tools from the other. The model picks between them from their names and descriptions, which is why a clear tool description on the server side matters.
+
+== Try it again
+
+Restart dev mode if it is not already running, go back to the chatbot and walk through the same complaint: `try again`, pick the Stojo Collapsible Silicone Bottle from order 231, describe the broken cap, and confirm.
+
+This time the agent calls `create_complaint` and comes back with a complaint ID:
+
+image::m2/chatbot-complaint-raised.png[]
+
+The complaint is recorded against order 231 with the issue type, severity and resolution the agent worked out during the conversation.
+
+[NOTE]
+====
+Nothing about the agent's code changed to make it use the new tool -- only one line of configuration and one annotation. The prompt's conversation flow already ended with "Provide the complaint ID and next steps", and a tool that creates complaints was the missing half of it.
+====

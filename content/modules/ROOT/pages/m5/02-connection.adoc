@@ -1,0 +1,92 @@
+:experimental:
+:imagesdir: ../../assets/images
+
+= Create the Connection
+
+:numbered:
+:icons: font
+:source-highlighter: highlight.js
+
+A connection stores the target endpoint and authentication specification without hardcoding secrets. It takes three commands: import the specification, configure the auth flow, then set the credentials.
+
+== The connection specification
+
+.connections/globex-complaints-connection.yaml
+[source,yaml,subs="attributes+"]
+----
+spec_version: v1
+kind: connection
+app_id: globex-complaints-connection
+environments:
+  draft:
+    security_scheme: oauth2
+    auth_type: oauth2_client_creds
+    type: team
+    server_url: https://sso.{openshift_subdomain}/realms/internal
+    token_url: https://sso.{openshift_subdomain}/realms/internal/protocol/openid-connect/token
+----
+
+[cols="1,2", options="header"]
+|===
+| Field | Meaning
+
+| `app_id`
+| The name the toolkit and CLI commands use to refer to this connection.
+
+| `environments`
+| Per-environment settings. `draft` is the development environment; a `live` environment can hold different credentials for the same `app_id`.
+
+| `security_scheme` / `auth_type`
+| OAuth 2.0 using the client credentials grant, so the agent authenticates as itself rather than as a user.
+
+| `type: team`
+| Credentials are shared by everyone in the team, rather than stored per user.
+
+| `server_url` / `token_url`
+| The Keycloak realm protecting the complaints MCP server, and the endpoint the client credentials are exchanged at for a token.
+|===
+
+Import it:
+
+[source,bash,role=execute]
+----
+orchestrate connections import -f connections/globex-complaints-connection.yaml
+----
+
+Importing only registers the specification. The connection is not usable until you configure it and set credentials.
+
+== Configure the auth flow
+
+[source,bash,role=execute]
+----
+orchestrate connections configure \
+  -a globex-complaints-connection \
+  --kind oauth_auth_client_credentials_flow \
+  --type team \
+  --env draft
+----
+
+This tells Orchestrate which OAuth flow the connection uses. It has to match the `auth_type` in the YAML.
+
+== Set the credentials
+
+Replace `<YOUR_CLIENT_ID>` and `<YOUR_CLIENT_SECRET>` with your own values:
+
+[source,bash,role=execute,subs="attributes"]
+----
+orchestrate connections set-credentials \
+  -a globex-complaints-connection \
+  --env draft \
+  --client-id "<YOUR_CLIENT_ID>" \
+  --client-secret "<YOUR_CLIENT_SECRET>" \
+  --token-url "https://sso.{openshift_subdomain}/realms/internal/protocol/openid-connect/token"
+----
+
+[IMPORTANT]
+====
+The client ID and secret come from the `internal` Keycloak realm, from the client registered for the complaints MCP server. TBC -- confirm the client name and where attendees obtain the secret.
+====
+
+_TBC: screenshot -- the Keycloak client credentials tab showing where to copy the client ID and secret._
+
+You pass the values as flags and Orchestrate stores them against the connection. They are never written to a file in the workspace, which is why the YAML is safe to commit.

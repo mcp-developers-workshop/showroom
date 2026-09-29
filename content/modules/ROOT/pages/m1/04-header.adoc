@@ -2,8 +2,6 @@
 :imagesdir: ../../assets/images
 
 = Pass the Customer Identifier as an HTTP Header
-:toc: left
-:toclevels: 2
 :numbered:
 :icons: font
 :source-highlighter: highlight.js
@@ -42,12 +40,7 @@ Read Bob's questions and click *Approve*.
 
 == Verify the change
 
-Once dev mode restarts, open the Dev UI tools page:
-
-[source,text,role="copypaste"]
-----
-http://localhost:8080/q/dev-ui/quarkus-mcp-server-http/tools
-----
+Once dev mode restarts, open http://localhost:8080/q/dev-ui/quarkus-mcp-server-http/tools[the Dev UI tools page^].
 
 Confirm that the tool no longer lists `customerId` as an input parameter.
 

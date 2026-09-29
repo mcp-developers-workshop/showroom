@@ -29,12 +29,12 @@ This final module addresses enterprise tool sprawl and centralized governance by
 * OpenShift environment with ContextForge Gateway deployed
 * Access to enterprise GitLab repository and Complaints DB MCP Server
 
-== Lab Agenda & Sub-Sections
-1. `01-gateway-concepts.adoc` - Why Enterprise MCP Gateways Are Needed
-2. `02-register-mcp-servers.adoc` - Connecting Downstream Servers to ContextForge
-3. `03-tool-filtering-policies.adoc` - Applying Fine-Grained Tool Access Controls
-4. `04-virtual-servers.adoc` - Creating Isolated Virtual Endpoints for Agents
-5. `05-agent-gateway-integration.adoc` - Connecting Personal Productivity Agents via Gateway Auth
+== Lab Agenda
+1. Clone the Orchestrate workspace and point it at your cluster
+2. Create a connection holding the Keycloak realm and OAuth client credentials
+3. Register the complaints MCP server as a toolkit backed by that connection
+4. Define a native agent over the toolkit's tools and deploy it
+5. Chat with the agent and confirm it reaches the MCP server
 
 == Expected Outcomes
 A centralized, governed MCP Gateway architecture enforcing tool access policies and providing single-pane-of-glass management for enterprise AI integrations.

@@ -2,8 +2,6 @@
 :imagesdir: ../../assets/images
 
 = Summary
-:toc: left
-:toclevels: 2
 :numbered:
 :icons: font
 :source-highlighter: highlight.js

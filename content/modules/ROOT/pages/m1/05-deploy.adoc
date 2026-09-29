@@ -2,8 +2,6 @@
 :imagesdir: ../../assets/images
 
 = Commit and Deploy
-:toc: left
-:toclevels: 2
 :numbered:
 :icons: font
 :source-highlighter: highlight.js
@@ -57,12 +55,7 @@ ArgoCD (Red Hat OpenShift GitOps) manages both the build and the deployment of t
 
 === Log in
 
-Open the ArgoCD console in a new browser tab:
-
-[source,bash,role=execute,subs="attributes"]
-----
-https://openshift-gitops-server-openshift-gitops.{openshift_subdomain}/
-----
+Open https://openshift-gitops-server-openshift-gitops.{openshift_subdomain}/[the ArgoCD console^].
 
 Sign in with the workshop GitOps account:
 

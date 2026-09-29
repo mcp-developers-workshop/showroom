@@ -1,0 +1,107 @@
+:experimental:
+:imagesdir: ../../assets/images
+
+= Clone the Agent Repository
+:numbered:
+:icons: font
+:source-highlighter: highlight.js
+
+The agent you connect to your MCP server in this module already exists. Clone it from GitLab so you can work on it in IBM Bob.
+
+== Clone the repository
+
+In the IBM Bob terminal, from the `workshop` folder:
+
+[source,sh,role="copypaste",subs="attributes+"]
+----
+git clone https://gitlab-gitlab.{openshift_subdomain}/globex/globex-complaint-agent
+----
+
+If you are prompted for credentials, use the workshop developer account: `developer` / `{common_password}`.
+
+[NOTE]
+====
+`workshop` now holds two repositories: `globex-store-mcp` from the previous module and `globex-complaint-agent`.
+====
+
+== What is in the repository
+
+Open the `globex-complaint-agent` folder in Bob. It is a small Quarkus application -- three classes and a configuration file:
+
+[source,text]
+----
+src/main/java/org/globex/retail/ai/complaint/
+├── rest/AgentResource.java        <1>
+├── service/ComplaintService.java  <2>
+└── agent/ComplaintAgent.java      <3>
+src/main/resources/application.properties
+----
+
+<1> The HTTP entry point.
+<2> A thin service layer.
+<3> The agent itself.
+
+=== AgentResource
+
+A JAX-RS resource on `/api/v1/request`. It takes a JSON body with a `request` field, reads the caller's identity from the `preferred_username` claim of the bearer token, and passes both to the service:
+
+[source,java]
+----
+String userName = jwt.claim(Claims.preferred_username).orElse("").toString();
+JsonObject jsonObject = new JsonObject(r);
+return complaintService.process(jsonObject.getString("request"), userName);
+----
+
+It returns the agent's reply as `{"response": "...", "timestamp": "..."}`.
+
+=== ComplaintService
+
+An `@ApplicationScoped` bean that forwards the call to the agent. Nothing else happens here yet -- it is the seam where you add behaviour in this module.
+
+=== ComplaintAgent
+
+A LangChain4j AI service: an interface with no implementation. Quarkus generates the implementation at build time from the annotations.
+
+[source,java]
+----
+@RegisterAiService(modelName = "complaint")
+public interface ComplaintAgent {
+
+    @SystemMessage("""
+            You are a helpful product complaint handling assistant.
+            ...
+            """)
+    @UserMessage("""
+            The user said: "{userMessage}"
+            """)
+    String process(String userMessage, @MemoryId String memoryId);
+}
+----
+
+The `@SystemMessage` is a long prompt that drives the conversation: ask for the order ID and product code, collect the issue description, classify the issue type and severity, agree a resolution, and summarise. It also restricts the agent to complaints and tells it to refuse anything else.
+
+`@MemoryId` is the second argument. The resource passes the username, so each user gets their own conversation history and the agent remembers what was said earlier in the exchange.
+
+=== application.properties
+
+The lines that matter for this module:
+
+[source,properties]
+----
+quarkus.oidc.application-type=service
+
+quarkus.langchain4j.chat-model.provider=openai
+quarkus.langchain4j.openai.complaint.log-requests=true
+quarkus.langchain4j.openai.complaint.log-responses=true
+quarkus.langchain4j.openai.complaint.chat-model.temperature=0.1
+quarkus.langchain4j.openai.complaint.timeout=180s
+----
+
+The `complaint` segment in those keys matches `modelName = "complaint"` on the agent, so this is the model configuration that agent uses. Request and response logging is on, which is useful when you want to see exactly what the model was sent.
+
+The rest of the file is dev mode settings, which you can leave alone.
+
+[IMPORTANT]
+====
+The agent has no tools. It can hold a conversation about a complaint, but it cannot look up an order, so it has to ask the customer for the order ID and product code and trust the answer. Giving it your MCP server is what the rest of this module is about.
+====

@@ -1,0 +1,160 @@
+:experimental:
+:imagesdir: ../../assets/images
+
+= Test the Agent from the Chatbot
+:numbered:
+:icons: font
+:source-highlighter: highlight.js
+
+[IMPORTANT]
+====
+The chatbot is for local testing only. You run it on your own machine to drive the agent while you work on it. It is not part of what you deploy.
+====
+
+The agent is a REST endpoint, so testing it by hand means posting JSON at it. The chatbot front end holds the conversation, keeps the session, and lets you watch the agent call your MCP server.
+
+== Clone the chatbot
+
+From the `workshop` folder:
+
+[source,sh,role="copypaste"]
+----
+git clone https://github.com/mcp-developers-workshop/mcp-workshop-chatbot
+cd mcp-workshop-chatbot
+----
+
+It is an Angular application that signs the user in and posts each message to the agent's `/api/v1/request` endpoint with the resulting token attached. That token is where the agent gets the `preferred_username` claim it uses as the memory ID.
+
+== Install the dependencies
+
+[source,sh,role="copypaste"]
+----
+npm install
+----
+
+== Configure the chatbot
+
+`environment.ts` is the development configuration. It is only used when you run the chatbot locally with `npm start`, against your locally running agent.
+
+The repository ships an example configuration. Copy it into place:
+
+[source,sh,role="copypaste"]
+----
+cp src/environments/environment.example src/environments/environment.ts
+----
+
+Edit `src/environments/environment.ts` and point `apiUrl` at your locally running agent:
+
+[source,typescript,role="copypaste"]
+----
+apiUrl: 'http://localhost:8080/api/v1',
+----
+
+The chatbot appends `/request` to that, which is the endpoint on `AgentResource`.
+
+== Point the chatbot at Keycloak
+
+The chatbot signs users in against the `globex` realm on the workshop Keycloak. Replace the `oauth` block in the same file with:
+
+[source,typescript,role="copypaste",subs="attributes+"]
+----
+  oauth: {
+    authorizationUrl: 'https://sso.{openshift_subdomain}/realms/globex/protocol/openid-connect/auth',
+    tokenUrl: 'https://sso.{openshift_subdomain}/realms/globex/protocol/openid-connect/token',
+    userInfoUrl: 'https://sso.{openshift_subdomain}/realms/globex/protocol/openid-connect/userinfo',
+    logoutUrl: 'https://sso.{openshift_subdomain}/realms/globex/protocol/openid-connect/logout',
+    clientId: 'globex-web-gateway',
+    clientSecret: '{keycloak_realm_globex_web_client_gateway_client_secret}',
+    redirectUri: 'http://localhost:4200/auth/callback',
+    scope: 'openid profile email',
+    responseType: 'code',
+    usePKCE: true
+  }
+----
+
+The client is `globex-web-gateway` and it already exists in the realm, with `http://localhost:4200/auth/callback` registered as a redirect URI.
+
+[NOTE]
+====
+The four URLs are the endpoints the realm publishes at `https://sso.{openshift_subdomain}/realms/globex/.well-known/openid-configuration`. Open that in a browser if you want to see where they come from.
+====
+
+== Point the agent at Keycloak
+
+The agent validates the token the chatbot sends, so it needs to know which realm issued it. Add this to the agent's `.env`, in `globex-complaint-agent`:
+
+[source,properties,role="copypaste",subs="attributes+"]
+----
+quarkus.oidc.auth-server-url=https://sso.{openshift_subdomain}/realms/globex
+----
+
+`application.properties` already has `quarkus.oidc.application-type=service`, which is what makes the agent check the bearer token on each request rather than redirect anyone to a login page.
+
+== Start the agent and the chatbot
+
+Run the agent in dev mode. From the `globex-complaint-agent` folder:
+
+[source,sh,role="copypaste"]
+----
+mvn quarkus:dev
+----
+
+Leave it running and start the chatbot in a second terminal. From the `mcp-workshop-chatbot` folder:
+
+[source,sh,role="copypaste"]
+----
+npm start
+----
+
+== Sign in
+
+Open http://localhost:4200[the chatbot^] in a browser.
+
+image::m2/chatbot-signin.png[]
+
+Click *Sign in with OAuth2*. That takes you to Keycloak. Sign in as the customer whose orders you have been working with:
+
+[cols="1,2", options="header"]
+|===
+| Field | Value
+
+| Username
+| `asilva`
+
+| Password
+| `openshift`
+|===
+
+Keycloak sends you back to the chatbot, which greets you by the name on the token.
+
+== Raise a complaint
+
+Type `I want to raise a complaint` and click *Send*.
+
+image::m2/chatbot-raise-complaint.png[]
+
+The prompt tells the agent to start by fetching the customer's orders, so it calls `getOrdersByCustomerId`. The call fails, and the agent tells you it cannot get to your orders:
+
+image::m2/chatbot-no-orders.png[]
+
+The tool call failed because the agent's MCP client is not sending the `X-User-Id` header your tool requires.
+
+.Find out why: read the MCP server log
+[%collapsible]
+====
+The agent is talking to the MCP server deployed on the cluster, so the reason is in that pod's log.
+
+Open the https://console-openshift-console.{openshift_subdomain}/k8s/ns/globex-store-mcp/pods[pods in the `globex-store-mcp` project^], click the running `globex-store-mcp` pod and select the *Logs* tab:
+
+image::m2/mcp-missing-header-log.png[]
+
+----
+Unable to call tool getOrdersByCustomerId: java.lang.IllegalArgumentException:
+Required HTTP header 'X-User-Id' is missing or empty
+----
+
+This is the check you added in Module 1 doing its job. The tool takes no customer ID as an argument -- it reads `X-User-Id` from the request -- and nothing is setting it.
+====
+
+The next step is to send the user ID on the MCP tool call.
+

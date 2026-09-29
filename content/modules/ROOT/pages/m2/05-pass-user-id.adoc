@@ -1,0 +1,148 @@
+:experimental:
+:imagesdir: ../../assets/images
+
+= Send the User ID with the Tool Call
+:numbered:
+:icons: font
+:source-highlighter: highlight.js
+
+The MCP server reads `X-User-Id` off the request, and the agent's MCP client is not sending it. The value has to be the user who signed in, so it changes on every request -- it cannot be a fixed header in the configuration.
+
+The signed-in user is already known: `AgentResource` reads `preferred_username` from the token. What is missing is a way to carry that value from the incoming HTTP request to the outgoing MCP call, which happens later, inside the agent, on a different thread.
+
+Three pieces: a request-scoped bean to hold the value, the resource to put it there, and a headers supplier the MCP client asks for headers on every call.
+
+== Hold the user ID for the request
+
+Create `src/main/java/org/globex/retail/ai/complaint/service/AuthoritativeUserIdHolder.java`:
+
+[source,java,role="copypaste"]
+----
+package org.globex.retail.ai.complaint.service;
+
+import jakarta.enterprise.context.RequestScoped;
+
+@RequestScoped
+public class AuthoritativeUserIdHolder {
+
+    private String userId;
+
+    public AuthoritativeUserIdHolder() {}
+
+    public String getUserId() {
+        return userId;
+    }
+
+    public void setUserId(String userId) {
+        this.userId = userId;
+    }
+}
+----
+
+`@RequestScoped` means one instance per HTTP request, so two customers using the agent at the same time cannot see each other's value.
+
+The name is the point: this is the *authoritative* user ID. It comes from the verified token, not from the conversation, and the model has no way to influence it.
+
+== Set it from the token
+
+In `AgentResource`, inject the holder and set the username on it before calling the service:
+
+[source,java,role="copypaste"]
+----
+    @Inject
+    AuthoritativeUserIdHolder authoritativeUserIdHolder;
+----
+
+[source,java,role="copypaste"]
+----
+                    String userName = jwt.claim(Claims.preferred_username).orElse("").toString();
+                    Log.infof("Agent request received: %s; userId: %s", r, userName);
+                    authoritativeUserIdHolder.setUserId(userName);
+----
+
+== Supply the header on every MCP call
+
+The MCP client asks for headers each time it calls a tool. Implement `McpHeadersSupplier` and return `X-User-Id` from the holder.
+
+Create `src/main/java/org/globex/retail/ai/complaint/auth/GlobexMcpHeadersSupplier.java`:
+
+[source,java,role="copypaste"]
+----
+package org.globex.retail.ai.complaint.auth;
+
+import dev.langchain4j.mcp.client.McpCallContext;
+import dev.langchain4j.mcp.client.McpHeadersSupplier;
+import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.enterprise.context.control.ActivateRequestContext;
+import jakarta.inject.Inject;
+import org.globex.retail.ai.complaint.service.AuthoritativeUserIdHolder;
+
+import java.util.Map;
+
+@ApplicationScoped
+public class GlobexMcpHeadersSupplier implements McpHeadersSupplier {
+
+    @Inject
+    AuthoritativeUserIdHolder authoritativeUserIdHolder;
+
+    @Override
+    @ActivateRequestContext
+    public Map<String, String> apply(McpCallContext mcpCallContext) {
+        String userId;
+        if (authoritativeUserIdHolder.getUserId() == null) {
+            userId = "system";
+        } else {
+            userId = authoritativeUserIdHolder.getUserId();
+        }
+        return Map.of("X-User-Id", userId);
+    }
+}
+----
+
+Every tool call the client makes now carries the header, and the value is whoever is signed in.
+
+[NOTE]
+====
+`@ActivateRequestContext` is there because the tool call does not run on the thread that received the HTTP request. The fallback to `system` covers a call made with no request context at all -- that value is not a customer, so the MCP server returns nothing for it.
+====
+
+== Try it again
+
+Dev mode picks the new classes up. Go back to the chatbot and type:
+
+[source,text,role="copypaste"]
+----
+try again
+----
+
+The tool call succeeds this time. The agent lists Addison Silva's orders and asks which one the complaint is about:
+
+image::m2/chatbot-orders-list.png[]
+
+These are the same orders you saw in the MCP Inspector in Module 1, fetched for the user who signed in to the chatbot. The agent never asked who you were.
+
+[IMPORTANT]
+====
+The MCP server still takes the header at face value. Anything that can reach the route can claim to be any customer -- the agent is simply being honest about who is asking. You fix this later in the workshop.
+====
+
+== File the complaint
+
+Pick a product from one of the orders and describe the problem:
+
+[source,text,role="copypaste"]
+----
+I want to raise a complaints about the Stojo Collapsible Silicone Bottle. the cap was broken on arrival. It is such a critical problem for me. I want a replacement
+----
+
+The agent works through the rest of the prompt's conversation flow. It reads the issue type as `Defect`, the severity as `Critical` and the resolution as `Replacement`, ties them to order 231, and asks you to confirm:
+
+image::m2/chatbot-complaint-summary.png[]
+
+Reply `yes`.
+
+image::m2/chatbot-no-complaint-id.png[]
+
+The agent repeats the details back and then says it cannot generate a complaint ID. It has nothing to file the complaint with. `getOrdersByCustomerId` is the only tool it has, and reading orders is not raising a complaint.
+
+The next step is to give it a complaints tool, the same way you gave it the orders tool.

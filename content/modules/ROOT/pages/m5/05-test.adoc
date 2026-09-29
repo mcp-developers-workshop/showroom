@@ -1,0 +1,35 @@
+:experimental:
+:imagesdir: ../../assets/images
+
+= Test the Agent
+
+:numbered:
+:icons: font
+:source-highlighter: highlight.js
+
+== Confirm the agent is deployed
+
+[source,bash,role=execute]
+----
+orchestrate agents list
+----
+
+`complaints_analyser` should appear as deployed.
+
+== Chat with the agent
+
+[source,bash,role=execute]
+----
+orchestrate chat start -a complaints_analyser -m "Show me a breakdown of complaints by severity."
+----
+
+The agent calls `list_tables` and `describe_tables` to inspect the schema, then `read_query` to run the query, and summarises the result. A reply that contains counts by severity confirms the whole chain works: agent to toolkit, toolkit to MCP server, and the connection's OAuth token to Keycloak.
+
+_TBC: screenshot -- the Orchestrate chat UI showing the custom welcome message and the five starter prompts._
+
+_TBC: screenshot -- an agent response to one of the starter prompts, with the tool calls visible._
+
+[NOTE]
+====
+If the agent answers without calling any tools, or reports that it has no data, the toolkit tools are not reaching the agent. Re-run `orchestrate tools list` and confirm the tool names in the agent YAML match it exactly.
+====

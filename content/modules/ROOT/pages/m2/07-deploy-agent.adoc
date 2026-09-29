@@ -1,0 +1,154 @@
+:experimental:
+:imagesdir: ../../assets/images
+
+= Deploy the Agent to OpenShift
+:numbered:
+:icons: font
+:source-highlighter: highlight.js
+
+Everything so far has run on your machine. Getting it onto the cluster takes two pushes, because the code and the configuration travel by different routes:
+
+* The *code* -- the header supplier, the two annotations, the prompt -- goes to the `globex-complaint-agent` repository on GitLab, where a build turns it into a container image. `application.properties` is part of that repository, so the two `transport-type` entries are built into the image along with the code.
+* The *runtime configuration* goes to the `globex-complaint-agent-helm` repository. `.env` is for local testing only; it is in `.gitignore` and never leaves your laptop. The deployed agent reads the same properties from a Kubernetes Secret that the chart renders.
+
+Do the code first, since the build takes a few minutes to run while you edit the chart.
+
+== Commit and push the agent
+
+From inside the `globex-complaint-agent` folder:
+
+[source,sh,role="copypaste"]
+----
+git add .
+git commit -m "Call the orders and complaints MCP servers"
+git push
+----
+
+`.env` is not in the commit -- `.gitignore` already excludes it, so your API key stays local.
+
+The push prompts you for GitLab credentials. Use the workshop developer account:
+
+[cols="1,2", options="header"]
+|===
+| Field | Value
+
+| Username
+| `developer`
+
+| Password
+| `{common_password}`
+|===
+
+A webhook on the repository starts an OpenShift pipeline, which builds the image and pushes it to the internal registry. Leave it to run and move on to the chart.
+
+== Edit the Secret template
+
+The chart renders a complete `application.properties` into a Secret, from `templates/secret.yaml`. The deployment mounts that Secret at `/deployments/config`, which is where Quarkus reads configuration at runtime. It has blocks for OIDC, the model and CORS, but nothing for MCP -- so the URLs that were in your `.env` have to come from here instead.
+
+You edit the two chart files directly in GitLab and commit each one, so there are two commits.
+
+Open https://gitlab-gitlab.{openshift_subdomain}/globex/globex-complaint-agent-helm/-/edit/main/templates/secret.yaml[templates/secret.yaml^].
+
+Add the two URLs under the existing properties, reading them from values:
+
+[source,yaml,role="copypaste"]
+----
+    quarkus.langchain4j.mcp.orders.url={{ .Values.mcp.orders.url }}
+    quarkus.langchain4j.mcp.complaint.url={{ .Values.mcp.complaint.url }}
+----
+
+Keep the indentation. Everything under `stringData.application.properties` is indented four spaces.
+
+Only the URLs belong here. The transport types are already in the image, and repeating them in the Secret would not create a client anyway.
+
+Commit the change to `main`.
+
+== Edit the values
+
+Open https://gitlab-gitlab.{openshift_subdomain}/globex/globex-complaint-agent-helm/-/edit/main/values.yaml[values.yaml^].
+
+Two things to change here.
+
+First, the model settings, which ship unset:
+
+[source,yaml]
+----
+llm:
+  complaint:
+    modelName: REPLACE_ME
+    apiKey: REPLACE_ME
+    baseUrl: REPLACE_ME
+----
+
+Replace all three. For `apiKey`, copy the value of `quarkus.langchain4j.openai.complaint.api-key` out of your `.env` -- the same key the proctor gave you:
+
+[source,yaml,role="copypaste"]
+----
+llm:
+  complaint:
+    modelName: gpt-4o-mini
+    apiKey: <the API key from your .env>
+    baseUrl: https://api.openai.com/v1
+----
+
+Second, add the URLs for the two MCP clients you referenced from the template:
+
+[source,yaml,role="copypaste",subs="attributes+"]
+----
+mcp:
+  orders:
+    url: https://globex-store-mcp.{openshift_subdomain}/mcp
+  complaint:
+    url: https://globex-complaints.{openshift_subdomain}/mcp
+----
+
+These are the same two URLs from your `.env`.
+
+Commit the change to `main`.
+
+[WARNING]
+====
+This puts your OpenAI API key in a Git repository. That is fine for a workshop on a cluster that is thrown away at the end of the day, and it is not how you would handle a key in production -- there it comes from a secret manager or a sealed secret, never from the chart.
+====
+
+== Watch the rollout
+
+Open the https://openshift-gitops-server-openshift-gitops.{openshift_subdomain}/[ArgoCD console^] -- the same one you used in Module 1, with the same `{openshift_gitops_user}` account -- and open the `globex-complaint-agent` application.
+
+Auto sync is on, so you do not have to press anything. Three things tell you your changes landed:
+
+[cols="1,2", options="header"]
+|===
+| What to look for | What it means
+
+| *Last Sync* shows a recent timestamp, with the comment from your chart commit
+| ArgoCD picked up your edits to `globex-complaint-agent-helm` and re-rendered the Secret.
+
+| The `deploy` node has a new revision, and the `pod` under it is a few minutes old
+| The agent restarted and picked up both the new Secret and the new image.
+
+| *App Health* is *Healthy* and *Sync Status* is *Synced*
+| The new pod started cleanly.
+|===
+
+// TBC: screenshot of the globex-complaint-agent application details tree, Healthy and Synced, with a recent Last Sync timestamp and a freshly rolled pod. User to re-capture with a current timestamp.
+
+[NOTE]
+====
+The `globex-complaint-agent-build` application will not show a new sync. It holds the pipeline that does the build, and pushing code does not change the pipeline -- only the image it produces. The build's effect shows up here, as a new pod.
+====
+
+Both halves have to land: an old image with the new Secret has no MCP client code, and a new image with the old Secret has nothing to point it at. If the pod is new but the agent still invents order numbers, the image is the stale half -- give the pipeline another minute and check that the pod restarted again.
+
+== Test the deployed agent
+
+Point the chatbot at the deployed route instead of `localhost`. In `src/environments/environment.ts`:
+
+[source,typescript,role="copypaste",subs="attributes+"]
+----
+apiUrl: 'https://globex-complaint-agent.{openshift_subdomain}/api/v1',
+----
+
+Restart `npm start`, sign in as `asilva` again and raise a complaint. The conversation is the one you had against dev mode -- the agent, its two MCP clients and the header supplier are all running on the cluster now.
+
+Nothing else changes. The chatbot signs in against the same Keycloak realm and sends the same bearer token; only the address it posts to is different.
