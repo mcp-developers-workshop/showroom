@@ -53,10 +53,19 @@ The orders endpoint returns product codes, not names, so Bob has to call a secon
 
 == Verify the new response shape
 
-Bob rebuilds and re-tests. Once dev mode has restarted, invoke the tool again from http://localhost:8080/q/dev-ui/quarkus-mcp-server-http/tools[the Dev UI tools page^].
+Bob rebuilds and re-tests. Once dev mode has restarted, call the tool again from http://localhost:8080/q/dev-ui/quarkus-mcp-server-http/tools[the Dev UI tools page^] with the same `asilva` customer ID:
+
+image::m1/devui-tool-call-result-shaped.png[]
 
 Check the returned JSON:
 
 * No shipping address in the order history.
 * No price on any line item.
 * Every line item has a product code, a quantity, and a product name.
+
+Each order is now `id`, `customer`, `timestamp`, and a `lineItems` array of `productCode`, `productName` and `quantity` -- and nothing else. Compare it with the response from the previous section: same question, same customer, none of the personal or commercial data.
+
+[NOTE]
+====
+Data the tool never returns cannot leak. The address and the prices are still in the backing API, but they are no longer sent to the agent, no longer in the model's context, and no longer in whatever logs or traces that context passes through.
+====

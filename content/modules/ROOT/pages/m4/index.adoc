@@ -2,8 +2,6 @@
 :imagesdir: ../assets/images
 
 = Module 4: Full-Stack Observability
-:toc: left
-:toclevels: 3
 :numbered:
 :icons: font
 :source-highlighter: highlight.js

@@ -129,5 +129,30 @@ The Globex Store REST API exposes many endpoints; the MCP server publishes this 
 
 [NOTE]
 ====
+Bob may have named the tool something else -- `getOrders`, for example -- and may rename it again when you change it in the sections that follow. That is normal for generated code. Use whatever name your Dev UI shows wherever these instructions refer to `getOrdersByCustomerId`, in this module and in Module 2.
+====
+
+[NOTE]
+====
 If the page loads but lists no tools, the tool class is probably missing its MCP tool annotation, or the application failed to restart after the last edit. Check the dev mode terminal output.
 ====
+
+=== Call the tool
+
+Click the tool name to open the *Tool call input* dialog. Enter a customer ID and click *Call*:
+
+image::m1/devui-tool-call-input.png[]
+
+[cols="1,2", options="header"]
+|===
+| Field | Value
+
+| `customerId`
+| `asilva`
+|===
+
+Leave *Force new session* unticked and *Bearer Token* empty. The server has no authentication yet -- anyone who can reach it can ask for any customer's orders, which is the gap Module 3 closes.
+
+_TBC: screenshot -- the Tool call result, showing the full response with shipping address and line item prices._
+
+The result is the Globex Store API's response passed straight through: every order for that customer, with the shipping address and the price of every line item. Nothing asked for that, and an agent answering "what did I order?" has no use for it. Trimming it is the next section.

@@ -1,7 +1,7 @@
 :experimental:
 :imagesdir: ../../assets/images
 
-= Clone the Orchestrate Workspace
+= Clone the Workspace
 
 :numbered:
 :icons: font
@@ -22,7 +22,7 @@ The three YAML files are written for you. Clone them, from the `workshop` folder
 
 [source,sh,role="copypaste"]
 ----
-git clone https://github.com/mcp-developers-workshop/globex-complaints-orchestrate
+git clone https://github.com/mcp-developers-workshop/globex-complaints-orchestrate.git
 cd globex-complaints-orchestrate
 ----
 

@@ -3,42 +3,57 @@
 :imagesdir: ../assets/images
 
 = Module 1: Build Your First MCP Server
-:toc: left
-:toclevels: 3
 :numbered:
 :icons: font
 :source-highlighter: highlight.js
 
 == Overview & Objectives
-This module guides developers through creating, configuring, and deploying an initial Model Context Protocol (MCP) server using Quarkus and AI code assistance. You will apply a "brownfield" architectural pattern by wrapping a legacy REST API with a standalone MCP server, implementing data minimization, and deploying to Red Hat OpenShift via ArgoCD.
+The Globex store already has a REST API, and it is not going to change. In this module you put a Model Context Protocol server in front of it with the help of an AI code assistant, narrow what that server exposes, move the customer identifier off the model's contract, and deploy the result to Red Hat OpenShift through GitLab and ArgoCD.
+
+[NOTE]
+====
+A custom MCP server is built one of two ways, and the workshop uses both.
+
+*Brownfield* wraps a system that already exists and is not going to change. The server sits in front of it and translates between the protocol and endpoints designed for something else -- a REST API, a SOAP service, a mainframe transaction, a vendor SDK. The existing endpoints are not the tools: which ones to expose, under what name, returning how much, is the work. The orders server you build in this module is brownfield. The Globex Store REST API is untouched and never learns that anything is wrapping it, which is the ordinary enterprise case.
+
+*Greenfield* writes the server and the logic behind it together, with the tools as the system's primary interface. There is no contract to preserve, so tool names, arguments and payloads are designed for a model from the start. The complaints server you connect in Module 2 is greenfield -- it was built as an MCP server and reaches the Globex database directly, with no REST API in between.
+
+Either way the client cannot tell the difference. An agent sees a list of tools and calls them; whether a tool runs SQL or forwards to a legacy endpoint is the server's business.
+====
 
 === Learning Objectives
-* Create a Quarkus application using Quarkus CLI and AI code assist.
-* Implement a brownfield OpenAPI-to-MCP wrapper in front of legacy REST endpoints.
-* Apply tool minimization and data massaging techniques to restrict data over-fetching.
-* Handle confidential identifiers using MCP headers ().
-* Test MCP tools locally with the MCP Inspector.
-* Deploy the server to OpenShift via GitOps (GitLab and ArgoCD).
+* Generate a Quarkus MCP server from an OpenAPI specification using IBM Bob.
+* Expose a single narrow tool over the streamable HTTP transport instead of mapping every REST endpoint.
+* Apply data minimization: return only the fields the agent needs, and drop personal and commercial data the API happens to include.
+* Move a confidential identifier out of the tool's parameters and onto an HTTP header, so the caller sets it and the model never sees it.
+* Test an MCP server with the Quarkus Dev UI and with the MCP Inspector.
+* Deploy the server to OpenShift by pushing to GitLab and letting ArgoCD sync it.
 
 == Architecture & Components
-* *AI Code Assistant:* Bob / GenAI Assistant
-* *Framework:* Quarkus with Quarkus MCP extension
-* *Backend System:* Legacy User History REST API
-* *Deployment Target:* Red Hat OpenShift Sandbox via ArgoCD
-* *Tooling:* MCP Inspector, Quarkus CLI, Git, ArgoCD
+* *AI code assistant:* IBM Bob
+* *Framework:* Quarkus with the `quarkus-mcp-server-http` extension
+* *Backend system:* the Globex Store REST API, described by an OpenAPI specification
+* *Transport:* streamable HTTP
+* *Deployment target:* Red Hat OpenShift, via GitLab and ArgoCD
+* *Testing:* Quarkus Dev UI and MCP Inspector
 
 == Prerequisites
-* OpenShift Sandbox cluster access
-* Quarkus CLI installed
-* Access to workshop GitLab repository and ArgoCD dashboard
-* MCP Inspector running locally or via container
+* A workshop VM with IBM Bob installed
+* An account on the workshop GitLab instance
+* Access to the workshop OpenShift cluster and its ArgoCD instance
 
-== Lab Agenda & Sub-Sections
-1.  - Initializing Quarkus MCP Server with CLI
-2.  - Wrapping Legacy OpenAPI Spec with AI Code Assistance
-3.  - Implementing Data Massaging & Header-based Identifiers
-4.  - Testing Tools with MCP Inspector
-5.  - Pushing to GitLab and Triggering ArgoCD Sync
+[NOTE]
+====
+There is nothing to install. Quarkus runs through the Maven wrapper in the project, the Quarkus tooling reaches Bob over MCP through `jbang`, and the MCP Inspector runs through `npx`.
+====
+
+== Lab Agenda
+1. Set up the workshop environment: sign in to GitLab, open IBM Bob, give it the Quarkus tooling, and clone the repository
+2. Generate the MCP server from the Globex Store OpenAPI specification and confirm the tool in the Dev UI
+3. Shape the data the tool returns, dropping the shipping address and line item prices
+4. Pass the customer identifier as the `X-User-Id` HTTP header and test it with the MCP Inspector
+5. Commit and deploy: push to GitLab and watch ArgoCD roll it out
+6. Test the deployed MCP server over its public route
 
 == Expected Outcomes
-A fully functional, standalone Quarkus MCP server deployed on OpenShift that safely exposes sanitized user history tools to upstream AI agents.
+A Quarkus MCP server running on OpenShift that wraps the existing Globex Store API, publishes one tool, returns only the fields an agent needs, and takes the customer identity from a header rather than from the model. Module 2 gives that tool to an agent; nothing yet verifies the header, which is the gap Module 3 closes.

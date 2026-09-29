@@ -104,6 +104,23 @@ mcp:
 
 These are the same two URLs from your `.env`.
 
+The end of the file now reads:
+
+[source,yaml,subs="attributes+"]
+----
+llm:
+  complaint:
+    modelName: gpt-4o-mini
+    apiKey: <the API key from your .env>
+    baseUrl: https://api.openai.com/v1
+
+mcp:
+  orders:
+    url: https://globex-store-mcp.{openshift_subdomain}/mcp
+  complaint:
+    url: https://globex-complaints.{openshift_subdomain}/mcp
+----
+
 Commit the change to `main`.
 
 [WARNING]
@@ -149,6 +166,22 @@ Point the chatbot at the deployed route instead of `localhost`. In `src/environm
 apiUrl: 'https://globex-complaint-agent.{openshift_subdomain}/api/v1',
 ----
 
-Restart `npm start`, sign in as `asilva` again and raise a complaint. The conversation is the one you had against dev mode -- the agent, its two MCP clients and the header supplier are all running on the cluster now.
+Restart `npm start` and sign in as `asilva` again.
 
-Nothing else changes. The chatbot signs in against the same Keycloak realm and sends the same bearer token; only the address it posts to is different.
+Ask the same two questions as before:
+
+[source,text,role="copypaste"]
+----
+raise a complaint
+----
+
+[source,text,role="copypaste"]
+----
+I want to raise a complaints about the Stojo Collapsible Silicone Bottle. the cap was broken on arrival. It is such a critical problem for me. I want a replacement
+----
+
+Confirm the summary, and a new complaint is filed with a new complaint ID:
+
+image::m2/chatbot-complaint-deployed.png[]
+
+The agent, its two MCP clients and the header supplier are all running on the cluster now.

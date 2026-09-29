@@ -51,7 +51,7 @@ starter_prompts:
     - id: prompt_5
       title: Product improvement report
       subtitle: ''
-      prompt: "Give me a product improvement report based on the last 1000 complaints."
+      prompt: "Based on the last 100 complaints, give me a prioritised list of product improvements."
       state: active
 welcome_content:
   welcome_message: Welcome to Complaints Analyser

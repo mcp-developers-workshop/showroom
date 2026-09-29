@@ -15,6 +15,6 @@ You took an agent that could only talk about complaints and gave it the tools to
 * Added a second MCP client for the complaints server, listed both in `@McpToolBox`, and filed a complaint against a real order.
 * Pushed the code, set the model and the two MCP URLs in the Helm chart, and let ArgoCD build and roll out the agent.
 
-Adding the second server took one property and one word in an annotation. That is the point of MCP: the agent's code does not grow as its capabilities do, because a tool is something it discovers at startup rather than something it is written against.
+Adding the second server took one property and one word in an annotation. The agent's code does not grow as its capabilities do, because a tool is discovered at startup rather than written against.
 
-Two things are worth carrying into the next module. The user ID comes from the token, never from the conversation, so the model cannot claim to be another customer -- but the MCP server still trusts whatever header it is sent, and anything that can reach the route can set that header. And the model is only as safe as its prompt: the rules forbidding it to invent an order or a complaint ID are doing real work, and the agent worked around a failed tool call until the prompt told it not to.
+The user ID now comes from the token, never from the conversation, so the model cannot claim to be another customer. The MCP server still trusts whatever header it is sent, and anything that can reach the route can set that header. Module 3 closes that gap.

@@ -42,6 +42,34 @@ You land on the GitLab *Projects* dashboard.
 
 On the desktop of your workshop VM, double-click the *IBM Bob* shortcut and wait for the workbench to load.
 
+=== Give Bob the Quarkus tooling
+
+In the next section you ask Bob to generate a Quarkus MCP server. Register the Quarkus MCP server with Bob first, so it has tools for creating the project and adding extensions rather than writing the files from memory:
+
+[source,bash,role=execute]
+----
+mcp add quarkus-agent -- jbang quarkus-agent-mcp@quarkusio
+----
+
+[cols="1,2", options="header"]
+|===
+| Part | Meaning
+
+| `mcp add`
+| Registers an MCP server with Bob.
+
+| `quarkus-agent`
+| The name Bob will know it by.
+
+| everything after `--`
+| The command Bob runs to start the server. `jbang` fetches `quarkus-agent-mcp` from the `quarkusio` catalog on first use, so there is nothing to install beforehand.
+|===
+
+[NOTE]
+====
+Bob is itself an MCP client. The tools it just gained are the same kind of thing you publish in this module, reached over the same protocol. The difference is the transport -- this server runs as a local process on the VM, while the one you build is reached over HTTP.
+====
+
 === Create and open the workshop folder
 
 1. Select *File* -> *Open Folder*.
@@ -56,10 +84,8 @@ Open a terminal inside IBM Bob (*Terminal* -> *New Terminal*). It opens in the `
 
 [source,sh,role="copypaste",subs="attributes+"]
 ----
-git clone https://gitlab-gitlab.{openshift_subdomain}/globex/globex-store-mcp
+git clone https://gitlab-gitlab.{openshift_subdomain}/globex/globex-store-mcp.git
 ----
-
-If you are prompted for credentials, use the same account as above: `developer` / `{common_password}`.
 
 [NOTE]
 ====

@@ -15,11 +15,11 @@ The agent is a REST endpoint, so testing it by hand means posting JSON at it. Th
 
 == Clone the chatbot
 
-From the `workshop` folder:
+Open a new terminal in IBM Bob (*Terminal* -> *New Terminal*). The chatbot runs alongside the agent, so it needs a terminal of its own. From the `workshop` folder:
 
 [source,sh,role="copypaste"]
 ----
-git clone https://github.com/mcp-developers-workshop/mcp-workshop-chatbot
+git clone https://github.com/mcp-developers-workshop/mcp-workshop-chatbot.git
 cd mcp-workshop-chatbot
 ----
 
@@ -92,14 +92,14 @@ quarkus.oidc.auth-server-url=https://sso.{openshift_subdomain}/realms/globex
 
 == Start the agent and the chatbot
 
-Run the agent in dev mode. From the `globex-complaint-agent` folder:
+Run the agent in dev mode. In the `globex-complaint-agent` terminal:
 
 [source,sh,role="copypaste"]
 ----
 mvn quarkus:dev
 ----
 
-Leave it running and start the chatbot in a second terminal. From the `mcp-workshop-chatbot` folder:
+Leave it running and switch back to the `mcp-workshop-chatbot` terminal:
 
 [source,sh,role="copypaste"]
 ----

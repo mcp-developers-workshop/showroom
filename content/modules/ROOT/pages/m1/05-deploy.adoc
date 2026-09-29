@@ -10,7 +10,7 @@
 
 === Stage and commit
 
-In the IBM Bob terminal, from inside the `globex-store-mcp` folder:
+Open a new terminal in IBM Bob (*Terminal* -> *New Terminal*) -- dev mode and the MCP Inspector are still running in the other two. From inside the `globex-store-mcp` folder:
 
 [source,sh,role="copypaste"]
 ----

@@ -25,7 +25,7 @@ In the Inspector, click *Add Servers* -> *Add Manually* and fill in the dialog:
 | `streamable-http`
 
 | URL
-| `https://globex-store-mcp.{openshift_subdomain}/mcp`
+| `\https://globex-store-mcp.{openshift_subdomain}/mcp`
 |===
 
 image::m1/mcp-inspector-add-remote-server.png[]

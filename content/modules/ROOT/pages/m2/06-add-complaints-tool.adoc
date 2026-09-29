@@ -8,6 +8,8 @@
 
 The agent can read orders but has nothing to file a complaint with. A second MCP server, already running on the cluster, does exactly that. Connect it the same way you connected the orders server.
 
+This one is greenfield: it was written as an MCP server and reaches the complaints table in the Globex database directly, with no REST API in between. The orders server from Module 1 is brownfield, wrapping an API that already existed. The agent cannot tell the difference -- it sees a list of tools either way.
+
 == What the complaints server offers
 
 The server is at `https://globex-complaints.{openshift_subdomain}/mcp` and exposes three tools:
@@ -26,7 +28,7 @@ The server is at `https://globex-complaints.{openshift_subdomain}/mcp` and expos
 | Updates an existing complaint by ID.
 |===
 
-Note what `create_complaint` needs: an order ID and a product code. Both come out of `getOrdersByCustomerId` -- the product code is in the response because you kept it there when you shaped the payload in Module 1. The two tools fit together.
+`create_complaint` needs an order ID and a product code. Both come out of `getOrdersByCustomerId` -- the product code is in the response because you kept it there when you shaped the payload in Module 1.
 
 == Add a second MCP client
 
@@ -48,21 +50,39 @@ The client is named `complaint`. Nothing is shared with the `orders` client -- e
 
 == Give both toolboxes to the agent
 
-In `ComplaintAgent.java`, list both client names in `@McpToolBox`:
+In `ComplaintAgent.java`, replace the existing `@McpToolBox("orders")` annotation with one that lists both client names:
 
 [source,java,role="copypaste"]
 ----
     @McpToolBox({"orders", "complaint"})
-    String process(String userMessage, @MemoryId String memoryId);
 ----
 
-The agent now sees four tools: `getOrdersByCustomerId` from one server and the three complaints tools from the other. The model picks between them from their names and descriptions, which is why a clear tool description on the server side matters.
+The agent now sees four tools: `getOrdersByCustomerId` from one server and the three complaints tools from the other. The model picks between them from their names and descriptions.
 
 == Try it again
 
-Restart dev mode if it is not already running, go back to the chatbot and walk through the same complaint: `try again`, pick the Stojo Collapsible Silicone Bottle from order 231, describe the broken cap, and confirm.
+If the chatbot shows an error, restart dev mode in the `globex-complaint-agent` terminal:
 
-This time the agent calls `create_complaint` and comes back with a complaint ID:
+[source,sh,role="copypaste"]
+----
+mvn quarkus:dev
+----
+
+Go back to the chatbot and type:
+
+[source,text,role="copypaste"]
+----
+raise a complaint
+----
+
+The agent fetches the orders and asks which one. Answer with the product and the problem in one message:
+
+[source,text,role="copypaste"]
+----
+I want to raise a complaints about the Stojo Collapsible Silicone Bottle. the cap was broken on arrival. It is such a critical problem for me. I want a replacement
+----
+
+Confirm when the agent asks. This time it calls `create_complaint` and comes back with a complaint ID:
 
 image::m2/chatbot-complaint-raised.png[]
 

@@ -40,9 +40,11 @@ Read Bob's questions and click *Approve*.
 
 == Verify the change
 
-Once dev mode restarts, open http://localhost:8080/q/dev-ui/quarkus-mcp-server-http/tools[the Dev UI tools page^].
+Once dev mode restarts, open http://localhost:8080/q/dev-ui/quarkus-mcp-server-http/tools[the Dev UI tools page^] and click the tool name:
 
-Confirm that the tool no longer lists `customerId` as an input parameter.
+image::m1/devui-getorders-no-parameters.png[]
+
+The tool now declares no parameters. The customer identifier is no longer part of the contract the model sees, so there is nothing for it to supply or change.
 
 == Test the header with MCP Inspector
 
@@ -63,11 +65,6 @@ The landing page lists the servers the Inspector knows about, all disconnected:
 
 image::m1/mcp-inspector-servers.png[]
 
-[NOTE]
-====
-The printed URL carries an `MCP_INSPECTOR_API_TOKEN` query parameter. Use the URL exactly as printed -- opening `http://localhost:6274` on its own does not authenticate against the proxy.
-====
-
 === Add your server
 
 The three entries on the page are the Inspector's built-in examples. Add your own.
@@ -87,14 +84,14 @@ image::m1/mcp-inspector-add-server.png[]
 | `streamable-http`
 
 | URL
-| `http://localhost:8080/mcp`
+| `\http://localhost:8080/mcp`
 |===
 
 Click *Add*.
 
 [NOTE]
 ====
-*Server ID* is the key the entry is stored under in `~/.mcp-inspector/mcp.json`; any name works. `/mcp` is the default endpoint path -- check `application.properties` if Bob configured a different one.
+`/mcp` is the default endpoint path -- check `application.properties` if Bob configured a different one.
 ====
 
 === Connect to the server

@@ -10,14 +10,13 @@ The agent you connect to your MCP server in this module already exists. Clone it
 
 == Clone the repository
 
-In the IBM Bob terminal, from the `workshop` folder:
+Open a new terminal in IBM Bob (*Terminal* -> *New Terminal*) -- the terminals from Module 1 may still be running dev mode and the MCP Inspector. From the `workshop` folder:
 
 [source,sh,role="copypaste",subs="attributes+"]
 ----
-git clone https://gitlab-gitlab.{openshift_subdomain}/globex/globex-complaint-agent
+git clone https://gitlab-gitlab.{openshift_subdomain}/globex/globex-complaint-agent.git
+cd globex-complaint-agent/
 ----
-
-If you are prompted for credentials, use the workshop developer account: `developer` / `{common_password}`.
 
 [NOTE]
 ====

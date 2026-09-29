@@ -30,8 +30,6 @@ quarkus.langchain4j.openai.complaint.api-key=<replace-me>
 
 Replace both occurrences of `<replace-me>` with the API key your proctor gives you.
 
-Both lines are needed. `quarkus.langchain4j.openai.complaint.api-key` matches `modelName = "complaint"` on `ComplaintAgent`, so it is the key that agent authenticates with. `QUARKUS_LANGCHAIN4J_OPENAI_API_KEY` is the environment-variable form of `quarkus.langchain4j.openai.api-key` and sets the key for the default OpenAI configuration.
-
 [NOTE]
 ====
 Quarkus reads `.env` from the project root at startup and treats each line as a configuration property, so nothing else needs to change. `.env` is already in `.gitignore`, which keeps the key out of your commits.

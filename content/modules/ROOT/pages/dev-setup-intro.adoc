@@ -58,16 +58,16 @@ Your region endpoint is the base URL for the region hosting your watsonx.ai inst
 | Region | Base URL
 
 | Dallas (us-south)
-| `https://us-south.ml.cloud.ibm.com`
+| `\https://us-south.ml.cloud.ibm.com`
 
 | Frankfurt (eu-de)
-| `https://eu-de.ml.cloud.ibm.com`
+| `\https://eu-de.ml.cloud.ibm.com`
 
 | London (eu-gb)
-| `https://eu-gb.ml.cloud.ibm.com`
+| `\https://eu-gb.ml.cloud.ibm.com`
 
 | Tokyo (jp-tok)
-| `https://jp-tok.ml.cloud.ibm.com`
+| `\https://jp-tok.ml.cloud.ibm.com`
 |===
 
 === Export the values in your Dev Environment

@@ -14,7 +14,15 @@ Three pieces: a request-scoped bean to hold the value, the resource to put it th
 
 == Hold the user ID for the request
 
-Create `src/main/java/org/globex/retail/ai/complaint/service/AuthoritativeUserIdHolder.java`:
+Open a new terminal in IBM Bob -- the agent and the chatbot are running in theirs. From the `globex-complaint-agent` folder:
+
+[source,sh,role="copypaste"]
+----
+mkdir -p src/main/java/org/globex/retail/ai/complaint/service
+touch src/main/java/org/globex/retail/ai/complaint/service/AuthoritativeUserIdHolder.java
+----
+
+Open the new file in Bob and paste:
 
 [source,java,role="copypaste"]
 ----
@@ -39,13 +47,29 @@ public class AuthoritativeUserIdHolder {
 }
 ----
 
+[NOTE]
+====
+If Bob flags the new file with errors that do not look real -- an unresolved package, unknown imports -- the Java language server has not picked up a file created from the terminal. Open the command palette and run *Java: Restart Java Language Server*.
+====
+
 `@RequestScoped` means one instance per HTTP request, so two customers using the agent at the same time cannot see each other's value.
 
 The name is the point: this is the *authoritative* user ID. It comes from the verified token, not from the conversation, and the model has no way to influence it.
 
 == Set it from the token
 
-In `AgentResource`, inject the holder and set the username on it before calling the service:
+`AgentResource` already reads the username out of the token. It takes three edits to hand that value to the holder.
+
+Open `src/main/java/org/globex/retail/ai/complaint/rest/AgentResource.java`.
+
+Add the import, below the existing `ComplaintService` import:
+
+[source,java,role="copypaste"]
+----
+import org.globex.retail.ai.complaint.service.AuthoritativeUserIdHolder;
+----
+
+Inject the holder, below the existing `complaintService` field:
 
 [source,java,role="copypaste"]
 ----
@@ -53,18 +77,40 @@ In `AgentResource`, inject the holder and set the username on it before calling 
     AuthoritativeUserIdHolder authoritativeUserIdHolder;
 ----
 
+Then, inside the `handleUserRequest` method, find these three lines in the `.onItem().transform(r -> {` block:
+
+.Before
+[source,java]
+----
+                    String userName = jwt.claim(Claims.preferred_username).orElse("").toString();
+                    Log.infof("Agent request received: %s; userId: %s", r, userName);
+                    JsonObject jsonObject = new JsonObject(r);
+----
+
+Replace them with these four, which add the `setUserId` call after the log line:
+
+.After
 [source,java,role="copypaste"]
 ----
                     String userName = jwt.claim(Claims.preferred_username).orElse("").toString();
                     Log.infof("Agent request received: %s; userId: %s", r, userName);
                     authoritativeUserIdHolder.setUserId(userName);
+                    JsonObject jsonObject = new JsonObject(r);
 ----
 
 == Supply the header on every MCP call
 
 The MCP client asks for headers each time it calls a tool. Implement `McpHeadersSupplier` and return `X-User-Id` from the holder.
 
-Create `src/main/java/org/globex/retail/ai/complaint/auth/GlobexMcpHeadersSupplier.java`:
+In the same terminal:
+
+[source,sh,role="copypaste"]
+----
+mkdir -p src/main/java/org/globex/retail/ai/complaint/auth
+touch src/main/java/org/globex/retail/ai/complaint/auth/GlobexMcpHeadersSupplier.java
+----
+
+Open the new file in Bob and paste:
 
 [source,java,role="copypaste"]
 ----
@@ -108,7 +154,14 @@ Every tool call the client makes now carries the header, and the value is whoeve
 
 == Try it again
 
-Dev mode picks the new classes up. Go back to the chatbot and type:
+Dev mode picks the new classes up on the next request. If you stopped it, start it again in the `globex-complaint-agent` terminal:
+
+[source,sh,role="copypaste"]
+----
+mvn quarkus:dev
+----
+
+Go back to the chatbot and type:
 
 [source,text,role="copypaste"]
 ----

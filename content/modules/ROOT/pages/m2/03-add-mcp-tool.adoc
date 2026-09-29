@@ -12,7 +12,7 @@ Three changes: add the MCP client extension, point it at your server, and tell t
 
 == Add the MCP client extension
 
-From the `globex-complaint-agent` folder:
+In the terminal, from the `globex-complaint-agent` folder:
 
 [source,sh,role="copypaste"]
 ----
@@ -32,7 +32,7 @@ The *transport type* is fixed when the application is built, so it belongs in th
 quarkus.langchain4j.mcp.orders.transport-type=streamable-http
 ----
 
-The *URL* is read at startup and changes from one environment to the next, so it belongs in configuration. Add it to the `.env` file you created in the previous step:
+Add the *URL* to `.env`:
 
 [source,properties,role="copypaste",subs="attributes+"]
 ----
@@ -59,19 +59,22 @@ Open `ComplaintAgent.java`. Add the import:
 import io.quarkiverse.langchain4j.mcp.runtime.McpToolBox;
 ----
 
-Then annotate the existing `process` method. Do not add a new method -- this is the same `process` that is already there, with one annotation added and the signature unchanged:
+Then paste this annotation on the line directly above the existing `String process(String userMessage, @MemoryId String memoryId);` declaration:
 
 [source,java,role="copypaste"]
 ----
     @McpToolBox("orders")
-    String process(String userMessage, @MemoryId String memoryId);
 ----
+
+The `process` method itself does not change.
 
 The name in the annotation matches the name in the configuration. At startup the client connects to the server, reads the tool list and hands `getOrdersByCustomerId` to the model. Nothing else in the agent changes -- LangChain4j runs the tool call loop for you: the model asks for the tool, the client calls it, the result goes back to the model, and the model carries on with the conversation.
 
 == Change the prompt to use the tool
 
-Handing a tool to the model is not enough. The prompt still tells it to ask the customer for the order ID, so that is what it will do. Edit the `@SystemMessage` in `ComplaintAgent.java` and replace step 1 of the conversation flow:
+Handing a tool to the model is not enough. The prompt still tells it to ask the customer for the order ID, so that is what it will do.
+
+Edit the `@SystemMessage` in `ComplaintAgent.java` and replace step 1 of the conversation flow:
 
 .Before
 [source,text]
@@ -90,8 +93,6 @@ Handing a tool to the model is not enough. The prompt still tells it to ask the 
    - Only ever refer to orders and products the tool returned. Never invent an order id or a product.
    - If the tool returns no orders, tell them you cannot find any orders on their account and stop there.
 ----
-
-The last two lines matter. The model will happily make up a plausible order number if the prompt leaves room for it, and a complaint filed against an order that does not exist is worse than no complaint at all.
 
 Add the same rule at the top of the prompt, so it holds for the whole conversation and not just the first step. In the opening paragraph of the `@SystemMessage`, after `CRITICAL do not share your internal thinking.`:
 

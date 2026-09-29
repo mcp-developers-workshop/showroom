@@ -43,7 +43,7 @@ tools:
 | References the connection created above. Orchestrate attaches a token from that connection to every call.
 
 | `tools: "*"`
-| Imports every tool the server advertises. Naming tools individually here is one way to limit what an agent can reach; the gateway covered in this module is the other.
+| Imports every tool the server advertises. Naming tools individually here is one way to limit what reaches the workspace; the agent's own `tools` list, set in the next step, is the other.
 |===
 
 Import it:

@@ -2,8 +2,6 @@
 :imagesdir: ../assets/images
 
 = Workshop Overview: MCP in Practice for Developers
-:toc: left
-:toclevels: 3
 :numbered:
 :icons: font
 :source-highlighter: highlight.js
@@ -27,7 +25,7 @@ This workshop addresses these challenges by establishing an *Intentional Agent A
 1. *Exposing Intent over Resources:* Standardize agent capabilities into well-defined MCP tools rather than granting raw API access [1].
 2. *Data Minimization & Sanitization:* Filter and massage backend payloads before they enter the LLM context window.
 3. *Zero-Trust Security & Identity:* Authenticate agents using cryptographic SPIFFE/SPIRE workload identities and Keycloak OIDC service accounts.
-4. *Centralized Governance:* Control tool sprawl using an enterprise MCP Gateway (ContextForge) with fine-grained policy enforcement.
+4. *Centralized Governance:* Control tool sprawl with an enterprise MCP Gateway, keeping credentials and tool filtering rules in one place rather than copied into every agent.
 5. *Full-Stack Observability:* Audit agent execution, trace LLM calls, and monitor system health with LangFuse and the LGTM stack.
 
 == Target Audience & Prerequisites
@@ -69,8 +67,8 @@ The workshop is structured into 5 progressive, hands-on modules:
 | LangFuse, LGTM Stack (Loki, Grafana, Tempo, Mimir)
 
 | *Module 5*
-| xref:m5/index.adoc[Manage Sprawl with an MCP Gateway]
-| Watsonx Orchestrator, Virtual Servers, Tool Filtering
+| xref:m5/index.adoc[Centralized Governance]
+| MCP Gateway, Virtual Servers, Tool Filtering
 |===
 
 == Environment & Architecture Overview
@@ -81,7 +79,7 @@ During this workshop, you will work within a dedicated Red Hat OpenShift Sandbox
 * *Quarkus Runtime & AI Assistance:* Modern Java framework with Quarkus MCP extensions and AI-assisted developer tooling.
 * *Keycloak IAM & SPIRE Provider:* Identity management pre-configured for OIDC service accounts and native SPIFFE workload attestation.
 * *Observability Suite:* Pre-installed LangFuse instance and LGTM telemetry stack with pre-built Grafana dashboards.
-* *ContextForge MCP Gateway:* Centralized proxy and policy engine for managing agent-to-server connections.
+* *MCP Gateway:* Centralized proxy and policy engine for managing agent-to-server connections, virtual servers and tool filtering.
 
 == How to Use the Lab Guides
 

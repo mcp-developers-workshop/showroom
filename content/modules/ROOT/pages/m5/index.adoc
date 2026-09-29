@@ -2,39 +2,55 @@
 :experimental:
 :imagesdir: ../assets/images
 
-= Module 5: Manage Sprawl with an MCP Gateway
-:toc: left
-:toclevels: 3
+= Module 5: Centralized Governance
 :numbered:
 :icons: font
 :source-highlighter: highlight.js
 
 == Overview & Objectives
-This final module addresses enterprise tool sprawl and centralized governance by introducing an MCP Gateway (ContextForge). You will configure the gateway to aggregate multiple downstream MCP servers (GitLab, Complaints DB), create isolated Virtual Servers, enforce granular tool filtering rules, and connect personal productivity agents securely.
+
+Establishing a centralized MCP Gateway to configure virtual servers, manage authentication, and enforce strict tool filtering rules.
+
+One MCP server consumed by one agent needs no governance. Twenty servers and thirty agents do. Every agent needs credentials for every server it touches, and the rules about which agent may call which tool get copied into each one, where they drift apart.
+
+This module is about where those controls belong: a centralized gateway that holds the credentials, presents each consumer a virtual server carrying only the tools it is allowed to see, and enforces the filtering rules in one place.
+
+The lab works through that separation against the Globex complaints MCP server. You keep its credentials in a connection, distinct from the tool definitions that use them, and you narrow what is reachable in two independent places -- what is imported from the server, and what a single agent is permitted to call.
+
+[NOTE]
+====
+The client platform used in the lab is watsonx Orchestrate, but it is incidental. It is the artefacts that matter: a connection, a toolkit, and an agent with an explicit tool list. That is the same separation a gateway applies centrally, and the MCP server behind it is unchanged either way -- which is the point of the protocol.
+====
 
 === Learning Objectives
-* Understand the challenges of enterprise tool sprawl and decentralized agent access.
-* Configure ContextForge MCP Gateway as a centralized reverse proxy and governance layer.
-* Register downstream enterprise MCP servers (GitLab MCP Server, Complaints DB MCP Server).
-* Implement strict Tool Filtering (e.g., exposing only `create_issue` and `get_issue` from GitLab).
-* Set up Virtual Servers with dedicated authentication for personal productivity agents (Bob CLI / watsonx Orchestrate).
+
+* Understand why decentralized agent access to MCP servers becomes a governance problem at scale.
+* Register a remote MCP server as a toolkit, without writing code.
+* Keep the OAuth credentials in a connection, separate from the tool definitions that use them, so they can be rotated or swapped per environment.
+* Enforce tool filtering at two independent levels: what is imported from the server, and what one agent may call.
+* Ask the agent for a product improvement report and confirm from the tool calls that it came from the MCP server.
 
 == Architecture & Components
-* *MCP Gateway:* ContextForge Gateway
-* *Downstream MCP Servers:* GitLab MCP Server, Complaints DB MCP Server
-* *Client Agents:* Personal Productivity Agents (Bob CLI, watsonx Orchestrate)
-* *Governance Features:* Virtual Servers, Tool Filtering Policies, Centralized AuthN/AuthZ
+
+* *Governance model:* credentials in a connection, tools in a toolkit, an explicit per-agent tool list
+* *MCP server:* the Globex complaints MCP server, on its read-only endpoint
+* *Client platform:* watsonx Orchestrate, driven by the `orchestrate` CLI
+* *Authentication:* Keycloak `internal` realm, client credentials grant, held in the connection
+* *Data:* the `complaints` table in the Globex store database
 
 == Prerequisites
-* OpenShift environment with ContextForge Gateway deployed
-* Access to enterprise GitLab repository and Complaints DB MCP Server
+
+* A watsonx Orchestrate instance and an API key for it
+* The complaints MCP server from the earlier modules deployed and reachable from outside the cluster
 
 == Lab Agenda
-1. Clone the Orchestrate workspace and point it at your cluster
+
+1. Clone the workspace and point it at your cluster
 2. Create a connection holding the Keycloak realm and OAuth client credentials
 3. Register the complaints MCP server as a toolkit backed by that connection
-4. Define a native agent over the toolkit's tools and deploy it
-5. Chat with the agent and confirm it reaches the MCP server
+4. Define an agent over a narrowed subset of the toolkit's tools and deploy it
+5. Chat with the agent and ask it for a product improvement report
 
 == Expected Outcomes
-A centralized, governed MCP Gateway architecture enforcing tool access policies and providing single-pane-of-glass management for enterprise AI integrations.
+
+A deployed agent that reaches the complaints MCP server over authenticated HTTP, holds no credentials of its own, and can call only the tools it was explicitly granted -- answering a request for product improvements with a prioritised list grounded in the complaint data, with its tool calls visible in the chat.
