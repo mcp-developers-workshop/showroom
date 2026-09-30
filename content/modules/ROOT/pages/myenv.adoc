@@ -1,0 +1,96 @@
+= Lab Environment Details
+:icons: font
+
+Every address on this page is specific to your environment. Keep this page open in a tab -- the modules refer back to these consoles throughout.
+
+== Consoles and Credentials
+
+// TBC: OpenShift Console login for the workshop environment -- not documented on any page yet.
+
+[cols="25%,30%,45%", options="header", width=100%]
+|==================
+| Access to | URL | Credentials
+
+| Red Hat OpenShift Console
+| https://console-openshift-console.{openshift_subdomain}[click here^, window="console"]
+| _TBC_
+
+| GitLab
+| https://gitlab-gitlab.{openshift_subdomain}[click here^, window="gitlab"]
+| `developer` / `{common_password}`
+
+| GitOps / ArgoCD
+| https://openshift-gitops-server-openshift-gitops.{openshift_subdomain}[click here^, window="argo"]
+| `{openshift_gitops_user}` / `{openshift_gitops_password}`
+
+| Keycloak (SSO)
+| https://sso.{openshift_subdomain}[click here^, window="sso"]
+| Customer account on the `globex` realm: `asilva` / `openshift`
+
+| Globex Store OpenAPI
+| https://globex-store.{openshift_subdomain}/q/openapi[click here^, window="globex-store"]
+| None -- the API the orders MCP server wraps
+|==================
+
+== Workshop Endpoints
+
+These are services, not web consoles. Paste them into the MCP Inspector or into configuration.
+
+[cols="25%,45%,30%", options="header", width=100%]
+|==================
+| Service | URL | Notes
+
+| Orders MCP server
+| `\https://globex-store-mcp.{openshift_subdomain}/mcp`
+| You build and deploy this in Module 1. Requires the `X-User-Id` header.
+
+| Complaints MCP server
+| `\https://globex-complaints.{openshift_subdomain}/mcp`
+| Already running. Connected to the agent in Module 2.
+
+| Complaint agent
+| `\https://globex-complaint-agent.{openshift_subdomain}/api/v1`
+| Deployed in Module 2. Requires a bearer token from Keycloak.
+|==================
+
+== Running on Your Machine
+
+Addresses that only exist while you have something running locally.
+
+[cols="30%,35%,35%", options="header", width=100%]
+|==================
+| What | URL | Started by
+
+| Quarkus Dev UI (tools page)
+| `\http://localhost:8080/q/dev-ui/quarkus-mcp-server-http/tools`
+| `mvn quarkus:dev` in `globex-store-mcp`
+
+| Local MCP server endpoint
+| `\http://localhost:8080/mcp`
+| `mvn quarkus:dev` in `globex-store-mcp`
+
+| MCP Inspector
+| `\http://localhost:6274`
+| `npx @modelcontextprotocol/inspector`
+
+| Chatbot
+| `\http://localhost:4200`
+| `npm start` in `mcp-workshop-chatbot`
+
+| Local agent endpoint
+| `\http://localhost:8080/api/v1`
+| `mvn quarkus:dev` in `globex-complaint-agent`
+|==================
+
+[NOTE]
+====
+The workshop cluster uses a self-signed certificate. Accept the browser warning the first time you open each console.
+====
+
+// == Attributes available to this page
+//
+// * openshift_subdomain: {openshift_subdomain}
+// * common_password: {common_password}
+// * openshift_gitops_user: {openshift_gitops_user}
+// * openshift_gitops_password: {openshift_gitops_password}
+// * keycloak_realm_globex_web_client_gateway_client_secret: {keycloak_realm_globex_web_client_gateway_client_secret}

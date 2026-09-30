@@ -6,34 +6,58 @@
 :icons: font
 :source-highlighter: highlight.js
 
-== Executive Summary & Vision
-Welcome to the *MCP in Practice for Developers* hands-on workshop. This workshop is engineered to guide software architects, platform engineers, and developers from initial local prototyping ("laptops") to deploying secure, observable, and enterprise-ready Model Context Protocol (MCP) servers and AI agents in production ("production").
+== Workshop Overview
 
-As enterprises rush to adopt Generative AI and agentic workflows, connecting LLM agents directly to backend infrastructure introduces significant security, governance, and architectural challenges. This workshop demonstrates how to use the *Model Context Protocol (MCP)* as a standardized control plane that exposes intent rather than raw resources, enforces zero-trust boundaries, and integrates cleanly with modern enterprise platforms like Red Hat OpenShift.
+Welcome to the *MCP in Practice for Developers* hands-on workshop.
+
+This workshop is engineered to guide software architects, platform engineers, and developers from initial local prototyping ("laptops") to deploying secure, observable, and enterprise-ready Model Context Protocol (MCP) servers and AI agents in production ("production").
+
+As enterprises move from Generative AI experimentation to agentic workflows, AI applications increasingly need to interact with enterprise systems and take action on behalf of users. Giving agents direct access to backend APIs and services, however, introduces significant security, data exposure, governance, and operational challenges.
+
+The *Model Context Protocol (MCP)* provides a standardized way to expose capabilities to AI applications. In an enterprise architecture, MCP can become more than an integration mechanism: it can provide a controlled boundary between AI applications and enterprise capabilities.
+
+This workshop demonstrates how to build that boundary using MCP, applying principles such as intent-based tool exposure, data minimization, zero-trust identity, end-to-end observability, and centralized governance on modern enterprise platforms such as Red Hat OpenShift.
 
 == The Enterprise Challenge
-Enterprise software teams face a converging storm of demands:
 
-* *Accelerated Application Modernization:* 80% of enterprise technologists plan to modernize more than half of their legacy applications within two years [1].
-* *Developer Cognitive Overload:* 76% of organizations cite high cognitive load and fragmented tooling as a primary cause of low developer productivity [1].
-* *Rapid AI Agent Adoption:* 80% of enterprise applications are projected to incorporate Generative AI and agentic capabilities by 2026 [1].
-* *The Agent Security Gap:* Directly exposing REST APIs or databases to AI agents leads to data over-fetching, credential exposure, and prompt injection vulnerabilities [1].
+AI agents are moving beyond generating text and are increasingly being used to *take action*: retrieving customer data, creating orders, updating records, invoking business services, and orchestrating workflows across enterprise systems.
+
+This creates a new architectural challenge. An agent needs access to the *right capabilities and data*, but giving it direct access to enterprise APIs, databases, and services creates challenges around security, data exposure, governance, and operational visibility.
+
+As agents and tools multiply, enterprises need to answer:
+
+* *What should an agent be allowed to do?* +
+How do we expose business capabilities without giving an agent unrestricted access to underlying APIs and systems?
+
+* *What data should an agent see?* +
+How do we prevent unnecessary, sensitive, or irrelevant backend data from entering the LLM context?
+
+* *Who is the agent?* +
+How do we establish workload identity and enforce authorization when an autonomous agent, rather than a human user, is making a request?
+
+* *How do we know what happened?* +
+How do we trace an agent's actions across LLM calls, MCP tools, APIs, and backend services when something goes wrong?
+
+* *How do we govern hundreds or thousands of tools?* +
+How do we prevent every agent from maintaining its own credentials, tool definitions, policies, and integrations?
+
+The enterprise challenge is therefore not simply connecting an LLM to enterprise systems. It is creating a controlled, secure, and observable way for agents to interact with enterprise capabilities.
 
 == The Solution: Model Context Protocol (MCP)
 This workshop addresses these challenges by establishing an *Intentional Agent Architecture*:
 
-1. *Exposing Intent over Resources:* Standardize agent capabilities into well-defined MCP tools rather than granting raw API access [1].
+1. *Exposing Intent over Resources:* Standardize agent capabilities into well-defined MCP tools rather than granting raw API access.
 2. *Data Minimization & Sanitization:* Filter and massage backend payloads before they enter the LLM context window.
 3. *Zero-Trust Security & Identity:* Authenticate agents using cryptographic SPIFFE/SPIRE workload identities and Keycloak OIDC service accounts.
-4. *Centralized Governance:* Control tool sprawl with an enterprise MCP Gateway, keeping credentials and tool filtering rules in one place rather than copied into every agent.
-5. *Full-Stack Observability:* Audit agent execution, trace LLM calls, and monitor system health with LangFuse and the LGTM stack.
+4. *Full-Stack Observability:* Audit agent execution, trace LLM calls, and monitor system health with LangFuse and the LGTM stack.
+5. *Centralized Governance:* Control tool sprawl with an enterprise MCP Gateway, keeping credentials and tool filtering rules in one place rather than copied into every agent.
 
 == Target Audience & Prerequisites
 
 === Target Audience
-* Backend Developers & Java Engineers (Quarkus / Spring)
+* Backend Developers & Java Engineers
 * AI / ML Engineers integrating agents with enterprise APIs
-* Cloud Platform Engineers & Architects (OpenShift / Kubernetes / GitOps)
+* Cloud Platform Engineers & Architects
 * Enterprise Security & IAM Specialists
 
 === Technical Prerequisites

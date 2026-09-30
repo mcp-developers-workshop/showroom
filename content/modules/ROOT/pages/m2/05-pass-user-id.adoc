@@ -170,7 +170,7 @@ try again
 
 The tool call succeeds this time. The agent lists Addison Silva's orders and asks which one the complaint is about:
 
-image::m2/chatbot-orders-list.png[]
+image::m2/chatbot-orders-list.png[link=self,window=_blank]
 
 These are the same orders you saw in the MCP Inspector in Module 1, fetched for the user who signed in to the chatbot. The agent never asked who you were.
 
@@ -190,11 +190,11 @@ I want to raise a complaints about the Stojo Collapsible Silicone Bottle. the ca
 
 The agent works through the rest of the prompt's conversation flow. It reads the issue type as `Defect`, the severity as `Critical` and the resolution as `Replacement`, ties them to order 231, and asks you to confirm:
 
-image::m2/chatbot-complaint-summary.png[]
+image::m2/chatbot-complaint-summary.png[link=self,window=_blank]
 
 Reply `yes`.
 
-image::m2/chatbot-no-complaint-id.png[]
+image::m2/chatbot-no-complaint-id.png[link=self,window=_blank]
 
 The agent repeats the details back and then says it cannot generate a complaint ID. It has nothing to file the complaint with. `getOrdersByCustomerId` is the only tool it has, and reading orders is not raising a complaint.
 

@@ -182,6 +182,6 @@ I want to raise a complaints about the Stojo Collapsible Silicone Bottle. the ca
 
 Confirm the summary, and a new complaint is filed with a new complaint ID:
 
-image::m2/chatbot-complaint-deployed.png[]
+image::m2/chatbot-complaint-deployed.png[link=self,window=_blank]
 
 The agent, its two MCP clients and the header supplier are all running on the cluster now.

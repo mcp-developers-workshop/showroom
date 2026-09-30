@@ -7,7 +7,7 @@
 :source-highlighter: highlight.js
 
 == Overview & Objectives
-This module shifts the workshop from unauthenticated agent calls to a hardened Zero-Trust enterprise security posture. You will implement cryptographic Native Agentic Identity using SPIFFE/SPIRE (without sidecars), federate identity with Keycloak OIDC Service Accounts, enable downstream token exchange for backend REST calls, and establish strict tool guardrails against prompt injection hazards.
+This module shifts the workshop from unauthenticated agent calls to a hardened Zero-Trust enterprise security posture. You will implement cryptographic Native Agentic Identity using SPIFFE/SPIRE, federate identity with Keycloak OIDC Service Accounts, enable downstream token exchange for backend REST calls, and establish strict tool guardrails against prompt injection hazards.
 
 === Learning Objectives
 * Understand the security hazards of direct, unauthenticated agentic access.
@@ -18,7 +18,7 @@ This module shifts the workshop from unauthenticated agent calls to a hardened Z
 
 == Architecture & Components
 * *Identity Provider:* Keycloak with OIDC Service Accounts & SPIRE Trust Provider
-* *Workload Attestation:* SPIFFE/SPIRE Workload API (Native SDK integration, no sidecar)
+* *Workload Attestation:* SPIFFE/SPIRE Workload API
 * *MCP Servers:* Quarkus Orders & Complaints MCP Servers with `@Authenticated` endpoints
 * *Security Mechanisms:* OAuth2 Token Exchange, SPIFFE SVID validation, Tool Execution Guardrails
 

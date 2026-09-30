@@ -92,6 +92,22 @@ quarkus.oidc.auth-server-url=https://sso.{openshift_subdomain}/realms/globex
 
 == Start the agent and the chatbot
 
+[IMPORTANT]
+====
+Stop the Module 1 MCP server first. `globex-store-mcp` and `globex-complaint-agent` both
+use port 8080 in dev mode, and the chatbot is hardcoded to `http://localhost:8080`. If
+the Module 1 dev mode is still running, the chatbot sends its messages to the MCP server
+instead of the agent and the browser console shows a CORS error:
+
+....
+Access to XMLHttpRequest at 'http://localhost:8080/api/v1/request' from origin
+'http://localhost:4200' has been blocked by CORS policy
+....
+
+Press kbd:[q] in the `globex-store-mcp` terminal to stop it. You do not need it locally
+any more -- the agent calls the copy deployed on OpenShift.
+====
+
 Run the agent in dev mode. In the `globex-complaint-agent` terminal:
 
 [source,sh,role="copypaste"]
@@ -110,7 +126,7 @@ npm start
 
 Open http://localhost:4200[the chatbot^] in a browser.
 
-image::m2/chatbot-signin.png[]
+image::m2/chatbot-signin.png[link=self,window=_blank]
 
 Click *Sign in with OAuth2*. That takes you to Keycloak. Sign in as the customer whose orders you have been working with:
 
@@ -131,11 +147,11 @@ Keycloak sends you back to the chatbot, which greets you by the name on the toke
 
 Type `I want to raise a complaint` and click *Send*.
 
-image::m2/chatbot-raise-complaint.png[]
+image::m2/chatbot-raise-complaint.png[link=self,window=_blank]
 
 The prompt tells the agent to start by fetching the customer's orders, so it calls `getOrdersByCustomerId`. The call fails, and the agent tells you it cannot get to your orders:
 
-image::m2/chatbot-no-orders.png[]
+image::m2/chatbot-no-orders.png[link=self,window=_blank]
 
 The tool call failed because the agent's MCP client is not sending the `X-User-Id` header your tool requires.
 
@@ -146,7 +162,7 @@ The agent is talking to the MCP server deployed on the cluster, so the reason is
 
 Open the https://console-openshift-console.{openshift_subdomain}/k8s/ns/globex-store-mcp/pods[pods in the `globex-store-mcp` project^], click the running `globex-store-mcp` pod and select the *Logs* tab:
 
-image::m2/mcp-missing-header-log.png[]
+image::m2/mcp-missing-header-log.png[link=self,window=_blank]
 
 ----
 Unable to call tool getOrdersByCustomerId: java.lang.IllegalArgumentException:

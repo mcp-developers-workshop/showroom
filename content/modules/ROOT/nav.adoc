@@ -28,3 +28,5 @@
 ** xref:m5/04-agent.adoc[Define and Deploy the Agent]
 ** xref:m5/05-test.adoc[Test the Agent]
 ** xref:m5/06-summary.adoc[Summary]
+
+* xref:myenv.adoc[My Env Details]

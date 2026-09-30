@@ -32,14 +32,14 @@ The server is at `https://globex-complaints.{openshift_subdomain}/mcp` and expos
 
 == Add a second MCP client
 
-Same two files as before. The transport type goes in `src/main/resources/application.properties`, next to the one for `orders`:
+Same two files as before, both in the `globex-complaint-agent` folder. The transport type goes in `src/main/resources/application.properties`, next to the one for `orders`:
 
 [source,properties,role="copypaste"]
 ----
 quarkus.langchain4j.mcp.complaint.transport-type=streamable-http
 ----
 
-The URL goes in `.env`:
+The URL goes in `.env`, in the root of the same folder:
 
 [source,properties,role="copypaste",subs="attributes+"]
 ----
@@ -84,7 +84,7 @@ I want to raise a complaints about the Stojo Collapsible Silicone Bottle. the ca
 
 Confirm when the agent asks. This time it calls `create_complaint` and comes back with a complaint ID:
 
-image::m2/chatbot-complaint-raised.png[]
+image::m2/chatbot-complaint-raised.png[link=self,window=_blank]
 
 The complaint is recorded against order 231 with the issue type, severity and resolution the agent worked out during the conversation.
 

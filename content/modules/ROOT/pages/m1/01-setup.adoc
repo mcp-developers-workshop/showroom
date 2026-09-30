@@ -14,7 +14,7 @@ Open https://gitlab-gitlab.{openshift_subdomain}[GitLab^].
 
 Sign in with the workshop developer account:
 
-image::m1/gitlab-login.png[]
+image::m1/gitlab-login.png[link=self,window=_blank]
 
 [cols="1,2", options="header"]
 |===

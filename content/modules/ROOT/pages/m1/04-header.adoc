@@ -12,7 +12,7 @@ The tool takes `customerId` as a parameter, which means the model supplies it. N
 
 [source,text,role="copypaste"]
 ----
-The 'getOrders' tool in src/main/java/org/globex/mcp/server/GlobexStoreMcpServer.java takes the customerId as parameter. Change the implementation so that the customerId is passed as a HTTP header. The name of the header is 'X-User-Id'. Throw an exception if the header is not present or is empty.
+The 'getOrdersByCustomerId' tool GlobexStoreMcpServer.java takes the customerId as parameter. Change the implementation so that the customerId is passed as a HTTP header. The name of the header is 'X-User-Id'. Throw an exception if the header is not present or is empty.
 ----
 
 Read Bob's questions and click *Approve*.
@@ -42,7 +42,7 @@ Read Bob's questions and click *Approve*.
 
 Once dev mode restarts, open http://localhost:8080/q/dev-ui/quarkus-mcp-server-http/tools[the Dev UI tools page^] and click the tool name:
 
-image::m1/devui-getorders-no-parameters.png[]
+image::m1/devui-getorders-no-parameters.png[link=self,window=_blank]
 
 The tool now declares no parameters. The customer identifier is no longer part of the contract the model sees, so there is nothing for it to supply or change.
 
@@ -63,7 +63,7 @@ It starts a local proxy and prints a URL for the UI (default `http://localhost:6
 
 The landing page lists the servers the Inspector knows about, all disconnected:
 
-image::m1/mcp-inspector-servers.png[]
+image::m1/mcp-inspector-servers.png[link=self,window=_blank]
 
 === Add your server
 
@@ -71,7 +71,7 @@ The three entries on the page are the Inspector's built-in examples. Add your ow
 
 Click *Add Servers* -> *Add Manually* and fill in the dialog:
 
-image::m1/mcp-inspector-add-server.png[]
+image::m1/mcp-inspector-add-server.png[link=self,window=_blank]
 
 [cols="1,2", options="header"]
 |===
@@ -89,32 +89,28 @@ image::m1/mcp-inspector-add-server.png[]
 
 Click *Add*.
 
-[NOTE]
-====
-`/mcp` is the default endpoint path -- check `application.properties` if Bob configured a different one.
-====
 
 === Connect to the server
 
 A card for `order-mcp-local` appears alongside the examples, marked *Disconnected*:
 
-image::m1/mcp-inspector-server-added.png[]
+image::m1/mcp-inspector-server-added.png[link=self,window=_blank]
 
 Click the *Disconnected* toggle on that card to connect.
 
 The card turns green and reads *Connected*, the server's name (`GlobexStoreMcpServer`) appears in the top-left, the negotiated protocol version is shown on the card, and a *Tools* tab appears next to *Servers*:
 
-image::m1/mcp-inspector-connected.png[]
+image::m1/mcp-inspector-connected.png[link=self,window=_blank]
 
 === Check the tool schema
 
 Open the *Tools* tab. The left-hand panel lists the tools the server advertises -- just `getOrdersByCustomerId`:
 
-image::m1/mcp-inspector-tools-list.png[]
+image::m1/mcp-inspector-tools-list.png[link=self,window=_blank]
 
 Click the tool to see its details:
 
-image::m1/mcp-inspector-tool-detail.png[]
+image::m1/mcp-inspector-tool-detail.png[link=self,window=_blank]
 
 The panel shows the description and an *Execute Tool* button, and nothing else. There are no input fields, because the tool no longer declares any parameters -- the customer ID comes from the `X-User-Id` header instead.
 
@@ -124,7 +120,7 @@ Click *Execute Tool*.
 
 The call fails with *Tool Call Failed* / *Internal error*, because the tool throws when `X-User-Id` is missing:
 
-image::m1/mcp-inspector-tool-error.png[]
+image::m1/mcp-inspector-tool-error.png[link=self,window=_blank]
 
 [NOTE]
 ====
@@ -135,11 +131,11 @@ The *Network* panel on the right records the request as `200 OK`. The HTTP reque
 
 Go back to the *Servers* tab and click *Settings* on the `order-mcp-local` card:
 
-image::m1/mcp-inspector-card-settings.png[]
+image::m1/mcp-inspector-card-settings.png[link=self,window=_blank]
 
 The *Server Settings* dialog opens on the *Options* section. Scroll to the bottom and expand *Custom Headers*:
 
-image::m1/mcp-inspector-server-settings.png[]
+image::m1/mcp-inspector-server-settings.png[link=self,window=_blank]
 
 Click *+ Add Header* and fill in the two fields:
 
@@ -154,7 +150,7 @@ Click *+ Add Header* and fill in the two fields:
 | `asilva`
 |===
 
-image::m1/mcp-inspector-custom-header.png[]
+image::m1/mcp-inspector-custom-header.png[link=self,window=_blank]
 
 Close the dialog.
 
@@ -169,7 +165,7 @@ Go to the *Tools* tab, select `getOrdersByCustomerId`, and click *Execute Tool*.
 
 The call succeeds and the *Results* panel shows the shaped order history for `asilva`:
 
-image::m1/mcp-inspector-tool-result.png[]
+image::m1/mcp-inspector-tool-result.png[link=self,window=_blank]
 
 Check the JSON against the two changes you made:
 

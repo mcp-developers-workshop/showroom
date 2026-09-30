@@ -28,7 +28,7 @@ In the Inspector, click *Add Servers* -> *Add Manually* and fill in the dialog:
 | `\https://globex-store-mcp.{openshift_subdomain}/mcp`
 |===
 
-image::m1/mcp-inspector-add-remote-server.png[]
+image::m1/mcp-inspector-add-remote-server.png[link=self,window=_blank]
 
 Click *Add*.
 

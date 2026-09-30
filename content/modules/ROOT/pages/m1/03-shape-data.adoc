@@ -55,7 +55,7 @@ The orders endpoint returns product codes, not names, so Bob has to call a secon
 
 Bob rebuilds and re-tests. Once dev mode has restarted, call the tool again from http://localhost:8080/q/dev-ui/quarkus-mcp-server-http/tools[the Dev UI tools page^] with the same `asilva` customer ID:
 
-image::m1/devui-tool-call-result-shaped.png[]
+image::m1/devui-tool-call-result-shaped.png[link=self,window=_blank]
 
 Check the returned JSON:
 
