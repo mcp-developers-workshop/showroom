@@ -46,17 +46,48 @@
 
 == Why the client secret is not enough
 
-`globex-mcp-client`'s secret is a long-lived bearer credential, and in the last section you committed one to a Git repository to make the agent work. That is the honest state of what you built:
+Enabling OIDC authentication across the agent and the MCP servers left the agent holding a Keycloak identity of its own, and both servers accepting it. That identity is a client ID and a client secret.
 
-* Anything holding that string *is* the agent, from anywhere, until someone changes it.
-* Nothing attests that the caller is the workload it claims to be. Keycloak checks that the secret is correct, not that the process presenting it is the agent running in your cluster.
-* Rotation is manual, which in practice means it does not happen.
+Keycloak checks that the secret matches the one it holds for that client -- nothing more. It cannot tell whether the caller is your agent or a laptop that copied the secret out of the Git repository you put it in on the last page.
 
-SPIFFE replaces the shared secret with an identity the platform issues and attests, scoped to where the workload actually runs, and short-lived by construction. The agent stops holding a password and starts proving what it is.
+That is the weakness of any shared secret: it proves *what you have*, not *who you are*. And because changing it means changing it everywhere at once, it is rarely changed at all.
+
+== What SPIFFE is
+
+SPIFFE is a standard for giving a workload an identity based on what it actually is and where it actually runs, instead of a secret it carries.
+
+Three terms cover it:
+
+[cols="1,3", options="header"]
+|===
+| Term | What it means
+
+| Trust domain
+| The boundary that issues identities -- in practice, your cluster.
+
+| SPIFFE ID
+| The name of one workload, written as a URI: `spiffe://globex.example/ns/globex-complaint-agent/sa/default`. A username for a pod rather than a person.
+
+| SVID
+| The credential that proves the SPIFFE ID, as an X.509 certificate or a JWT. It is valid for minutes, not forever.
+|===
+
+The agent stores none of this. It asks for an SVID when it needs one and gets a fresh one each time.
+
+== What it takes to run it
+
+The identity has to come from something that can actually verify the claim, and that is the platform the workload runs on. SPIRE is the implementation:
+
+* A *SPIRE server* -- the certificate authority for the trust domain.
+* A *SPIRE agent* on every node. When a pod asks for an identity, the agent asks the kubelet what that pod really is -- its namespace, its service account, its image -- and only then issues the SVID. That check is *attestation*, and it is what a secret cannot do.
+* A *registration entry* per workload, mapping those pod properties to a SPIFFE ID. This is the one piece a human writes.
+* A consumer that trusts the trust domain. Here that is Keycloak, which has to accept an SVID where it currently expects a client secret.
+
+The workload talks to its node's SPIRE agent over a local Unix socket, so there is no credential to put in a chart, in Git, or in an environment variable, and nothing to rotate on a schedule.
 
 == What Step 2 builds
 
-A SPIRE agent attests the workload and issues it a short-lived JWT-SVID. Keycloak is configured to accept that SVID in place of the client secret, resolving to the same Keycloak client the agent already uses -- so the MCP servers need no change, and the two `quarkus.oidc-client.*` blocks from the last page stay. What goes away is the secret in `values.yaml`.
+A SPIRE agent attests the agent pod and issues it a short-lived JWT-SVID. Keycloak accepts that SVID in place of the client secret, resolving to the same Keycloak client the agent already uses -- so the MCP servers need no change, and the two `quarkus.oidc-client.*` blocks from the last page stay. What goes away is the secret in `values.yaml`.
 
 [IMPORTANT]
 ====

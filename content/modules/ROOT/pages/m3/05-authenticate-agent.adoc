@@ -285,6 +285,12 @@ Both halves have to land before anything works:
 
 Wait for *Last Sync* to show your chart commit and the pod to be a few minutes old.
 
+// COMMENTED OUT 2026-10-01: the local chatbot test, superseded by the globex-web test
+// below. Both ran the same flow against the same deployed agent, and the chatbot costs
+// more -- npm start, a config value to re-verify from Module 2, and a client secret on the
+// attendee's laptop. Module 3 runs against the cluster, so the storefront is the right
+// client. User to confirm the flow on the next walkthrough before this is deleted.
+////
 == Test it
 
 Start the chatbot again with `npm start` from the `mcp-workshop-chatbot` folder, and check that `src/environments/environment.ts` points at the deployed agent:
@@ -302,8 +308,45 @@ I want to raise a complaint
 ----
 
 The orders come back. The agent is now an authenticated workload.
+////
 
-// TBC: screenshot of the working chat once the agent authenticates.
+== Test it
+
+The agent is now an authenticated workload. The Globex web application calls that same agent. Open the https://globex-web-globex.{openshift_subdomain}/[Globex storefront^], sign in as `asilva` / `openshift`, and go to *Customer Care*.
+
+image::m3/globex-web-customer-care.png[link=self,window=_blank]
+
+[source,text,role="copypaste"]
+----
+I want to raise a complaint
+----
+
+The agent lists `asilva`'s orders -- which it could only fetch by calling the now-secured orders MCP server with a token.
+
+image::m3/globex-web-orders.png[link=self,window=_blank]
+
+Pick a product from one of them:
+
+[source,text,role="copypaste"]
+----
+The Red Hat Recycled Facemask came used. This is absolutely unacceptable, I want an immediate refund
+----
+
+It comes back with a summary to confirm. Answer:
+
+[source,text,role="copypaste"]
+----
+Yes
+----
+
+The complaint is filed and you get a complaint ID back -- the second MCP server, also authenticated.
+
+image::m3/globex-web-complaint-filed.png[link=self,window=_blank]
+
+[NOTE]
+====
+`globex-web` is a server-side Angular application. It calls the agent from its own server over the cluster Service, and its Keycloak client ID and secret stay on that server -- the browser never sees them. It was already configured against `globex-complaint-agent` and the `globex` realm, so nothing here needed repointing.
+====
 
 The next step is to stop relying on a shared secret to establish the agent's identity at all.
 

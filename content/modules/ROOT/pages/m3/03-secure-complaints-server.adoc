@@ -96,6 +96,11 @@ Both paths are listed. The read-only server reads the same complaints table. `gl
 // Leading hypothesis: with policy=authenticated and CORS disabled, a browser preflight
 // OPTIONS is handled by the auth layer and 401s. Capture the exact log line on the next
 // walkthrough. Low priority -- the user parked this deliberately.
+// 2026-10-01: still parked, to be tested on the next walkthrough round. A CORS failure on
+// the AGENT that day turned out to be unrelated -- a trailing space in the chart template
+// broke an MCP client URL, the pod never went Ready, and the browser blamed CORS. The
+// agent needs no CORS configuration of its own. That says nothing about this line, which
+// is on the complaints server: test whether it works without it once authenticated.
 
 [NOTE]
 ====
