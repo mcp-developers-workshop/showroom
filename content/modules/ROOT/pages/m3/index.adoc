@@ -40,9 +40,8 @@ This module runs against the cluster. You edit code locally, push, and let the p
 2. Require an authenticated caller on the orders MCP server
 3. Require an authenticated caller on both endpoints of the complaints MCP server
 4. Confirm both servers now reject anonymous callers, and that the unchanged agent is one of them
-5. Give the agent its own Keycloak client credentials and attach the resulting tokens to MCP calls
-6. Separate workload identity from user identity, and name what is still unfixed
-7. Replace the shared secret with a SPIFFE workload identity -- outline only, still being written
+5. Give the agent its own Keycloak client credentials and attach the resulting tokens to MCP calls, keeping workload identity separate from user identity
+6. Replace the shared secret with a SPIFFE workload identity -- outline only, still being written
 
 == Expected Outcomes
 Two MCP servers that reject anonymous callers, and an agent that reaches them as an authenticated workload with a token scoped to each server -- while the customer's identity continues to travel in a header the server has not yet verified.

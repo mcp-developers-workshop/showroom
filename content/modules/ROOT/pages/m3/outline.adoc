@@ -10,12 +10,16 @@
 //   02b Secure complaints  -> 03-secure-complaints-server.adoc
 //   03 Watch it break      -> 04-servers-secured.adoc
 //   04 Service account     -> 05-authenticate-agent.adoc
-//   05 Two tokens          -> 06-two-tokens.adoc
-//                             07-spiffe.adoc (all of Step 2, placeholder)
-//                             08-summary.adoc
+//   05 Two tokens          -> folded into 05-authenticate-agent.adoc and 07-summary.adoc
+//                             06-spiffe.adoc (all of Step 2, placeholder)
+//                             07-summary.adoc
 // Every open TBC moved with it and now lives on the page it affects. Step 2 (sections
-// 06-10) has since been folded into 07-spiffe.adoc too, including the undecided
+// 06-10) has since been folded into 06-spiffe.adoc too, including the undecided
 // client-assertion-vs-federation question, which is only stated properly there.
+//
+// 2026-10-01: "Two tokens, two realms" is no longer a page. The diagram, the comparison
+// table and "why the user's token is not forwarded" open 05-authenticate-agent.adoc as
+// its rationale; "what this fixed and what it did not" was already said in the summary.
 //
 // SO: EDIT THE PAGES, NOT THIS FILE. Nothing here is load-bearing any more. It is kept
 // for the reasoning behind each decision -- why both servers get secured, why there is

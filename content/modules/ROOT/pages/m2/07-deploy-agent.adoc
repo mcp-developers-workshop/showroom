@@ -41,29 +41,11 @@ The push prompts you for GitLab credentials. Use the workshop developer account:
 
 A webhook on the repository starts an OpenShift pipeline, which builds the image and pushes it to the internal registry. Leave it to run and move on to the chart.
 
-== Edit the Secret template
+== Edit the values
 
 The chart renders a complete `application.properties` into a Secret, from `templates/secret.yaml`. The deployment mounts that Secret at `/deployments/config`, which is where Quarkus reads configuration at runtime. It has blocks for OIDC, the model and CORS, but nothing for MCP -- so the URLs that were in your `.env` have to come from here instead.
 
-You edit the two chart files directly in GitLab and commit each one, so there are two commits.
-
-Open https://gitlab-gitlab.{openshift_subdomain}/globex/globex-complaint-agent-helm/-/edit/main/templates/secret.yaml[templates/secret.yaml^].
-
-Add the two URLs under the existing properties, reading them from values:
-
-[source,yaml,role="copypaste"]
-----
-    quarkus.langchain4j.mcp.orders.url={{ .Values.mcp.orders.url }}
-    quarkus.langchain4j.mcp.complaint.url={{ .Values.mcp.complaint.url }}
-----
-
-Keep the indentation. Everything under `stringData.application.properties` is indented four spaces.
-
-Only the URLs belong here. The transport types are already in the image, and repeating them in the Secret would not create a client anyway.
-
-Commit the change to `main`.
-
-== Edit the values
+You edit the two chart files directly in GitLab and commit each one, so there are two commits. Do the values first: a template that reads a value which does not exist yet fails to render, and ArgoCD reports the whole application as broken until the second commit lands.
 
 Open https://gitlab-gitlab.{openshift_subdomain}/globex/globex-complaint-agent-helm/-/edit/main/values.yaml[values.yaml^].
 
@@ -91,7 +73,7 @@ llm:
     baseUrl: https://api.openai.com/v1
 ----
 
-Second, add the URLs for the two MCP clients you referenced from the template:
+Second, add the URLs for the two MCP clients, which the template will read in the next step:
 
 [source,yaml,role="copypaste",subs="attributes+"]
 ----
@@ -127,6 +109,22 @@ Commit the change to `main`.
 ====
 This puts your OpenAI API key in a Git repository. That is fine for a workshop on a cluster that is thrown away at the end of the day, and it is not how you would handle a key in production -- there it comes from a secret manager or a sealed secret, never from the chart.
 ====
+
+== Edit the Secret template
+
+Open https://gitlab-gitlab.{openshift_subdomain}/globex/globex-complaint-agent-helm/-/edit/main/templates/secret.yaml[templates/secret.yaml^] and add the two URLs under the existing properties, reading them from the values you just added:
+
+[source,yaml,role="copypaste"]
+----
+    quarkus.langchain4j.mcp.orders.url={{ .Values.mcp.orders.url }}
+    quarkus.langchain4j.mcp.complaint.url={{ .Values.mcp.complaint.url }}
+----
+
+Keep the indentation. Everything under `stringData.application.properties` is indented four spaces.
+
+Only the URLs belong here. The transport types are already in the image, and repeating them in the Secret would not create a client anyway.
+
+Commit the change to `main`.
 
 == Watch the rollout
 

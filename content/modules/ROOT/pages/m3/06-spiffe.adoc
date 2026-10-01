@@ -37,7 +37,7 @@
 //
 // Other open questions:
 //   * Whether token exchange lands at the head of Step 2 or the tail of Step 1. See the
-//     TBC on 06-two-tokens.adoc. If (b) above wins, they merge.
+//     TBC at the end of 05-authenticate-agent.adoc. If (b) above wins, they merge.
 //   * Whether tool guardrails and prompt injection are in Module 3 at all. m3/index.adoc
 //     used to list them as a fifth section and the rewrite dropped the claim; the
 //     two-step plan never mentioned them. Dropped for good, or a later module?

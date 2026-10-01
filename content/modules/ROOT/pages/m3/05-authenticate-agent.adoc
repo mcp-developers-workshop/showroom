@@ -11,6 +11,40 @@
 This page switches projects. Everything here happens in the *`globex-complaint-agent`* folder -- the agent, not either MCP server. Open a terminal there before continuing.
 ====
 
+The agent already holds a token -- the user's JWT from the chatbot. It cannot use that one to call an MCP server.
+
+It would not work: the JWT is issued by the `globex` realm for a different audience, so `globex-mcp-server` rejects it. And it is specifically forbidden. The MCP specification rules out passing a client's token straight through to a downstream server, because forwarding a token means some other service can replay it, and the audience check you set on page 2 stops meaning anything.
+
+So the agent gets a second token of its own, and the two travel together:
+
+....
+chatbot  --user JWT (globex realm)-->  agent  --agent token (internal realm)-->  MCP server
+                                              --X-User-Id: asilva-------------->
+....
+
+[cols="1,1,1", options="header"]
+|===
+| | User JWT | Agent token
+
+| Realm
+| `globex`
+| `internal`
+
+| Who it describes
+| The signed-in customer
+| The agent workload
+
+| Who issues it to whom
+| Keycloak, to the chatbot, after the customer signs in
+| Keycloak, to the agent, on a client ID and secret
+
+| Where it stops
+| The agent validates it and does not pass it on
+| The MCP servers validate it
+|===
+
+`X-User-Id` is unchanged from Module 2. The agent validates the user's JWT, takes `preferred_username` from it -- `AuthoritativeUserIdHolder` -- and sends that value. What is new is the token beside it.
+
 == Add the OIDC client extension
 
 [source,sh,role="copypaste"]
@@ -30,7 +64,7 @@ mvn quarkus:add-extension -Dextensions="oidc-client"
 Two realms, two opposite directions.
 ====
 
-The agent talks to two MCP servers and has a separate Keycloak identity for each, named `orders` and `complaint` after the MCP clients from Module 2. Each one is a *client credentials* grant: the agent presents a client ID and secret to Keycloak and gets back an access token that says it is that client. No user is involved -- this token answers "which workload is calling", not "who is the customer".
+The agent has a separate Keycloak identity for each MCP server, named `orders` and `complaint` after the MCP clients from Module 2. Each is a *client credentials* grant: the agent presents a client ID and secret to Keycloak and gets back an access token that says it is that client. No user is involved.
 
 [NOTE]
 ====
@@ -162,27 +196,9 @@ That starts the build. Leave it running and edit the chart while it works.
 
 == Configure the OIDC clients in the chart
 
-Two files in `globex-complaint-agent-helm`, edited directly in GitLab, one commit each.
+Two files in `globex-complaint-agent-helm`, edited directly in GitLab, one commit each. Do them in this order: a template that reads a value which does not exist yet fails to render, and ArgoCD reports the whole application as broken until the second commit lands.
 
-Open https://gitlab-gitlab.{openshift_subdomain}/globex/globex-complaint-agent-helm/-/edit/main/templates/secret.yaml[templates/secret.yaml^] and add six properties under the existing ones, all reading from values:
-
-[source,yaml,role="copypaste"]
-----
-    quarkus.oidc-client.orders.auth-server-url={{ .Values.oidcClient.orders.authServerUrl }}
-    quarkus.oidc-client.orders.client-id={{ .Values.oidcClient.orders.clientId }}
-    quarkus.oidc-client.orders.credentials.secret={{ .Values.oidcClient.orders.secret }}
-    quarkus.oidc-client.complaint.auth-server-url={{ .Values.oidcClient.complaint.authServerUrl }}
-    quarkus.oidc-client.complaint.client-id={{ .Values.oidcClient.complaint.clientId }}
-    quarkus.oidc-client.complaint.credentials.secret={{ .Values.oidcClient.complaint.secret }}
-----
-
-Keep the indentation. Everything under `stringData.application.properties` is indented four spaces.
-
-The block already there for `quarkus.oidc.*` is the agent as a resource server, against the `globex` realm. These are the other direction. Leave it alone.
-
-Commit the change to `main`.
-
-Then open https://gitlab-gitlab.{openshift_subdomain}/globex/globex-complaint-agent-helm/-/edit/main/values.yaml[values.yaml^] and supply them:
+Open https://gitlab-gitlab.{openshift_subdomain}/globex/globex-complaint-agent-helm/-/edit/main/values.yaml[values.yaml^] and add a new block at the end of the file:
 
 [source,yaml,role="copypaste",subs="attributes+"]
 ----
@@ -197,14 +213,45 @@ oidcClient:
     secret: {keycloak_realm_internal_complaints_client_secret}
 ----
 
+[WARNING]
+====
+`oidcClient` is a new top-level key. There is already an `oidc` key in this file for the agent as a resource server -- leave it alone, and do not merge these entries into it. Two keys with the same name in one YAML file do not merge; the second silently replaces the first, and you would lose the agent's existing OIDC configuration.
+====
+
 Commit the change to `main`.
 
-// TBC: the values keys above (oidcClient.orders.* / oidcClient.complaint.*) are invented.
-// m2/07-deploy-agent.adoc:46 says secret.yaml already has an OIDC block, so there is
-// probably an existing `oidc:` key for the resource-server side -- `oidcClient` is chosen
-// here to sit beside it rather than collide with it, but the real chart has not been read.
-// The chart is never cloned, only edited through the GitLab web UI, so read
-// globex-complaint-agent-helm off GitLab and correct both blocks before the walkthrough.
+Then open https://gitlab-gitlab.{openshift_subdomain}/globex/globex-complaint-agent-helm/-/edit/main/templates/secret.yaml[templates/secret.yaml^] and add six properties under the existing ones, all reading from the values you just added:
+
+[source,yaml,role="copypaste"]
+----
+    quarkus.oidc-client.orders.auth-server-url={{ .Values.oidcClient.orders.authServerUrl }}
+    quarkus.oidc-client.orders.client-id={{ .Values.oidcClient.orders.clientId }}
+    quarkus.oidc-client.orders.credentials.secret={{ .Values.oidcClient.orders.secret }}
+    quarkus.oidc-client.complaint.auth-server-url={{ .Values.oidcClient.complaint.authServerUrl }}
+    quarkus.oidc-client.complaint.client-id={{ .Values.oidcClient.complaint.clientId }}
+    quarkus.oidc-client.complaint.credentials.secret={{ .Values.oidcClient.complaint.secret }}
+----
+
+Keep the indentation. Everything under `stringData.application.properties` is indented four spaces.
+
+The `quarkus.oidc.*` block already in this file is the agent as a resource server, against the `globex` realm. These six are the other direction.
+
+Commit the change to `main`.
+
+[NOTE]
+====
+If ArgoCD shows `nil pointer evaluating interface {}.secret`, the template is reading a key that `values.yaml` does not define. The two files disagree -- check that the path after `.Values.` matches the block above exactly, including `oidcClient` rather than `oidc`.
+====
+
+// TBC: the values keys above (oidcClient.orders.* / oidcClient.complaint.*) are invented,
+// and the chart itself has still not been read. CONFIRMED 2026-10-01 that an `oidc:` key
+// already exists in values.yaml: the walkthrough pasted the earlier version of the
+// secret.yaml block, which read .Values.oidc.orders.secret, and ArgoCD failed with
+// "nil pointer evaluating interface {}.secret" -- nil on `.secret` rather than on
+// `.orders` means `oidc` resolved to a map that has no `orders` child. Hence `oidcClient`
+// as a separate top-level key, and the duplicate-key WARNING above.
+// Still to do: read globex-complaint-agent-helm off GitLab and confirm the existing
+// `oidc:` block's shape, in case there is a house convention worth following instead.
 //
 // ALSO VERIFY: with no quarkus.oidc-client.* in application.properties at all, confirm
 // the named clients still resolve. @NamedOidcClient is matched against runtime config, so
@@ -240,7 +287,14 @@ Wait for *Last Sync* to show your chart commit and the pod to be a few minutes o
 
 == Test it
 
-Back in the chatbot, sign in as `asilva` and ask again:
+Start the chatbot again with `npm start`, and check that `src/environments/environment.ts` points at the deployed agent:
+
+[source,typescript,subs="attributes+"]
+----
+apiUrl: 'https://globex-complaint-agent.{openshift_subdomain}/api/v1',
+----
+
+Sign in as `asilva` and ask again:
 
 [source,text,role="copypaste"]
 ----
@@ -250,3 +304,30 @@ I want to raise a complaint
 The orders come back. The agent is now an authenticated workload.
 
 // TBC: screenshot of the working chat once the agent authenticates.
+
+The next step is to stop relying on a shared secret to establish the agent's identity at all.
+
+// TBC -- CARRYING THE USER'S IDENTITY DOWNSTREAM. Token exchange is in scope -- the user
+// confirmed 2026-10-01 that the Globex Store API gets secured next and that token exchange
+// is what it is for -- but how it is handled is not decided, so there are no steps yet.
+// It probably becomes its own page: the last of Step 1, or the first of Step 2.
+//
+// What is known:
+//   * The downstream hop is globex-store-mcp -> Globex Store REST API. That API is
+//     currently open (verified: GET /services/order/asilva/orders returns 200 with no
+//     token). Securing it is the next piece of work.
+//   * That brings quarkus-rest-client-oidc-token-propagation back into scope, on
+//     globex-store-mcp, with @io.quarkus.oidc.token.propagation.AccessToken on
+//     GlobexStoreRestClient -- which has three unannotated methods today. NOT on the
+//     agent: the agent holds its own client-credentials token, and forwarding the user's
+//     token is the passthrough the top of this page rules out.
+//   * m3/index.adoc promises "Enable secure downstream Token Exchange in Quarkus MCP
+//     Servers for backend API calls". That claim is unbuilt, not unsupported. Keep it.
+//
+// What is undecided:
+//   * Whether the Store API is secured at the platform level or by an edit attendees
+//     make. They never clone it and it ships from the install repository -- the same
+//     question globex-complaints raised, which was answered there with a clone.
+//   * Whether the exchanged token carries the USER's identity. If it does, this is what
+//     finally closes the "trusted rather than verified" gap that 07-summary.adoc states.
+//     If it only carries the MCP server's own identity, the gap stays open into Step 2.
