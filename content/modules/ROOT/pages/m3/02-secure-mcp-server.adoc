@@ -61,7 +61,7 @@ The `internal` realm and every client this module names are created when your la
 // against the internal realm's token endpoint and decodes it would make the client
 // credentials grant and the aud claim visible, rather than something a framework does
 // invisibly two pages later. It would sit well either here or straight after
-// 05-agent-service-account.adoc. Running on the cluster removed the forced NEED for one
+// 05-authenticate-agent.adoc. Running on the cluster removed the forced NEED for one
 // -- the Dev UI is local-only, and m1/02-generate.adoc and the MCP Inspector pages are
 // used before auth exists, so they stay correct as written. So this is a teaching
 // improvement, not a gap, and it is the first thing to cut if the module runs long.

@@ -8,8 +8,8 @@
 //   01 Baseline            -> 01-baseline.adoc
 //   02 Secure orders       -> 02-secure-mcp-server.adoc
 //   02b Secure complaints  -> 03-secure-complaints-server.adoc
-//   03 Watch it break      -> 04-agent-fails.adoc
-//   04 Service account     -> 05-agent-service-account.adoc
+//   03 Watch it break      -> 04-servers-secured.adoc
+//   04 Service account     -> 05-authenticate-agent.adoc
 //   05 Two tokens          -> 06-two-tokens.adoc
 //                             07-spiffe.adoc (all of Step 2, placeholder)
 //                             08-summary.adoc
