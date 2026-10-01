@@ -70,5 +70,5 @@ Step 1 of this module closes the first one. The agent gets an identity of its ow
 
 [NOTE]
 ====
-The `[IMPORTANT]` note at the end of `xref:m2/05-pass-user-id.adoc[Send the User ID with the Tool Call]` says the MCP server taking the header at face value gets fixed later in the workshop. This module narrows that problem rather than closing it. By the end of Step 1 only an authenticated workload can reach the server at all -- but that workload is still trusted, not verified, when it says who the user is.
+The `[IMPORTANT]` note at the end of xref:m2/05-pass-user-id.adoc[Send the User ID with the Tool Call] says the MCP server taking the header at face value gets fixed later in the workshop. This module narrows that problem rather than closing it. By the end of Step 1 only an authenticated workload can reach the server at all -- but that workload is still trusted, not verified, when it says who the user is.
 ====

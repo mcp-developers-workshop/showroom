@@ -52,7 +52,7 @@ And it is specifically forbidden. The MCP specification rules out passing a clie
 
 *Not fixed.* The MCP server still believes the agent about which customer is asking. `X-User-Id` is still an unverified claim -- the difference is that only an authenticated workload can make it. The agent is trusted rather than verified.
 
-That is a real narrowing and not a fix. The `[IMPORTANT]` note at the end of `xref:m2/05-pass-user-id.adoc[Send the User ID with the Tool Call]` promised this gets addressed later in the workshop, and it is still outstanding at this point.
+That is a real narrowing and not a fix. The `[IMPORTANT]` note at the end of xref:m2/05-pass-user-id.adoc[Send the User ID with the Tool Call] promised this gets addressed later in the workshop, and it is still outstanding at this point.
 
 == Carrying the user's identity downstream
 
