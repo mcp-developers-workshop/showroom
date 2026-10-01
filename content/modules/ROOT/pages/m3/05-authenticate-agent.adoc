@@ -253,11 +253,11 @@ If ArgoCD shows `nil pointer evaluating interface {}.secret`, the template is re
 // Still to do: read globex-complaint-agent-helm off GitLab and confirm the existing
 // `oidc:` block's shape, in case there is a house convention worth following instead.
 //
-// ALSO VERIFY: with no quarkus.oidc-client.* in application.properties at all, confirm
-// the named clients still resolve. @NamedOidcClient is matched against runtime config, so
-// supplying every key from the mounted Secret should work -- but if the build needs a
-// named client declared at build time, the two client-id lines have to go back into
-// application.properties and only the URL and secret stay here.
+// RESOLVED 2026-10-01: moving every quarkus.oidc-client.* key out of
+// application.properties and into the chart works. @NamedOidcClient resolves from runtime
+// config alone -- the agent's MCP health check reported "orders":"OK" against the secured
+// server, so the client was created and its token was accepted. The client-id lines do not
+// need to stay in application.properties.
 
 [NOTE]
 ====
@@ -287,7 +287,7 @@ Wait for *Last Sync* to show your chart commit and the pod to be a few minutes o
 
 == Test it
 
-Start the chatbot again with `npm start`, and check that `src/environments/environment.ts` points at the deployed agent:
+Start the chatbot again with `npm start` from the `mcp-workshop-chatbot` folder, and check that `src/environments/environment.ts` points at the deployed agent:
 
 [source,typescript,subs="attributes+"]
 ----
