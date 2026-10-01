@@ -1,0 +1,98 @@
+:experimental:
+:imagesdir: ../../assets/images
+
+= Require a Token on the Orders MCP Server
+:numbered:
+:icons: font
+:source-highlighter: highlight.js
+
+[IMPORTANT]
+====
+Everything on this page happens in the *`globex-store-mcp`* folder -- the MCP server you built in Module 1, not the agent.
+====
+
+== Add the OIDC extension
+
+From inside `globex-store-mcp`:
+
+[source,sh,role="copypaste"]
+----
+./mvnw quarkus:add-extension -Dextensions="oidc"
+----
+
+[NOTE]
+====
+`quarkus-oidc` and `quarkus-oidc-client` are two different extensions and the names are one word apart.
+
+* `quarkus-oidc` makes an application a *resource server*: it validates tokens that arrive. That is what you want here.
+* `quarkus-oidc-client` makes an application a *client*: it fetches tokens to send. The agent gets that one, two pages from now.
+====
+
+== Configure it
+
+Add to `src/main/resources/application.properties`:
+
+[source,properties,role="copypaste",subs="attributes+"]
+----
+# OIDC Configuration for Service Account Authentication
+quarkus.oidc.auth-server-url=https://sso.{openshift_subdomain}/realms/internal
+quarkus.oidc.client-id=globex-mcp-server
+quarkus.oidc.token.audience=globex-mcp-server
+
+# Secure the MCP endpoint
+quarkus.http.auth.permission.mcp.paths=/mcp,/mcp/*
+quarkus.http.auth.permission.mcp.policy=authenticated
+----
+
+Three things are happening:
+
+`auth-server-url` points at the `internal` realm. That is a different realm from the one the chatbot signs users into. Customers live in `globex`; workloads live in `internal`. Keeping them apart is deliberate, and the next-but-one page is where it matters.
+
+`token.audience` is the part that does the real work. Without it the server accepts any valid token the realm issued, for any purpose -- including one minted for a completely different service. With it, the token has to carry `aud: globex-mcp-server`, which means it was issued *to be used here*.
+
+`http.auth.permission.mcp` is what turns the lock. Anything under `/mcp` now needs an authenticated caller.
+
+// TBC -- OPTIONAL PAGE, WORTH CONSIDERING. A short page that fetches a token by hand
+// against the internal realm's token endpoint and decodes it would make the client
+// credentials grant and the aud claim visible, rather than something a framework does
+// invisibly two pages later. It would sit well either here or straight after
+// 05-agent-service-account.adoc. Running on the cluster removed the forced NEED for one
+// -- the Dev UI is local-only, and m1/02-generate.adoc and the MCP Inspector pages are
+// used before auth exists, so they stay correct as written. So this is a teaching
+// improvement, not a gap, and it is the first thing to cut if the module runs long.
+
+[NOTE]
+====
+No client secret appears anywhere on this page. The server only *validates* tokens, and it does that with the realm's public keys, which it downloads from `auth-server-url` when it starts. A resource server needs no credentials of its own. The agent is the one that has to prove who it is, and that is where secrets show up.
+====
+
+== Compile
+
+[source,sh,role="copypaste"]
+----
+./mvnw clean compile
+----
+
+== Commit and push
+
+[source,sh,role="copypaste"]
+----
+git add .
+git commit -m "require a token on the MCP server"
+git push
+----
+
+The push prompts for GitLab credentials. Use the workshop developer account:
+
+[cols="1,2", options="header"]
+|===
+| Field | Value
+
+| Username
+| `developer`
+
+| Password
+| `{common_password}`
+|===
+
+A webhook starts the pipeline. *Do not wait for it.* The next page secures the second MCP server, and you want both pipelines running at the same time.

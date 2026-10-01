@@ -47,10 +47,18 @@ Edit `src/environments/environment.ts` and point `apiUrl` at your locally runnin
 
 [source,typescript,role="copypaste"]
 ----
-apiUrl: 'http://localhost:8080/api/v1',
+apiUrl: 'http://localhost:8081/api/v1',
 ----
 
 The chatbot appends `/request` to that, which is the endpoint on `AgentResource`.
+
+[NOTE]
+====
+Port 8081, not the Quarkus default. The agent sets `%dev.quarkus.http.port=8081` so it
+does not collide with `globex-store-mcp`, which keeps 8080 from Module 1. The two can run
+side by side, and you will want that in Module 3. The `%dev.` prefix means this applies
+in dev mode only -- the deployed agent still listens on 8080.
+====
 
 == Point the chatbot at Keycloak
 
@@ -91,22 +99,6 @@ quarkus.oidc.auth-server-url=https://sso.{openshift_subdomain}/realms/globex
 `application.properties` already has `quarkus.oidc.application-type=service`, which is what makes the agent check the bearer token on each request rather than redirect anyone to a login page.
 
 == Start the agent and the chatbot
-
-[IMPORTANT]
-====
-Stop the Module 1 MCP server first. `globex-store-mcp` and `globex-complaint-agent` both
-use port 8080 in dev mode, and the chatbot is hardcoded to `http://localhost:8080`. If
-the Module 1 dev mode is still running, the chatbot sends its messages to the MCP server
-instead of the agent and the browser console shows a CORS error:
-
-....
-Access to XMLHttpRequest at 'http://localhost:8080/api/v1/request' from origin
-'http://localhost:4200' has been blocked by CORS policy
-....
-
-Press kbd:[q] in the `globex-store-mcp` terminal to stop it. You do not need it locally
-any more -- the agent calls the copy deployed on OpenShift.
-====
 
 Run the agent in dev mode. In the `globex-complaint-agent` terminal:
 

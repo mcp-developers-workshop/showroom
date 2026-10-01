@@ -1,0 +1,64 @@
+:experimental:
+:imagesdir: ../../assets/images
+
+= Workload Identity with SPIFFE
+:numbered:
+:icons: font
+:source-highlighter: highlight.js
+
+// TBC: THIS WHOLE PAGE IS A PLACEHOLDER AND IS NOT WALKTHROUGH-READY.
+// Step 2 of Module 3 is held here as one page on purpose, to be split into proper task
+// pages once the steps are captured on a live environment. Nothing below has been run.
+// Do not put this in front of attendees as it stands.
+//
+// Everything that was in m3/outline.adoc sections 06-10 has been folded into this file.
+//
+// Steps still to capture, in the order they were sketched:
+//   06 Why the client secret is not enough -- motivation, no steps. Written below.
+//   07 SPIRE sidecar on the agent -- what is added to the pod, and how the agent reaches
+//      the SPIRE Workload API socket to obtain a JWT-SVID instead of using a secret.
+//   08 Keycloak configuration -- map the SPIFFE ID to the service account the agent
+//      already uses from Step 1.
+//   09 MCP server changes -- what, if anything, changes on the two servers. Never
+//      captured; the working assumption below is "nothing", and that is unverified.
+//   10 Summary.
+//
+// UNDECIDED, AND IT CHANGES THE WHOLE PAGE -- how Keycloak consumes the JWT-SVID. Two
+// different mechanisms were sketched and they are not variants of each other:
+//   (a) Client assertion (RFC 7523). The agent keeps the client credentials grant from
+//       Step 1 but sends the JWT-SVID as client_assertion in place of client_secret.
+//       Quarkus supports this natively via quarkus.oidc-client.*.credentials.jwt.*. This
+//       is the smaller change and maps most directly onto "the secret goes away" -- the
+//       two oidc-client blocks from page 05 stay, minus the secret.
+//   (b) Identity federation. Register the SPIFFE trust domain as an identity provider in
+//       the internal realm and exchange the SVID for a realm token. More moving parts in
+//       Keycloak, and it brings token exchange into the same page.
+// The prose below deliberately says neither. Pick one before writing steps.
+//
+// Other open questions:
+//   * Whether token exchange lands at the head of Step 2 or the tail of Step 1. See the
+//     TBC on 06-two-tokens.adoc. If (b) above wins, they merge.
+//   * Whether tool guardrails and prompt injection are in Module 3 at all. m3/index.adoc
+//     used to list them as a fifth section and the rewrite dropped the claim; the
+//     two-step plan never mentioned them. Dropped for good, or a later module?
+//   * Whether the SPIRE infrastructure is pre-installed by the workshop environment or
+//     attendees install it.
+
+== Why the client secret is not enough
+
+`globex-mcp-client`'s secret is a long-lived bearer credential, and in the last section you committed one to a Git repository to make the agent work. That is the honest state of what you built:
+
+* Anything holding that string *is* the agent, from anywhere, until someone changes it.
+* Nothing attests that the caller is the workload it claims to be. Keycloak checks that the secret is correct, not that the process presenting it is the agent running in your cluster.
+* Rotation is manual, which in practice means it does not happen.
+
+SPIFFE replaces the shared secret with an identity the platform issues and attests, scoped to where the workload actually runs, and short-lived by construction. The agent stops holding a password and starts proving what it is.
+
+== What Step 2 builds
+
+A SPIRE agent attests the workload and issues it a short-lived JWT-SVID. Keycloak is configured to accept that SVID in place of the client secret, resolving to the same service account the agent already uses -- so the MCP servers need no change, and the two `quarkus.oidc-client.*` blocks from the last page stay. What goes away is the secret in `values.yaml`.
+
+[IMPORTANT]
+====
+This page is an outline of Step 2, not lab steps. The instructions are still being written.
+====

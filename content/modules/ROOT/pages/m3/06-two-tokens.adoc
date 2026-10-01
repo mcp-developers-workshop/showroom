@@ -1,0 +1,87 @@
+:experimental:
+:imagesdir: ../../assets/images
+
+= Two Tokens, Two Realms
+:numbered:
+:icons: font
+:source-highlighter: highlight.js
+
+Nothing from Modules 1 and 2 was taken away to get here. `X-User-Id` still carries the customer, exactly as you built it. The service-account token was added alongside it.
+
+....
+chatbot  --user JWT (globex realm)-->  agent  --SA token (internal realm)-->  MCP server
+                                              --X-User-Id: asilva----------->
+....
+
+Two tokens, from two realms, answering two different questions:
+
+[cols="1,1,1", options="header"]
+|===
+| | User JWT | Service-account token
+
+| Realm
+| `globex`
+| `internal`
+
+| Who it describes
+| The signed-in customer
+| The agent workload
+
+| Who issues it to whom
+| Keycloak, to the chatbot, after the customer signs in
+| Keycloak, to the agent, on a client ID and secret
+
+| Where it stops
+| The agent validates it and does not pass it on
+| The MCP servers validate it
+|===
+
+The agent validates the user's JWT, takes `preferred_username` from it -- `AuthoritativeUserIdHolder`, unchanged from Module 2 -- and sends that value as `X-User-Id`. Then it authenticates to the MCP server as itself.
+
+== Why the user's token is not forwarded
+
+It would be the obvious shortcut, and it is wrong twice over.
+
+It would not work: the user's token is issued by the `globex` realm for a different audience, so `globex-mcp-server` would reject it.
+
+And it is specifically forbidden. The MCP specification rules out passing a client's token straight through to a downstream server. A token is issued for a particular audience; forwarding it means some other service can now replay it, and the audience check that makes `token.audience` worth setting stops meaning anything.
+
+== What this fixed, and what it did not
+
+*Fixed.* The routes are no longer open. An anonymous caller gets 401, and a token minted for something else fails the audience check. Every call to an MCP server now comes from a workload that proved its identity to Keycloak.
+
+*Not fixed.* The MCP server still believes the agent about which customer is asking. `X-User-Id` is still an unverified claim -- the difference is that only an authenticated workload can make it. The agent is trusted rather than verified.
+
+That is a real narrowing and not a fix. The `[IMPORTANT]` note at the end of `xref:m2/05-pass-user-id.adoc[Send the User ID with the Tool Call]` promised this gets addressed later in the workshop, and it is still outstanding at this point.
+
+== Carrying the user's identity downstream
+
+// TBC: THIS SECTION IS A PLACEHOLDER. Token exchange is in scope -- the user confirmed
+// 2026-10-01 that the Globex Store API gets secured next and that token exchange is what
+// it is for -- but how it is handled is not decided, so there are no steps to write yet.
+//
+// What is known:
+//   * The downstream hop is globex-store-mcp -> Globex Store REST API. That API is
+//     currently open (verified: GET /services/order/asilva/orders returns 200 with no
+//     token). Securing it is the next piece of work.
+//   * That brings quarkus-rest-client-oidc-token-propagation back into scope, on
+//     globex-store-mcp, with @io.quarkus.oidc.token.propagation.AccessToken on
+//     GlobexStoreRestClient -- which has three unannotated methods today. NOT on the
+//     agent: the agent holds a service-account token, and forwarding the user's token is
+//     the passthrough this page just explained is forbidden.
+//   * m3/index.adoc promises "Enable secure downstream Token Exchange in Quarkus MCP
+//     Servers for backend API calls". That claim is unbuilt, not unsupported. Keep it.
+//
+// What is undecided:
+//   * Whether the Store API is secured at the platform level or by an edit attendees
+//     make. They never clone it and it ships from the install repository -- the same
+//     question globex-complaints raised, which was answered there with a clone.
+//   * Whether the exchanged token carries the USER's identity. If it does, this is what
+//     finally closes the "trusted rather than verified" gap above, and that changes what
+//     the section before this one should say. If it only carries the MCP server's own
+//     identity, the gap stays open into Step 2 and SPIFFE.
+//   * Whether this lands as the last page of Step 1 or the first page of Step 2.
+//
+// Until it is decided, this page ends at the honest statement of what is still broken.
+
+The next step is to stop relying on a shared secret to establish the agent's identity at all.

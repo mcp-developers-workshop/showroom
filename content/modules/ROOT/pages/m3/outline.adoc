@@ -3,10 +3,47 @@
 
 // PLANNING DOC -- not lab content, not in nav.adoc. Delete or move out of pages/
 // before release, or Antora will publish it at a URL even though nothing links to it.
+//
+// SUPERSEDED FOR STEP 1, 2026-10-01. Sections 01-05 are now written as lab pages:
+//   01 Baseline            -> 01-baseline.adoc
+//   02 Secure orders       -> 02-secure-mcp-server.adoc
+//   02b Secure complaints  -> 03-secure-complaints-server.adoc
+//   03 Watch it break      -> 04-agent-fails.adoc
+//   04 Service account     -> 05-agent-service-account.adoc
+//   05 Two tokens          -> 06-two-tokens.adoc
+//                             07-spiffe.adoc (all of Step 2, placeholder)
+//                             08-summary.adoc
+// Every open TBC moved with it and now lives on the page it affects. Step 2 (sections
+// 06-10) has since been folded into 07-spiffe.adoc too, including the undecided
+// client-assertion-vs-federation question, which is only stated properly there.
+//
+// SO: EDIT THE PAGES, NOT THIS FILE. Nothing here is load-bearing any more. It is kept
+// for the reasoning behind each decision -- why both servers get secured, why there is
+// no complaints chart, why Step 1 is client credentials -- which the pages act on but do
+// not argue for. Expect it to drift; the pages win any disagreement.
 
 Two-step arc: earn identity with OIDC client credentials first, then replace the shared
 secret with SPIFFE workload identity. Step 1 is the mechanism most teams already have;
 Step 2 is what it does not solve.
+
+*Module 3 runs against the cluster, not localhost.* Module 2 ends with the chatbot
+pointed at the deployed agent route, and Module 3 continues from there: edit, push, let
+the pipeline build, watch it on OpenShift. Nothing runs in dev mode. The identity
+configuration is cluster-side anyway -- Keycloak realms, service accounts, audience
+mappers -- and testing locally would mean putting the client secret on the attendee's
+laptop and maintaining a second config path.
+
+Consequences to carry through every page:
+
+* *Compile locally, test on the cluster.* Attendees hand-write a class in section 04. Tell
+  them to run `mvn clean compile` before pushing, or a typo costs a full pipeline
+  round-trip to discover.
+* *Push the two servers together.* Sections 02 and 02b both end in a push; if the
+  attendee pushes both and then watches, the pipelines run concurrently and there is one
+  wait instead of two.
+* *Say up front that there is no live reload.* Module 2 gave instant feedback from
+  `quarkus:dev`. Module 3 does not, and an attendee who does not know that will assume
+  their change failed.
 
 == Step 1 -- OIDC and Keycloak
 
@@ -59,10 +96,201 @@ quarkus.http.auth.permission.mcp.policy=authenticated
 * Audience validation is the part that matters: a token minted for something else is
   rejected, not merely any valid token accepted.
 
+Check it compiles before pushing -- there is no dev mode to catch mistakes here:
+
+[source,sh,role="copypaste"]
+----
+./mvnw clean compile
+----
+
+Then commit and push, exactly as in Module 1:
+
+[source,sh,role="copypaste"]
+----
+git add .
+git commit -m "require a token on the MCP server"
+git push
+----
+
+The push triggers the `globex-store-mcp-build` pipeline, which builds a new image and
+rolls it out. Do not wait for it yet -- push the complaints server first and let both
+builds run together.
+
+// PLANNING NOTES:
+// * This is the same GitLab remote and the same pipeline Module 1 used, so the
+//   commit/push mechanics are already familiar -- m1/05-deploy.adoc covers the
+//   credentials prompt and the ArgoCD walkthrough. Reference it rather than repeating.
+// * Rollout is watched once, at the end of 02b, so the two pipelines overlap.
+
+=== 02b Require a token on the complaints server
+
+The orders server is locked down; the complaints server is still open. Module 2 treated
+it as something already running on the cluster, so this is the first time you see its
+source.
+
+==== Clone the repository
+
+Open a new terminal in IBM Bob (*Terminal* -> *New Terminal*). From the `workshop`
+folder:
+
+[source,sh,role="copypaste",subs="attributes+"]
+----
+git clone https://gitlab-gitlab.{openshift_subdomain}/globex/globex-complaints.git
+cd globex-complaints/
+----
+
+==== What is in the repository
+
+A Quarkus application backed by the Globex Postgres database, with *two* MCP servers in
+one deployment:
+
+[source,text]
+----
+src/main/java/org/globex/retail/complaints/
+├── mcp/ComplaintsMcp.java          <1>
+├── mcp/ComplaintsReadMcp.java      <2>
+├── rest/ComplaintResource.java
+├── service/ComplaintService.java
+├── service/DatabaseService.java
+└── persistence/Complaint.java
+src/main/resources/application.properties
+----
+
+<1> The tools you used in Module 2 -- `create_complaint`, `get_complaint`,
+    `update_complaint` -- served at `/mcp`.
+<2> A second, read-only server at `/read/mcp`. Module 5 uses it.
+
+`application.properties` already declares both:
+
+[source,properties]
+----
+quarkus.mcp.server.http.root-path=/mcp
+quarkus.mcp.server.read.http.root-path=/read/mcp
+----
+
+==== Add the extension
+
+No Maven wrapper in this repository, so plain `mvn`:
+
+[source,sh,role="copypaste"]
+----
+mvn quarkus:add-extension -Dextensions="oidc"
+----
+
+==== Secure both endpoints
+
+Add to `src/main/resources/application.properties`:
+
+[source,properties,subs="attributes+"]
+----
+# OIDC Configuration for Service Account Authentication
+quarkus.oidc.auth-server-url=https://sso.{openshift_subdomain}/realms/internal
+quarkus.oidc.client-id=globex-complaints-server
+
+# Secure both MCP endpoints
+quarkus.http.auth.permission.mcp.paths=/mcp,/mcp/*,/read/mcp,/read/mcp/*
+quarkus.http.auth.permission.mcp.policy=authenticated
+quarkus.http.cors.enabled=true
+----
+
+[NOTE]
+====
+No client secret here. The complaints server only *validates* tokens, and it does that
+with the realm's public keys, which it fetches from `auth-server-url` at startup. A
+resource server needs no credentials of its own. The agent, in section 04, is the one
+that has to prove who it is -- that is where secrets appear.
+====
+
+
+// TBC: validate quarkus.http.cors.enabled=true. It is here because a message in the
+// complaints pod log asked for it, and it is in the working configuration on the
+// cluster, so it stays for now. What has NOT been established is why. Confirmed facts:
+// quarkus-mcp-server-http 2.0.0 contains no CORS string in its runtime or deployment
+// jars, so the message did not come from the MCP extension; and globex-store-mcp runs
+// streamable HTTP with no CORS at all, so the transport does not require it. Leading
+// hypothesis: with policy=authenticated and CORS disabled, a browser preflight OPTIONS
+// is handled by the auth layer and 401s -- enabling CORS puts the CORS filter ahead of
+// authentication. If that is it, the same applies to globex-store-mcp for any browser
+// caller, and the explanation belongs on the page. Capture the exact log line on the
+// walkthrough. Low priority -- the workshop does not turn on this.
+
+// TBC -- CAUSE FOUND, FIX NOT MADE: token.audience is absent here while globex-store-mcp
+// keeps quarkus.oidc.token.audience=globex-mcp-server. The user added it, hit a failure,
+// and removed it (commit 10f3495). It is a realm-seed asymmetry, in
+// install-helm/globex/keycloak-realmimport-internal/templates/keycloak-realmimport.yaml:
+//   - the realm defines exactly two audience client scopes, <mcpServer.id>-scope and
+//     <mcpService.id>-scope, each with an oidc-audience-mapper (lines 1392 and 1415).
+//   - mcpClient (= globex-mcp-client, the agent's identity for orders) has
+//     mcpServer.scope as a DEFAULT client scope, so its tokens always carry
+//     aud=globex-mcp-server. That is why section 02's audience check works.
+//   - complaintsClient (= globex-agent-complaints-client, the agent's identity for
+//     complaints) has both audience scopes only as OPTIONAL scopes. Optional scopes are
+//     applied only when requested by name, and quarkus-oidc-client requests none, so its
+//     token carries no aud at all -- hence the 401 and the removal.
+// Fix at source, in the realm import, not in the lab text. Either move the complaints
+// audience scope to defaultClientScopes for complaintsClient (mirrors mcpClient, no agent
+// change), or set quarkus.oidc-client.complaint.scopes=<that scope> in the agent (makes
+// the mechanism visible but adds a line to explain). Prefer the first.
+// Blocking check before either: confirm which of mcpServer.id / mcpService.id is
+// globex-complaints-server. The values are empty in the chart's values.yaml and are
+// injected from outside this repo, so read them off the running realm.
+// Why this matters: section 02 tells attendees audience validation "is the part that
+// matters". Shipping one server that checks it and one that does not, with no
+// explanation, contradicts the page before it.
+
+The permission path covers both root paths. Leaving `/read/mcp` open would mean the
+read-only tools -- the ones that return other customers' complaints in bulk -- stay
+reachable by anyone, which is the wrong half to leave unlocked.
+
+==== Compile, commit and push
+
+[source,sh,role="copypaste"]
+----
+mvn clean compile
+git add .
+git commit -m "require a token on the complaints server"
+git push
+----
+
+==== Watch both rollouts
+
+Both pipelines are now running -- `globex-store-mcp` from the previous section and
+`globex-complaints` from this one. In ArgoCD, wait until both applications show a new pod
+before continuing. If only one has rolled out, the next section shows a half-secured
+state that is confusing rather than instructive.
+
+// PLANNING NOTES:
+// * Repo verified via the GitHub org 2026-09-30: no mvnw (hence `mvn`), two MCP servers
+//   (/mcp and /read/mcp), package org.globex.retail.complaints.
+// * Build loop: install-helm/globex-complaints-build -- GitLab webhook, EventListener,
+//   buildah, ArgoCD resync, same shape as globex-complaint-agent-build.
+// * Config goes in application.properties, not a chart Secret: a resource server holds
+//   no secret, and it keeps this symmetrical with section 02.
+// * Securing /read/mcp has a Module 5 consequence, and it looks like a *good* one --
+//   m5/02-connection.adoc already tells attendees to run
+//   `orchestrate connections set-credentials` and has an open TBC about where the
+//   Keycloak client ID and secret come from. This is plausibly the answer. Verify, and
+//   if so, close that TBC by pointing at the client created here.
+// * Whether the agent also needs a client for /read/mcp: the agent only uses /mcp. The
+//   Module 5 gateway/Orchestrate path uses /read/mcp. Two different callers, so possibly
+//   two Keycloak clients.
+
 === 03 Watch the agent break
 
 Deploy, ask the chatbot for orders, and the tool call fails with 401. The MCP server pod
 log shows the rejection. Nothing about the agent changed -- it never had a token to send.
+
+With both servers secured, it does not matter which tool the model reaches for first;
+every one of them fails the same way. That is the reason for securing both before this
+page rather than after it.
+
+// PLANNING NOTES:
+// * VERIFY ON THE WALKTHROUGH: what does the langchain4j MCP client do when the
+//   tool-LIST call at startup gets a 401, as opposed to a tool CALL at runtime? If
+//   startup fails outright, or the client silently registers zero tools and the agent
+//   answers from the model alone, this page needs rewriting -- the attendee would see a
+//   startup stack trace or a plausible-sounding hallucination, not a clean 401 in the
+//   chat. Check the agent log and the MCP server pod log together.
 
 === 04 Give the agent a service account
 
@@ -77,41 +305,112 @@ The agent needs an identity of its own. Add the extension:
 
 [source,sh,role="copypaste"]
 ----
-mvn quarkus:add-extension -Dextensions="oidc-client,rest-client-oidc-token-propagation"
+mvn quarkus:add-extension -Dextensions="oidc-client"
 ----
 
 `quarkus-oidc` is already on the agent -- it is how the agent validates the user's JWT.
 That is the *resource server* side. What is new here is the *client* side: getting a token
 of the agent's own.
 
-Configure the OIDC client in `.env`, so the secret stays off your machine's git history:
+The agent talks to two MCP servers, so it needs two OIDC clients -- one per server, each
+named after the MCP client it serves. The URLs and client IDs are not secret, so they go
+in `src/main/resources/application.properties`:
 
-[source,properties,role="copypaste",subs="attributes+"]
+[source,properties,subs="attributes+"]
 ----
-quarkus.oidc-client.globex-store.auth-server-url=https://sso.{openshift_subdomain}/realms/internal
-quarkus.oidc-client.globex-store.client-id=globex-mcp-client
-quarkus.oidc-client.globex-store.credentials.secret={keycloak_realm_internal_globex_mcp_client_secret}
+quarkus.oidc-client.orders.auth-server-url=https://sso.{openshift_subdomain}/realms/internal
+quarkus.oidc-client.orders.client-id=globex-mcp-client
+
+quarkus.oidc-client.complaint.auth-server-url=https://sso.{openshift_subdomain}/realms/internal
+quarkus.oidc-client.complaint.client-id=globex-agent-complaints-client
 ----
+
+`orders` and `complaint` are the names the MCP clients already use --
+`quarkus.langchain4j.mcp.orders.*` and `quarkus.langchain4j.mcp.complaint.*` from Module 2.
+Reusing them for the OIDC clients is a convention, not a requirement, and it is what keeps
+the next two classes readable.
+
+The client secrets do *not* go here -- `application.properties` is baked into the
+container image. They travel the same route the model API key took in Module 2: the
+Secret template and `values.yaml` in `globex-complaint-agent-helm`.
+
+[NOTE]
+====
+`values.yaml` is committed to Git, so the secret is committed with it -- the same
+shortcut the model API key took in Module 2. In production the secret would come from a
+secret manager, rotate on a schedule, and never reach the repository. The workshop keeps
+it in Git to avoid standing up another system.
+
+Step 2 of this module takes the secret away entirely, so this is the weakness the rest of
+Module 3 is about.
+====
+
+// PLANNING NOTE: that [NOTE] and section 06 are the same argument stated twice, once as
+// a caveat and once as the motivation. Keep them in sync, and do not let 06 repeat it as
+// if it were new -- 06 should open by pointing back at this.
+
+The two secrets are on your environment page as
+`{keycloak_realm_internal_globex_mcp_client_secret}` and
+`{keycloak_realm_internal_complaints_client_secret}`.
+
+You edit the chart in GitLab, the same two files and the same two commits as Module 2.
+
+In https://gitlab-gitlab.{openshift_subdomain}/globex/globex-complaint-agent-helm/-/edit/main/templates/secret.yaml[templates/secret.yaml^],
+add the two secrets under the existing properties, reading them from values:
+
+[source,yaml,role="copypaste"]
+----
+    quarkus.oidc-client.orders.credentials.secret={{ .Values.oidc.orders.secret }}
+    quarkus.oidc-client.complaint.credentials.secret={{ .Values.oidc.complaint.secret }}
+----
+
+Then supply them in
+https://gitlab-gitlab.{openshift_subdomain}/globex/globex-complaint-agent-helm/-/edit/main/values.yaml[values.yaml^].
+
+// TBC: the two attribute NAMES are settled (user, 2026-10-01) --
+// keycloak_realm_internal_globex_mcp_client_secret and
+// keycloak_realm_internal_complaints_client_secret. Both still have to be added to the
+// cluster's injected ConfigMap, and left undefined in content/antora.yml like the other
+// runtime attributes. NEVER write either real value into a doc, commit or file.
+// TBC: the values.yaml key names above (.Values.oidc.orders.secret /
+// .Values.oidc.complaint.secret) are invented. m2/07-deploy-agent.adoc:46 says
+// secret.yaml already has an OIDC block, so there may be an existing oidc: key to extend
+// rather than a new one. Read globex-complaint-agent-helm off GitLab and correct both
+// the template lines and the values block before writing the page. The chart is not
+// cloned anywhere locally -- it is only ever edited through the GitLab web UI.
+
+// PLANNING NOTES:
+// * Because Module 3 runs on the cluster, .env is irrelevant -- it is a dev-mode
+//   convenience only. Do not tell attendees to put the client secret there; it would
+//   appear to work locally and then 401 on the cluster.
+// * Spell out the exact Secret-template and values.yaml edits the way
+//   m2/07-deploy-agent.adoc does, rather than saying "same as Module 2".
+// * NEVER write the real secret value. Use
+//   {keycloak_realm_internal_globex_mcp_client_secret}, which still has to be added to
+//   the cluster's injected ConfigMap -- it does not exist yet.
 
 [WARNING]
 ====
-`.env` already has a `quarkus.oidc.auth-server-url`. Do not change it. That one is the
-agent validating incoming user tokens against the `globex` realm; these new
-`quarkus.oidc-client.*` lines are the agent fetching its own token from `internal`. One
-character apart, two different realms, two different directions.
+`application.properties` already has `quarkus.oidc.application-type=service`, and `.env`
+has a `quarkus.oidc.auth-server-url`. Leave both alone. Those are the agent *validating*
+incoming user tokens against the `globex` realm. The new `quarkus.oidc-client.*` lines
+are the agent *fetching* its own token from `internal`. One character apart, two realms,
+two opposite directions.
 ====
 
 This is the client credentials grant: the agent presents a client ID and secret to
 Keycloak and gets back an access token that says it is `globex-mcp-client`. No user is
 involved.
 
-Create the provider that puts that token on every MCP call. This goes in the same `auth`
-package as `GlobexMcpHeadersSupplier` from Module 2:
+Create the providers that put those tokens on the MCP calls. One provider per MCP client:
+there is no way to write a single class that serves both, because `@McpClientName` takes
+one name. They go in the same `auth` package as `GlobexMcpHeadersSupplier` from Module 2:
 
 [source,sh,role="copypaste"]
 ----
 mkdir -p src/main/java/org/globex/retail/ai/complaint/auth
 touch src/main/java/org/globex/retail/ai/complaint/auth/GlobexMcpAuthProvider.java
+touch src/main/java/org/globex/retail/ai/complaint/auth/GlobexComplaintMcpAuthProvider.java
 ----
 
 Open the new file in Bob and paste:
@@ -130,6 +429,8 @@ Check two things before you paste, or the editor will fill the file with errors:
   whole fails to resolve.
 ====
 
+`GlobexMcpAuthProvider.java`:
+
 [source,java,role="copypaste"]
 ----
 package org.globex.retail.ai.complaint.auth;
@@ -140,12 +441,14 @@ import io.quarkus.oidc.client.NamedOidcClient;
 import io.quarkus.oidc.client.OidcClient;
 import io.quarkus.oidc.client.runtime.TokensHelper;
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
 
 @ApplicationScoped
 @McpClientName("orders")
 public class GlobexMcpAuthProvider implements McpClientAuthProvider {
 
-    @NamedOidcClient("globex-store")
+    @Inject
+    @NamedOidcClient("orders")
     OidcClient globexStoreClient;
 
     TokensHelper tokens = new TokensHelper();
@@ -157,19 +460,54 @@ public class GlobexMcpAuthProvider implements McpClientAuthProvider {
 }
 ----
 
-Two names in that class, and they refer to different things:
+Two names in that class, and they refer to different things even though they read the same:
 
 * `@McpClientName("orders")` is the *MCP client* -- the one configured by
   `quarkus.langchain4j.mcp.orders.*` and named in `@McpToolBox("orders")`. It tells
   Quarkus which MCP client this provider supplies the header for.
-* `@NamedOidcClient("globex-store")` is the *OIDC client* -- the one configured by
-  `quarkus.oidc-client.globex-store.*`. It is where the token comes from.
+* `@NamedOidcClient("orders")` is the *OIDC client* -- the one configured by
+  `quarkus.oidc-client.orders.*`. It is where the token comes from.
 
 `TokensHelper` caches the token and refreshes it when it expires, so Keycloak is not
 called on every tool invocation.
 
-This sits alongside `GlobexMcpHeadersSupplier` from Module 2. Both are active: the
-provider supplies `Authorization`, the supplier supplies `X-User-Id`.
+Now the same again for the complaints server. `GlobexComplaintMcpAuthProvider.java`:
+
+[source,java,role="copypaste"]
+----
+package org.globex.retail.ai.complaint.auth;
+
+import io.quarkiverse.langchain4j.mcp.auth.McpClientAuthProvider;
+import io.quarkiverse.langchain4j.mcp.runtime.McpClientName;
+import io.quarkus.oidc.client.NamedOidcClient;
+import io.quarkus.oidc.client.OidcClient;
+import io.quarkus.oidc.client.runtime.TokensHelper;
+import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
+
+@ApplicationScoped
+@McpClientName("complaint")
+public class GlobexComplaintMcpAuthProvider implements McpClientAuthProvider {
+
+    @Inject
+    @NamedOidcClient("complaint")
+    OidcClient complaintClient;
+
+    TokensHelper tokens = new TokensHelper();
+
+    @Override
+    public String getAuthorization(Input input) {
+        return "Bearer " + tokens.getTokens(complaintClient).await().indefinitely().getAccessToken();
+    }
+}
+----
+
+Identical but for the two names. That is the rule this page exists to make concrete: one
+provider per MCP client, each wired to its own OIDC client, each presenting a different
+identity. A third MCP server would need a third.
+
+These sit alongside `GlobexMcpHeadersSupplier` from Module 2. All three are active: the
+providers supply `Authorization`, the supplier supplies `X-User-Id`.
 
 // PLANNING NOTES, not lab text:
 // * Imports verified by compiling the class against the agent's real classpath
@@ -179,11 +517,15 @@ provider supplies `Authorization`, the supplier supplies `X-User-Id`.
 //   nested `Input` in the method signature is correct -- do not change it to
 //   McpClientAuthProvider.Input. Reported "cannot be resolved" errors are the editor
 //   with a stale classpath, not wrong imports.
-// * OPEN: is rest-client-oidc-token-propagation actually needed? It propagates an
-//   incoming user token to downstream REST clients, and the settled design explicitly
-//   does not forward the user token anywhere. Nothing in section 04 or 05 uses it. It
-//   was in the original plan, so it is left in the command for now -- decide on the
-//   walkthrough whether to drop it or whether Step 2 needs it.
+// * REOPENED 2026-10-01 -- the downstream question below was answered yes.
+//   Previously resolved as "rest-client-oidc-token-propagation is NOT needed in either
+//   project", on the grounds that the only downstream call is MCP server -> Globex Store
+//   API and that API is unauthenticated (verified: GET /services/order/asilva/orders
+//   returns 200 with no token). The user is now securing the Store API, so the extension
+//   and @io.quarkus.oidc.token.propagation.AccessToken come back -- on
+//   globex-store-mcp's GlobexStoreRestClient, NOT on the agent. The agent still forwards
+//   nothing: it holds a service-account token, and forwarding the user's token is what
+//   the MCP spec forbids. Keep the extension out of the agent's add-extension command.
 // * Verified against the live working copies in ~/workshop on 2026-09-30:
 //   - globex-complaint-agent already has quarkus-oidc in its pom and
 //     quarkus.oidc.application-type=service in application.properties, with
@@ -196,20 +538,45 @@ provider supplies `Authorization`, the supplier supplies `X-User-Id`.
 // * The POC config also set a bare quarkus.oidc-client.auth-server-url (the unnamed
 //   default client). Dropped here -- nothing injects the default OidcClient, and it
 //   reads as a typo for quarkus.oidc.auth-server-url. Restore only if something breaks.
-// * Adapted from the POC at quarkus-mcp-demo/mcp-demo-poc/apps/globex-agent --
-//   repackaged from org.globex.ai.agent.auth, @McpClientName changed from "globex-store"
-//   to "orders" to match the workshop's MCP client name, and the debug logging removed
-//   (the POC logged the full access token).
+// * CONFIRMED WORKING 2026-09-30 against the cluster. Both classes above are transcribed
+//   from the user's running implementation in
+//   ~/workshop/globex-complaint-agent/src/main/java/org/globex/retail/ai/complaint/auth/,
+//   with three deliberate differences: the debug logging is removed (the real
+//   GlobexMcpAuthProvider logs the full access token at DEBUG -- that must never be in
+//   lab text), the no-arg constructor is dropped, and the two classes are made symmetric.
+//   Everything else, including @Inject on the @NamedOidcClient fields, is as it runs.
+//   @NamedOidcClient is a CDI qualifier, so the @Inject is load-bearing -- an earlier
+//   draft of this outline omitted it AND named the OIDC client "globex-store". Both wrong.
 // * If @McpClientName does not match the MCP client name, the provider silently never
 //   fires and the call goes out with no token -- a 401 indistinguishable from a
-//   misconfigured server. Verify on the first run.
-// * Confirm the provider and the headers supplier really do both fire; the POC had no
-//   headers supplier, so this combination is untested.
-// * Securing the complaints server needs a second oidc-client and a second provider with
-//   @McpClientName("complaint") -- see the open question on whether that server can be
-//   touched at all.
+//   misconfigured server. Worth a [NOTE] on the page.
+// * The one-provider-per-MCP-client rule is now demonstrated rather than asserted, which
+//   is the payoff for securing both servers in 02b. Keep both classes in full.
+// * Still open: whether the provider and GlobexMcpHeadersSupplier both fire on the same
+//   call. The POC had no headers supplier. The chat works end to end on the cluster and
+//   the orders tool returns data only when it has both the token and X-User-Id, so this
+//   is almost certainly already confirmed -- close it by reading the MCP server pod log
+//   on the next walkthrough rather than by reasoning about it.
 
-Retry: the tool call succeeds. The agent is now an authenticated workload.
+Compile before pushing -- you hand-wrote two classes, and the pipeline is a slow place to
+find a typo:
+
+[source,sh,role="copypaste"]
+----
+mvn clean compile
+----
+
+Then two pushes, the same pair Module 2 used: the code to `globex-complaint-agent`, and
+the two client secrets to `globex-complaint-agent-helm`. Watch the rollout in ArgoCD.
+
+Retry the chat: the tool call succeeds. The agent is now an authenticated workload.
+
+// PLANNING NOTES:
+// * Follow m2/07-deploy-agent.adoc's structure -- it already explains why code and
+//   configuration travel by different routes, and attendees have done it once.
+// * Both pushes must land before the rollout is meaningful: new code without the secret
+//   fails to start the OidcClient, the secret without the code changes nothing. Say
+//   which order, and what the pod log looks like if only one arrives.
 
 === 05 Two tokens, two realms
 
@@ -271,10 +638,14 @@ _Steps not recalled -- to be captured during the walkthrough._
 
 == Proposed page set
 
-`01-baseline.adoc`, `02-secure-mcp-server.adoc`, `03-agent-fails.adoc` (may fold into 02),
-`04-agent-service-account.adoc`, `05-propagate-user-identity.adoc`, `06-why-spiffe.adoc`,
-`07-spiffe-agent.adoc`, `08-keycloak-spiffe.adoc`, `09-spiffe-mcp-server.adoc`,
-`10-summary.adoc`.
+`01-baseline.adoc`, `02-secure-mcp-server.adoc`, `02b-secure-complaints-server.adoc`
+(likely `03-`, renumbering the rest), `03-agent-fails.adoc` (may fold into the one
+before), `04-agent-service-account.adoc`, `05-propagate-user-identity.adoc`,
+`06-why-spiffe.adoc`, `07-spiffe-agent.adoc`, `08-keycloak-spiffe.adoc`,
+`09-spiffe-mcp-server.adoc`, `10-summary.adoc`.
+
+Securing the complaints server needs a clone page too, unless it folds into the top of
+its own page the way `m2/01-clone-agent.adoc` is separate.
 
 == Settled
 
@@ -282,6 +653,38 @@ _Steps not recalled -- to be captured during the walkthrough._
   itself, with its own service-account token from the `internal` realm.
 * *`X-User-Id` stays.* The user identity keeps travelling in the header, exactly as built
   in Module 2. Modules 1 and 2 need no code changes, and their sign-off holds.
+* *Both MCP servers get secured, and attendees clone `globex-complaints`.* Securing only
+  orders makes the failure non-deterministic -- which server the agent calls first is the
+  model's choice for that prompt, not a fixed order -- so some attendees would see the
+  401 on the "watch it break" page and others would not. It also leaves half the attack
+  surface open in a security module. Feasible with no new machinery: the org has
+  `mcp-developers-workshop/globex-complaints` and `install-helm/globex-complaints-build`
+  is the same GitLab-webhook / buildah / ArgoCD-resync loop used for the agent in
+  Module 2. The POC did exactly this, with one Keycloak client per server
+  (`globex-mcp-client` for orders, `globex-agent-complaints-client` for complaints, both
+  in `internal`) and one `McpClientAuthProvider` per MCP client. The repetition earns its
+  place: it is what teaches that a provider is per-client, not per-application.
+
+* *Attendees clone three repositories in Module 3, and no chart for the complaints
+  server.* Decided 2026-10-01. The ideal is that every piece of deployment configuration
+  an attendee changes lives in the workshop GitLab and is edited there, the way
+  `globex-complaint-agent-helm` is. For the complaints server that would mean a fourth
+  clone and a second place to edit, to carry configuration that is not secret. Not worth
+  it. So the complaints server is configured in its own `application.properties`, in the
+  repository attendees already clone in 02b, and its chart stays in the install
+  repository where attendees never see it.
++
+This costs nothing, because the complaints server holds no secret: it is a resource
+server, and it validates tokens with the realm's public keys fetched from
+`auth-server-url`. The only environment-specific value committed is that URL, which is
+public. The agent is the one case where a real secret has to travel, and it already has
+`globex-complaint-agent-helm` cloned from Module 2 -- so the Helm route is used exactly
+where it earns its keep and nowhere else.
++
+Repository count for Module 3: `globex-store-mcp` and `globex-complaint-agent` and
+`globex-complaint-agent-helm` are already cloned from Modules 1 and 2; `globex-complaints`
+is the one new clone.
+
 * *No sidecar in Step 1.* Step 1 is plain OIDC -- an extension and configuration, nothing
   added to the pod. The SPIRE sidecar arrives with SPIFFE in Step 2, which makes the
   before/after obvious: the shared secret goes away and something appears next to the
@@ -292,14 +695,32 @@ _Steps not recalled -- to be captured during the walkthrough._
 
 == Open questions
 
-. *Does token exchange appear at all?* `m3/index.adoc` currently promises "downstream
-  Token Exchange". With the header retained it is not in Step 1. It is the natural answer
-  to "why should the server believe the agent about the user?" and needs no new
-  infrastructure, so it would sit well at the head of Step 2, before SPIFFE -- or it comes
-  out of the module description.
+. *DECIDED -- the Globex Store API gets secured, and token exchange stays.* User,
+  2026-10-01: securing the Store API is the next piece of work, and it is what token
+  exchange is for. So the `m3/index.adoc` claim "Enable secure downstream Token Exchange
+  in Quarkus MCP Servers for backend API calls" is *not* unsupported -- it is unbuilt.
+  Do not drop it from the module description.
++
+Consequences to carry: `rest-client-oidc-token-propagation` comes back into scope for
+`globex-store-mcp` (not the agent), and `@AccessToken` goes on `GlobexStoreRestClient`,
+which currently has three unannotated methods. The earlier note under section 04 saying
+the extension is "NOT needed, in either project" is correct only for Step 1 as written --
+re-read it once the Store API is secured.
++
+Still to settle when that work starts: whether the Store API is secured at the platform
+level or by an edit attendees make, given they never clone it and it ships from the
+install repository -- the same question `globex-complaints` raised in 02b and answered
+with a clone. And whether the exchanged token carries the *user's* identity, which is
+what would finally close the "the server trusts the agent about the user" gap that
+section 05 leaves open.
 
-. *Complaints server too, or orders only?* The agent has two MCP clients. Securing only
-  one leaves an obvious hole an attendee will notice.
+. *Where does token exchange sit?* Now that it is definitely in, the placement question
+  remains. It is the natural answer to "why should the server believe the agent about the
+  user?", it needs no new infrastructure, and it closes the gap section 05 names -- so the
+  head of Step 2, before SPIFFE, still looks right. Alternatively it becomes Step 1's
+  final page once the Store API is secured.
+
+. *SETTLED -- both servers get secured.* See the Settled section.
 
 . *Does `globex-web` replace the chatbot?* Module 2 spends a page setting up
   `mcp-workshop-chatbot` on `localhost:4200`, pointed at the `globex` realm. If Module 3
@@ -307,53 +728,44 @@ _Steps not recalled -- to be captured during the walkthrough._
   or still the local testing tool. Also confirm `globex-web` authenticates users against
   `globex`, not `internal` -- the two realms have to stay straight in the reader's head.
 
-. *How does an attendee test by hand once the token is required?* This is the biggest
-  practical consequence and it touches several pages.
-+
---
-* The Dev UI *Tool call input* dialog has a *Bearer Token* field. `m1/02-generate.adoc`
-  currently says to leave it empty. From Module 3 on it cannot be empty.
-* The MCP Inspector needs an `Authorization` header alongside `X-User-Id`.
-* So the lab needs a step that fetches a token -- `curl` against the `internal` realm
-  token endpoint with the client credentials -- and shows where to paste it. That is
-  arguably a good page in its own right: it makes the client-credentials grant concrete
-  instead of something a framework does invisibly.
---
+. *Is a token-by-hand page still worth having?* Running on the cluster removes the
+  forced need for one -- the Dev UI is local-only, and `m1/02-generate.adoc` and the MCP
+  Inspector pages are used before auth exists, so they stay correct as written. But a
+  short page that fetches a token by `curl` against the `internal` realm token endpoint
+  and decodes it would make the client-credentials grant and the audience claim visible
+  rather than something a framework does invisibly. Optional, and a good one to cut if
+  the module runs long.
 
-. *Is auth on in local dev mode?* If `%dev` disables it, local testing stays simple but
-  the attendee never sees the mechanism until deploy. If it stays on, every local Dev UI
-  and Inspector call needs a token. Pick one and be consistent.
+. *ANSWERED -- the audience mapper is in place for orders, and missing for complaints.*
+  The `internal` realm is seeded by
+  `install-helm/globex/keycloak-realmimport-internal`, which defines two audience client
+  scopes, each with an `oidc-audience-mapper`. `globex-mcp-client` carries the
+  `globex-mcp-server` one as a *default* scope, so section 02's audience check passes
+  unaided. `globex-agent-complaints-client` has its audience scopes as *optional* only,
+  so its tokens carry no `aud` -- which is exactly why section 02b has no
+  `token.audience`. Full detail and the two candidate fixes are in the TBC in 02b. What
+  remains is a decision, not an unknown. Still worth doing either way: show attendees the
+  decoded token so the audience check is visible rather than magic.
 
-. *Where does each piece of configuration live when deployed?* The two servers differ and
-  it is easy to get wrong.
-+
---
-* `globex-store-mcp` has no attendee-editable Helm chart -- `m1/05-deploy.adoc` says both
-  ArgoCD applications are defined in the workshop install repository, and attendee code
-  reaches the cluster through the image tag. So the server's OIDC properties go in
-  `application.properties` and ride in the image. Fine: a resource server holds no secret.
-* The agent *does* have `globex-complaint-agent-helm`. Its client secret must go in the
-  chart Secret, the same route Module 2 used for the model API key -- *not* in
-  `application.properties`, which is baked into a container image.
---
+. *Does securing `/read/mcp` close the Module 5 TBC or break Module 5?* Section 02b
+  secures both endpoints. `m5/02-connection.adoc` already tells attendees to run
+  `orchestrate connections set-credentials` and carries an open TBC about where the
+  Keycloak client ID and secret come from -- which suggests that endpoint was always
+  meant to be authenticated, and Module 3 is where the credentials get created. Verify
+  that on the walkthrough. If it holds, one TBC closes and the two modules join up. If
+  Module 5 in fact expects `/read/mcp` open, the permission path has to drop it and the
+  reason belongs on the page.
 
-. *Is the Keycloak audience mapper in place?* `quarkus.oidc.token.audience=globex-mcp-server`
-  only passes if tokens issued to `globex-mcp-client` actually carry that audience, which
-  takes a mapper on the client or its scope. If the seeded realm lacks it, every attendee
-  hits a 401 that looks identical to having no token at all. Worth verifying on the
-  cluster and, if it is pre-seeded, worth showing attendees the decoded token so the
-  audience check is visible rather than magic.
-
-. *Can the complaints server be secured at all?* Attendees never clone it -- Module 2
-  treats it as already running on the cluster. Securing it means either exposing its
-  repository or having the platform ship it pre-secured. Related: it has a second
-  endpoint, `/read/mcp`, exposing read-only tools (used in Module 5). If that split exists
-  for authorization reasons, Module 3 is where it should be explained.
-
-. *Is the `internal` realm pre-seeded with `globex-mcp-server` and `globex-mcp-client`?*
-  Module 5 already points at `realms/internal`, so the realm exists. If the clients are
-  pre-created, the lab says where to find the secret; if not, attendees create them in the
-  Keycloak console and that is several more pages.
+. *ANSWERED -- the `internal` realm and all four clients are pre-seeded.*
+  `install-helm/globex/keycloak-realmimport-internal` creates the realm with four
+  service-account clients, keyed in `values.yaml` as `complaintsClient`, `mcpClient`,
+  `mcpServer` and `mcpService`, each with `serviceAccountsEnabled: true` and a secret.
+  So attendees create nothing in the Keycloak console -- the lab only has to say where
+  the secrets come from, which is the remaining work. The four `id`/`secret` values are
+  empty in that chart's `values.yaml` and injected from outside this repo, so the mapping
+  from key to real client ID still has to be read off the running realm -- and the two
+  secrets have to reach the Showroom ConfigMap as attributes before section 04 can be
+  written.
 
 . *Guardrails.* `m3/index.adoc` lists tool guardrails and prompt injection as a fifth
   section. Not mentioned in the two-step plan -- dropped, or a later module?

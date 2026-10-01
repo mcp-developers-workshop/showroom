@@ -1,0 +1,91 @@
+:experimental:
+:imagesdir: ../../assets/images
+
+= Watch the Agent Lose Its Tools
+:numbered:
+:icons: font
+:source-highlighter: highlight.js
+
+Nothing about the agent has changed. It is the same image you deployed at the end of Module 2, still calling the same two MCP servers at the same two URLs. What changed is that both of those servers now ask for a token, and the agent has never had one to send.
+
+== Try it from the chatbot
+
+// TBC: does globex-web replace the chatbot in Module 3? Module 2 spends a page setting
+// mcp-workshop-chatbot up on localhost:4200 and ends with it pointed at the deployed
+// agent route, so this page just continues from there -- that is the assumption written
+// below. If Module 3 is meant to drive the agent from globex-web instead, this page and
+// 05-agent-service-account.adoc both change, and the module should say whether the
+// chatbot is retired or stays as the local testing tool. Also confirm globex-web
+// authenticates users against the globex realm, not internal -- 06-two-tokens.adoc works
+// hard to keep those two straight and a wrong claim here would undo it.
+
+The chatbot is still pointed at the deployed agent from the end of Module 2. If it is not running:
+
+[source,sh,role="copypaste"]
+----
+npm start
+----
+
+Sign in as `asilva` and ask for orders:
+
+[source,text,role="copypaste"]
+----
+I want to raise a complaint
+----
+
+// TBC: screenshot of the chatbot's reply once the servers are secured.
+
+== Read the MCP server log
+
+The agent is talking to servers on the cluster, so the rejection is in their logs, not the agent's.
+
+Open the https://console-openshift-console.{openshift_subdomain}/k8s/ns/globex-store-mcp/pods[pods in the `globex-store-mcp` project^], click the running pod and select the *Logs* tab.
+
+// TBC: screenshot of the 401 in the globex-store-mcp pod log.
+
+== Confirm it from the command line
+
+The same handshake from the first page of this module, unchanged:
+
+[source,sh,role="copypaste",subs="attributes+"]
+----
+curl -i -X POST https://globex-store-mcp.{openshift_subdomain}/mcp \
+  -H "Content-Type: application/json" \
+  -H "Accept: application/json, text/event-stream" \
+  -d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"curl","version":"1"}}}'
+----
+
+[source,text]
+----
+HTTP/1.1 401 Unauthorized
+www-authenticate: Bearer
+----
+
+The route is closed. That is the fix from the last two pages working exactly as intended -- and it has taken the agent down with it, because the agent is just another anonymous caller.
+
+// TBC -- VERIFY ON THE WALKTHROUGH, THIS PAGE DEPENDS ON IT. The 401 above is confirmed
+// against the deployed route. What is NOT confirmed is what the agent does with it, and
+// the answer changes what this page should say.
+//
+// An MCP client sends `initialize` and then `tools/list` when it starts, long before any
+// user asks anything. If that startup call gets a 401, the possibilities are:
+//   (a) the agent fails to start -- attendees see a stack trace in the pod log and an
+//       unhealthy deployment in ArgoCD, and never reach the chatbot at all. The page
+//       would then be about reading a crashed pod, not about a chat reply.
+//   (b) the agent starts with zero tools registered. The model has nothing to call, so it
+//       answers from its own knowledge -- plausibly, and wrongly. That is a far better
+//       teaching moment than a clean error, and the page should lean into it, but it also
+//       means there may be NO 401 visible in the chatbot for attendees to point at.
+//   (c) the client retries per tool call, and the failure appears at call time the way
+//       the missing-header failure did in Module 2. This is what the page currently
+//       assumes by implication.
+//
+// Check the agent pod log and the MCP server pod log together, from the moment the
+// secured servers roll out. Then rewrite this page around whichever it is, and fix the
+// two screenshot TBCs to match. The page title assumes (b).
+
+== Why this had to happen to both servers
+
+The agent has two MCP clients, `orders` and `complaint`. If only one server had been secured, the agent would have kept working for some prompts and failed for others, depending on which tool the model decided to reach for first. Securing both makes the failure unambiguous.
+
+The fix is not to reopen the servers. It is to give the agent an identity.

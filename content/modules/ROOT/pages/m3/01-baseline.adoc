@@ -1,0 +1,74 @@
+:experimental:
+:imagesdir: ../../assets/images
+
+= Confirm the MCP Servers Are Open
+:numbered:
+:icons: font
+:source-highlighter: highlight.js
+
+Two MCP servers are running on the cluster, and both of them will talk to anyone who can reach the route. Before changing that, see it for yourself.
+
+[IMPORTANT]
+====
+Module 3 runs against the cluster, not your laptop. You edit code locally, push it, and the pipeline builds and rolls out the change the same way Module 2 did. There is no dev mode and no live reload in this module, so compile before you push -- the pipeline is a slow place to find a typo.
+====
+
+== Call the orders server with no token
+
+Open a new terminal in IBM Bob (*Terminal* -> *New Terminal*).
+
+This is the MCP handshake, the first thing any MCP client sends. No credentials of any kind:
+
+[source,sh,role="copypaste",subs="attributes+"]
+----
+curl -i -X POST https://globex-store-mcp.{openshift_subdomain}/mcp \
+  -H "Content-Type: application/json" \
+  -H "Accept: application/json, text/event-stream" \
+  -d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"curl","version":"1"}}}'
+----
+
+The server answers. It tells an anonymous caller its name, its version and what it can do.
+
+// TBC: capture the exact response on a fresh environment, before the server is secured,
+// and paste it here as a literal block. Both servers on the walkthrough cluster are
+// already secured, so the pre-secured output could not be recorded. What matters for the
+// page is only that the status line is not 401 -- the contrast with the same command on
+// the next page is the whole point.
+
+== Call the complaints server with no token
+
+[source,sh,role="copypaste",subs="attributes+"]
+----
+curl -i -X POST https://globex-complaints.{openshift_subdomain}/mcp \
+  -H "Content-Type: application/json" \
+  -H "Accept: application/json, text/event-stream" \
+  -d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"curl","version":"1"}}}'
+----
+
+The same. Both servers are on public OpenShift routes, and neither asks who is calling.
+
+== What is actually wrong here
+
+Module 1 added a check that the `X-User-Id` header is present, and Module 2 made the agent send the signed-in user's name in it. That looks like security and is not: the header is a claim, not proof. Anything that can reach the route can send any value it likes and read any customer's order history.
+
+So there are two separate problems, and they need two separate fixes:
+
+[cols="1,2,1", options="header"]
+|===
+| Problem | Question it asks | Fixed in
+
+| The route is open
+| Is the caller a workload we recognise at all?
+| This module, Step 1
+
+| The header is unverified
+| Should we believe what the caller says about the user?
+| Still open at the end of Step 1 -- see the last page
+|===
+
+Step 1 of this module closes the first one. The agent gets an identity of its own, proves it to Keycloak, and presents the resulting token on every MCP call. The servers stop accepting anonymous callers.
+
+[NOTE]
+====
+The `[IMPORTANT]` note at the end of `xref:m2/05-pass-user-id.adoc[Send the User ID with the Tool Call]` says the MCP server taking the header at face value gets fixed later in the workshop. This module narrows that problem rather than closing it. By the end of Step 1 only an authenticated workload can reach the server at all -- but that workload is still trusted, not verified, when it says who the user is.
+====

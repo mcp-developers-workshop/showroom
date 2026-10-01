@@ -1,0 +1,140 @@
+:experimental:
+:imagesdir: ../../assets/images
+
+= Require a Token on the Complaints MCP Server
+:numbered:
+:icons: font
+:source-highlighter: highlight.js
+
+The orders server is locked down; the complaints server is still open. Module 2 treated it as something already running on the cluster, so this is the first time you see its source.
+
+Both have to be secured before the next page. Which tool the agent reaches for first is the model's choice for a given prompt, not a fixed order -- so with only one server secured, whether you see a failure at all would come down to how you phrase the question.
+
+== Clone the repository
+
+Open a new terminal in IBM Bob (*Terminal* -> *New Terminal*). From the `workshop` folder:
+
+[source,sh,role="copypaste",subs="attributes+"]
+----
+git clone https://gitlab-gitlab.{openshift_subdomain}/globex/globex-complaints.git
+cd globex-complaints/
+----
+
+== What is in the repository
+
+A Quarkus application backed by the Globex Postgres database, with *two* MCP servers in one deployment:
+
+[source,text]
+----
+src/main/java/org/globex/retail/complaints/
+├── mcp/ComplaintsMcp.java          <1>
+├── mcp/ComplaintsReadMcp.java      <2>
+├── rest/ComplaintResource.java
+├── service/ComplaintService.java
+├── service/DatabaseService.java
+└── persistence/Complaint.java
+src/main/resources/application.properties
+----
+
+<1> The tools you used in Module 2 -- `create_complaint`, `get_complaint`, `update_complaint` -- served at `/mcp`.
+<2> A second, read-only server at `/read/mcp`. Module 5 uses it.
+
+`application.properties` already declares both:
+
+[source,properties]
+----
+quarkus.mcp.server.http.root-path=/mcp
+quarkus.mcp.server.read.http.root-path=/read/mcp
+----
+
+Named MCP servers are how one Quarkus application serves more than one endpoint. `quarkus.mcp.server.read.*` configures the server named `read`; the unnamed block configures the default.
+
+== Add the OIDC extension
+
+No Maven wrapper in this repository, so plain `mvn`:
+
+[source,sh,role="copypaste"]
+----
+mvn quarkus:add-extension -Dextensions="oidc"
+----
+
+== Secure both endpoints
+
+Add to `src/main/resources/application.properties`:
+
+[source,properties,role="copypaste",subs="attributes+"]
+----
+# OIDC Configuration for Service Account Authentication
+quarkus.oidc.auth-server-url=https://sso.{openshift_subdomain}/realms/internal
+quarkus.oidc.client-id=globex-complaints-server
+
+# Secure both MCP endpoints
+quarkus.http.auth.permission.mcp.paths=/mcp,/mcp/*,/read/mcp,/read/mcp/*
+quarkus.http.auth.permission.mcp.policy=authenticated
+quarkus.http.cors.enabled=true
+----
+
+Both paths are listed. Securing `/mcp` and leaving `/read/mcp` open would be an odd place to stop -- the read-only server reads the same complaints table.
+
+// TBC -- DOES THIS CLOSE MODULE 5'S TBC OR BREAK MODULE 5? /read/mcp is the endpoint
+// watsonx Orchestrate connects to in Module 5. m5/02-connection.adoc already tells
+// attendees to run `orchestrate connections set-credentials` and carries its own open TBC
+// about where the Keycloak client ID and secret come from -- which suggests that endpoint
+// was always meant to be authenticated, and that this page is where those credentials
+// start existing. If that holds, both TBCs close together and the two modules join up:
+// point m5/02-connection.adoc at the client created here.
+// If Module 5 in fact expects /read/mcp open, drop it from the permission path above and
+// say why on this page. Verify on the walkthrough -- Module 5 has been run successfully
+// against the OPEN endpoint, so this is a real risk of breaking a working module.
+
+// TBC: quarkus.http.cors.enabled=true is unexplained in the prose, deliberately -- CORS
+// teaches nothing about MCP and is kept out of the content everywhere else. It is here
+// because a message in the complaints pod log asked for it and it is in the working
+// configuration on the cluster. The reason is NOT established: quarkus-mcp-server-http
+// 2.0.0 contains no CORS string in its runtime or deployment jars, so the message did not
+// come from the MCP extension, and globex-store-mcp runs streamable HTTP without it.
+// Leading hypothesis: with policy=authenticated and CORS disabled, a browser preflight
+// OPTIONS is handled by the auth layer and 401s. Capture the exact log line on the next
+// walkthrough. Low priority -- the user parked this deliberately.
+
+[NOTE]
+====
+No `token.audience` here, unlike the orders server on the previous page. The service account the agent uses for complaints is not issued tokens carrying that audience in this realm, so the check would reject every call. The route is still closed to anonymous callers; it just does not get the second, narrower check.
+====
+
+// TBC -- CAUSE FOUND, FIX NOT MADE. The asymmetry above is a realm-seed issue, not a
+// property of the complaints server, and the [NOTE] is worded to be true without going
+// into realm internals. In
+// install-helm/globex/keycloak-realmimport-internal/templates/keycloak-realmimport.yaml
+// the realm defines two audience client scopes, each with an oidc-audience-mapper (lines
+// 1392 and 1415). globex-mcp-client carries its one as a DEFAULT scope, so page 02's
+// audience check passes unaided. globex-agent-complaints-client has both only as OPTIONAL
+// scopes, and quarkus-oidc-client requests no extra scopes, so its tokens carry no aud.
+// Preferred fix: move the scope into defaultClientScopes for complaintsClient in the
+// realm import -- mirrors mcpClient, needs no agent change, and lets this [NOTE] be
+// deleted and token.audience added above. Blocking check first: confirm which of
+// mcpServer.id / mcpService.id is globex-complaints-server. Both are empty in that
+// chart's values.yaml and injected from outside the repo, so read them off the running
+// realm.
+
+== Compile
+
+[source,sh,role="copypaste"]
+----
+mvn clean compile
+----
+
+== Commit and push
+
+[source,sh,role="copypaste"]
+----
+git add .
+git commit -m "require a token on the complaints server"
+git push
+----
+
+== Watch both rollouts
+
+Open the https://openshift-gitops-server-openshift-gitops.{openshift_subdomain}/[ArgoCD console^] and check that `globex-store-mcp` and `globex-complaints` both roll out a new pod. Two pipelines were triggered, a page apart, so the first one may already be finished.
+
+Wait for both before moving on. The next page depends on both servers rejecting the agent.

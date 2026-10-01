@@ -1,0 +1,23 @@
+:experimental:
+:imagesdir: ../../assets/images
+
+= Summary
+:numbered:
+:icons: font
+:source-highlighter: highlight.js
+
+You took two MCP servers that would talk to anyone and closed them to everything but an authenticated workload:
+
+* Called both servers with no credentials and got an answer, which is the problem stated plainly.
+* Added `quarkus-oidc` to the orders server and required an authenticated caller on `/mcp`, with an audience check so that a token issued for something else is not good enough.
+* Cloned the complaints server and did the same to both of its MCP endpoints, including the read-only one Module 5 uses.
+* Watched the agent fail, unchanged, because it had never had a token to send.
+* Gave the agent two Keycloak service accounts, added an `McpClientAuthProvider` per MCP client, and put the secrets in the chart rather than the image.
+
+A resource server needs no credentials -- it validates with the realm's public keys. A client does, and that asymmetry is why the extension names are worth keeping straight: `quarkus-oidc` validates tokens, `quarkus-oidc-client` fetches them.
+
+The agent now carries two tokens' worth of identity on every call. The user's JWT, from the `globex` realm, stops at the agent and is never forwarded -- the MCP specification forbids the passthrough, and the audience check would reject it anyway. The agent's own service-account token, from the `internal` realm, is what the MCP servers validate.
+
+What is still open is the part Module 2 flagged. The MCP server believes the agent about which customer is asking, because `X-User-Id` is still a claim rather than proof. Step 1 narrowed who is allowed to make that claim; it did not verify it.
+
+And the agent's identity rests on a secret committed to a Git repository. Step 2 replaces it with an identity the platform attests, and takes the secret away.
