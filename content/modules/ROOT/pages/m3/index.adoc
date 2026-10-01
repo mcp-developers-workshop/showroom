@@ -39,7 +39,7 @@ This module runs against the cluster. You edit code locally, push, and let the p
 1. Call both MCP servers with no credentials and confirm they answer
 2. Require an authenticated caller on the orders MCP server
 3. Require an authenticated caller on both endpoints of the complaints MCP server
-4. Confirm the unchanged agent is locked out of the servers you just closed
+4. Confirm both servers now reject anonymous callers, and that the unchanged agent is one of them
 5. Give the agent its own Keycloak client credentials and attach the resulting tokens to MCP calls
 6. Separate workload identity from user identity, and name what is still unfixed
 7. Replace the shared secret with a SPIFFE workload identity -- outline only, still being written

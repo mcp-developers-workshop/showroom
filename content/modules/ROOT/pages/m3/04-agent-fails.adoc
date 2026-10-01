@@ -1,12 +1,12 @@
 :experimental:
 :imagesdir: ../../assets/images
 
-= Confirm the Agent Is Locked Out
+= Confirm the MCP Servers Are Secured
 :numbered:
 :icons: font
 :source-highlighter: highlight.js
 
-Nothing about the agent has changed. It is the same image you deployed at the end of Module 2, calling the same two MCP servers at the same two URLs. What changed is that both of those servers now ask for a token, and the agent has never had one to send.
+Both servers now ask for a token. Nothing about the agent has changed -- it is the same image you deployed at the end of Module 2, calling the same two URLs, and it has never had a token to send.
 
 == Run the handshake again
 

@@ -23,7 +23,7 @@
 ** xref:m3/01-baseline.adoc[Confirm the MCP Servers Are Open]
 ** xref:m3/02-secure-mcp-server.adoc[Require a Token on the Orders MCP Server]
 ** xref:m3/03-secure-complaints-server.adoc[Require a Token on the Complaints MCP Server]
-** xref:m3/04-agent-fails.adoc[Confirm the Agent Is Locked Out]
+** xref:m3/04-agent-fails.adoc[Confirm the MCP Servers Are Secured]
 ** xref:m3/05-agent-service-account.adoc[Authenticate the Agent to the MCP Servers]
 ** xref:m3/06-two-tokens.adoc[Two Tokens, Two Realms]
 ** xref:m3/07-spiffe.adoc[Workload Identity with SPIFFE]
