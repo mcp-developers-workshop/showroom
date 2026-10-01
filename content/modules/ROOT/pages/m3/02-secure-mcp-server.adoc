@@ -52,6 +52,11 @@ Three things are happening:
 
 `http.auth.permission.mcp` applies the policy. Anything under `/mcp` now needs an authenticated caller.
 
+[NOTE]
+====
+The `internal` realm and every client this module names are created when your lab environment is provisioned. `globex-mcp-server` above already exists, as do the complaints server client on the next page and the agent's two clients on page 5. You create nothing in Keycloak in this module -- the configuration you write refers to clients that are already there.
+====
+
 // TBC -- OPTIONAL PAGE, WORTH CONSIDERING. A short page that fetches a token by hand
 // against the internal realm's token endpoint and decodes it would make the client
 // credentials grant and the aud claim visible, rather than something a framework does

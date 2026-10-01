@@ -27,6 +27,8 @@ Every address on this page is specific to your environment. Keep this page open 
 | https://sso.{openshift_subdomain}[click here^, window="sso"]
 | Customer account on the `globex` realm: `asilva` / `openshift`
 
+Admin console: _TBC_
+
 | Globex Store OpenAPI
 | https://globex-store.{openshift_subdomain}/q/openapi[click here^, window="globex-store"]
 | None -- the API the orders MCP server wraps

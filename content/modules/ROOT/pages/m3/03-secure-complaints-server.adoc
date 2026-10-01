@@ -74,7 +74,7 @@ quarkus.http.auth.permission.mcp.policy=authenticated
 quarkus.http.cors.enabled=true
 ----
 
-Both paths are listed. The read-only server reads the same complaints table.
+Both paths are listed. The read-only server reads the same complaints table. `globex-complaints-server` is already in the `internal` realm, like the orders client on the previous page.
 
 // TBC -- DOES THIS CLOSE MODULE 5'S TBC OR BREAK MODULE 5? /read/mcp is the endpoint
 // watsonx Orchestrate connects to in Module 5. m5/02-connection.adoc already tells
