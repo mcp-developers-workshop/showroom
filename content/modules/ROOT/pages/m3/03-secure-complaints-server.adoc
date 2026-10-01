@@ -8,7 +8,7 @@
 
 The orders server is locked down; the complaints server is still open. Module 2 treated it as something already running on the cluster, so this is the first time you see its source.
 
-Both have to be secured before the next page. Which tool the agent reaches for first is the model's choice for a given prompt, not a fixed order -- so with only one server secured, whether you see a failure at all would come down to how you phrase the question.
+Both have to be secured before the next page. Which tool the agent reaches for is the model's choice for a given prompt, so with only one server closed the failure may not show up at all.
 
 == Clone the repository
 
@@ -64,7 +64,7 @@ Add to `src/main/resources/application.properties`:
 
 [source,properties,role="copypaste",subs="attributes+"]
 ----
-# OIDC Configuration for Service Account Authentication
+# OIDC - validate access tokens from the internal realm
 quarkus.oidc.auth-server-url=https://sso.{openshift_subdomain}/realms/internal
 quarkus.oidc.client-id=globex-complaints-server
 
@@ -74,7 +74,7 @@ quarkus.http.auth.permission.mcp.policy=authenticated
 quarkus.http.cors.enabled=true
 ----
 
-Both paths are listed. Securing `/mcp` and leaving `/read/mcp` open would be an odd place to stop -- the read-only server reads the same complaints table.
+Both paths are listed. The read-only server reads the same complaints table.
 
 // TBC -- DOES THIS CLOSE MODULE 5'S TBC OR BREAK MODULE 5? /read/mcp is the endpoint
 // watsonx Orchestrate connects to in Module 5. m5/02-connection.adoc already tells
@@ -99,7 +99,7 @@ Both paths are listed. Securing `/mcp` and leaving `/read/mcp` open would be an 
 
 [NOTE]
 ====
-No `token.audience` here, unlike the orders server on the previous page. The service account the agent uses for complaints is not issued tokens carrying that audience in this realm, so the check would reject every call. The route is still closed to anonymous callers; it just does not get the second, narrower check.
+No `token.audience` here, unlike the orders server on the previous page. The Keycloak client the agent uses for complaints is not issued tokens carrying that audience in this realm, so the check would reject every call. The route is still closed to anonymous callers; it just does not get the second, narrower check.
 ====
 
 // TBC -- CAUSE FOUND, FIX NOT MADE. The asymmetry above is a realm-seed issue, not a

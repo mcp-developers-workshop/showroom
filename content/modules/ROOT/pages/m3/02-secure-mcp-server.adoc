@@ -25,7 +25,7 @@ From inside `globex-store-mcp`:
 `quarkus-oidc` and `quarkus-oidc-client` are two different extensions and the names are one word apart.
 
 * `quarkus-oidc` makes an application a *resource server*: it validates tokens that arrive. That is what you want here.
-* `quarkus-oidc-client` makes an application a *client*: it fetches tokens to send. The agent gets that one, two pages from now.
+* `quarkus-oidc-client` makes an application a *client*: it fetches tokens to send. The agent gets that one later.
 ====
 
 == Configure it
@@ -34,7 +34,7 @@ Add to `src/main/resources/application.properties`:
 
 [source,properties,role="copypaste",subs="attributes+"]
 ----
-# OIDC Configuration for Service Account Authentication
+# OIDC - validate access tokens from the internal realm
 quarkus.oidc.auth-server-url=https://sso.{openshift_subdomain}/realms/internal
 quarkus.oidc.client-id=globex-mcp-server
 quarkus.oidc.token.audience=globex-mcp-server
@@ -46,11 +46,11 @@ quarkus.http.auth.permission.mcp.policy=authenticated
 
 Three things are happening:
 
-`auth-server-url` points at the `internal` realm. That is a different realm from the one the chatbot signs users into. Customers live in `globex`; workloads live in `internal`. Keeping them apart is deliberate, and the next-but-one page is where it matters.
+`auth-server-url` points at the `internal` realm. That is a different realm from the one the chatbot signs users into. Customers live in `globex`; workloads live in `internal`.
 
-`token.audience` is the part that does the real work. Without it the server accepts any valid token the realm issued, for any purpose -- including one minted for a completely different service. With it, the token has to carry `aud: globex-mcp-server`, which means it was issued *to be used here*.
+`token.audience` narrows what the server accepts. Without it the server accepts any valid token the realm issued, for any purpose -- including one minted for a completely different service. With it, the token has to carry `aud: globex-mcp-server`, which means it was issued *to be used here*.
 
-`http.auth.permission.mcp` is what turns the lock. Anything under `/mcp` now needs an authenticated caller.
+`http.auth.permission.mcp` applies the policy. Anything under `/mcp` now needs an authenticated caller.
 
 // TBC -- OPTIONAL PAGE, WORTH CONSIDERING. A short page that fetches a token by hand
 // against the internal realm's token endpoint and decodes it would make the client

@@ -15,7 +15,7 @@ That is Step 1, and it is what this module currently covers end to end. Step 2 r
 * Understand the security hazards of direct, unauthenticated agentic access.
 * Tell a resource server from a client, and know why only one of them needs a secret.
 * Secure a Quarkus MCP endpoint with OIDC, including the audience check that makes a token specific to the service it was issued for.
-* Obtain a service-account token with the client credentials grant and attach it to MCP calls with an `McpClientAuthProvider`.
+* Obtain a token with the client credentials grant and attach it to MCP calls with an `McpClientAuthProvider`.
 * Keep workload identity and user identity separate, and know why the MCP specification forbids forwarding a user's token downstream.
 
 == Architecture & Components
@@ -28,7 +28,7 @@ That is Step 1, and it is what this module currently covers end to end. Step 2 r
 == Prerequisites
 * Modules 1 and 2 completed, with the agent and both MCP servers deployed and working
 * The chatbot pointed at the deployed agent route, as left at the end of Module 2
-* Keycloak `internal` realm, pre-seeded with the service-account clients this module uses
+* Keycloak `internal` realm, pre-seeded with the workload clients this module uses
 
 [IMPORTANT]
 ====
@@ -39,8 +39,8 @@ This module runs against the cluster. You edit code locally, push, and let the p
 1. Call both MCP servers with no credentials and confirm they answer
 2. Require an authenticated caller on the orders MCP server
 3. Require an authenticated caller on both endpoints of the complaints MCP server
-4. Watch the unchanged agent fail against the servers you just closed
-5. Give the agent two Keycloak service accounts and attach their tokens to MCP calls
+4. Confirm the unchanged agent is locked out of the servers you just closed
+5. Give the agent its own Keycloak client credentials and attach the resulting tokens to MCP calls
 6. Separate workload identity from user identity, and name what is still unfixed
 7. Replace the shared secret with a SPIFFE workload identity -- outline only, still being written
 

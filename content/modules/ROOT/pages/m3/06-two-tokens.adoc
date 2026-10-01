@@ -6,7 +6,7 @@
 :icons: font
 :source-highlighter: highlight.js
 
-Nothing from Modules 1 and 2 was taken away to get here. `X-User-Id` still carries the customer, exactly as you built it. The service-account token was added alongside it.
+Nothing from Modules 1 and 2 was taken away to get here. `X-User-Id` still carries the customer, exactly as you built it. The agent's own token was added alongside it.
 
 ....
 chatbot  --user JWT (globex realm)-->  agent  --SA token (internal realm)-->  MCP server
@@ -17,7 +17,7 @@ Two tokens, from two realms, answering two different questions:
 
 [cols="1,1,1", options="header"]
 |===
-| | User JWT | Service-account token
+| | User JWT | Agent token
 
 | Realm
 | `globex`
@@ -52,8 +52,6 @@ And it is specifically forbidden. The MCP specification rules out passing a clie
 
 *Not fixed.* The MCP server still believes the agent about which customer is asking. `X-User-Id` is still an unverified claim -- the difference is that only an authenticated workload can make it. The agent is trusted rather than verified.
 
-That is a real narrowing and not a fix. The `[IMPORTANT]` note at the end of xref:m2/05-pass-user-id.adoc[Send the User ID with the Tool Call] promised this gets addressed later in the workshop, and it is still outstanding at this point.
-
 == Carrying the user's identity downstream
 
 // TBC: THIS SECTION IS A PLACEHOLDER. Token exchange is in scope -- the user confirmed
@@ -67,7 +65,7 @@ That is a real narrowing and not a fix. The `[IMPORTANT]` note at the end of xre
 //   * That brings quarkus-rest-client-oidc-token-propagation back into scope, on
 //     globex-store-mcp, with @io.quarkus.oidc.token.propagation.AccessToken on
 //     GlobexStoreRestClient -- which has three unannotated methods today. NOT on the
-//     agent: the agent holds a service-account token, and forwarding the user's token is
+//     agent: the agent holds its own client-credentials token, and forwarding the user's token is
 //     the passthrough this page just explained is forbidden.
 //   * m3/index.adoc promises "Enable secure downstream Token Exchange in Quarkus MCP
 //     Servers for backend API calls". That claim is unbuilt, not unsupported. Keep it.

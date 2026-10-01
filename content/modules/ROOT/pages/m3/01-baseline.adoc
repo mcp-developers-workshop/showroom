@@ -6,11 +6,11 @@
 :icons: font
 :source-highlighter: highlight.js
 
-Two MCP servers are running on the cluster, and both of them will talk to anyone who can reach the route. Before changing that, see it for yourself.
+Two MCP servers are running on the cluster, and both of them will talk to anyone who can reach the route. Confirm that before changing it.
 
 [IMPORTANT]
 ====
-Module 3 runs against the cluster, not your laptop. You edit code locally, push it, and the pipeline builds and rolls out the change the same way Module 2 did. There is no dev mode and no live reload in this module, so compile before you push -- the pipeline is a slow place to find a typo.
+Module 3 runs against the cluster, not your laptop. You edit code locally, push it, and the pipeline builds and rolls out the change the same way Module 2 did. There is no dev mode and no live reload in this module, so compile before you push.
 ====
 
 == Call the orders server with no token
@@ -67,8 +67,3 @@ So there are two separate problems, and they need two separate fixes:
 |===
 
 Step 1 of this module closes the first one. The agent gets an identity of its own, proves it to Keycloak, and presents the resulting token on every MCP call. The servers stop accepting anonymous callers.
-
-[NOTE]
-====
-The `[IMPORTANT]` note at the end of xref:m2/05-pass-user-id.adoc[Send the User ID with the Tool Call] says the MCP server taking the header at face value gets fixed later in the workshop. This module narrows that problem rather than closing it. By the end of Step 1 only an authenticated workload can reach the server at all -- but that workload is still trusted, not verified, when it says who the user is.
-====

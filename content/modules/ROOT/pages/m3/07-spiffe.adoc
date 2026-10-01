@@ -17,7 +17,7 @@
 //   06 Why the client secret is not enough -- motivation, no steps. Written below.
 //   07 SPIRE sidecar on the agent -- what is added to the pod, and how the agent reaches
 //      the SPIRE Workload API socket to obtain a JWT-SVID instead of using a secret.
-//   08 Keycloak configuration -- map the SPIFFE ID to the service account the agent
+//   08 Keycloak configuration -- map the SPIFFE ID to the Keycloak client the agent
 //      already uses from Step 1.
 //   09 MCP server changes -- what, if anything, changes on the two servers. Never
 //      captured; the working assumption below is "nothing", and that is unverified.
@@ -56,7 +56,7 @@ SPIFFE replaces the shared secret with an identity the platform issues and attes
 
 == What Step 2 builds
 
-A SPIRE agent attests the workload and issues it a short-lived JWT-SVID. Keycloak is configured to accept that SVID in place of the client secret, resolving to the same service account the agent already uses -- so the MCP servers need no change, and the two `quarkus.oidc-client.*` blocks from the last page stay. What goes away is the secret in `values.yaml`.
+A SPIRE agent attests the workload and issues it a short-lived JWT-SVID. Keycloak is configured to accept that SVID in place of the client secret, resolving to the same Keycloak client the agent already uses -- so the MCP servers need no change, and the two `quarkus.oidc-client.*` blocks from the last page stay. What goes away is the secret in `values.yaml`.
 
 [IMPORTANT]
 ====
