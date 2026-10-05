@@ -25,14 +25,19 @@ Every address on this page is specific to your environment. Keep this page open 
 
 | Keycloak (SSO)
 | https://sso.{openshift_subdomain}[click here^, window="sso"]
-| Customer account on the `globex` realm: `asilva` / `openshift`
+a| Customer account on the `globex` realm: `asilva` / `openshift`
 
-Admin console: _TBC_
+Admin console: https://sso.{openshift_subdomain}/admin[click here^, window="sso-admin"] -- `admin` / `{common_password}`
 
 | Globex Store OpenAPI
 | https://globex-store.{openshift_subdomain}/q/openapi[click here^, window="globex-store"]
 | None -- the API the orders MCP server wraps
 |==================
+
+[NOTE]
+====
+Keycloak serves two realms. `globex` holds the customer accounts the storefront and the chatbot sign in to. `internal` holds the workload clients -- the agent and the two MCP servers -- which Module 3 configures. Both are created when your environment is provisioned.
+====
 
 == Workshop Endpoints
 

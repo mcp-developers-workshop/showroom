@@ -10,22 +10,18 @@ The agent you connect to your MCP server in this module already exists. Clone it
 
 == Clone the repository
 
-Open a new terminal in IBM Bob (*Terminal* -> *New Terminal*) -- the terminals from Module 1 may still be running dev mode and the MCP Inspector. From the `workshop` folder:
+Clone it as you did in Module 1 -- *Clone Git Repository...* on the Bob welcome page, or *File* -> *Clone Repository*:
 
-[source,sh,role="copypaste",subs="attributes+"]
+[source,text,role="copypaste",subs="attributes+"]
 ----
-git clone https://gitlab-gitlab.{openshift_subdomain}/globex/globex-complaint-agent.git
-cd globex-complaint-agent/
+https://gitlab-gitlab.{openshift_subdomain}/globex/globex-complaint-agent.git
 ----
 
-[NOTE]
-====
-`workshop` now holds two repositories: `globex-store-mcp` from the previous module and `globex-complaint-agent`.
-====
+Open it in a new window when Bob offers. Leave `globex-store-mcp` open in its own window -- Module 1's dev mode and MCP Inspector may still be running there, and the agent needs that MCP server up.
 
 == What is in the repository
 
-Open the `globex-complaint-agent` folder in Bob. It is a small Quarkus application -- three classes and a configuration file:
+A small Quarkus application -- three classes and a configuration file:
 
 [source,text]
 ----

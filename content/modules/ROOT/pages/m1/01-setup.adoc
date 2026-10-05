@@ -56,33 +56,26 @@ mcp add quarkus-agent -- jbang quarkus-agent-mcp@quarkusio
 image::m1/bob-mcp-add.png[link=self,window=_blank]
 
 
-=== Create and open the workshop folder
-
-1. Select *File* -> *Open Folder*.
-2. Create a new folder called `workshop` in your home directory.
-3. Select the `workshop` folder and confirm to open it.
-
-Bob reloads with `workshop` as the active folder.
-
 === Clone the Globex MCP repository
 
-Open a terminal inside IBM Bob (*Terminal* -> *New Terminal*). It opens in the `workshop` folder.
+On the Bob welcome page, click *Clone Git Repository...*:
 
-[source,sh,role="copypaste",subs="attributes+"]
+image::m1/bob-welcome-clone.png[link=self,window=_blank]
+
+Paste this URL and choose a location to clone into:
+
+[source,text,role="copypaste",subs="attributes+"]
 ----
-git clone https://gitlab-gitlab.{openshift_subdomain}/globex/globex-store-mcp.git
+https://gitlab-gitlab.{openshift_subdomain}/globex/globex-store-mcp.git
 ----
+
+Sign in as `developer` / `{common_password}` if Bob asks, then open the cloned repository when it offers.
+
+Bob reloads with `globex-store-mcp` as the open folder, and any terminal you open (*Terminal* -> *New Terminal*) starts there.
 
 [NOTE]
 ====
 `globex-store-mcp` holds only a few starter files at this point. You build the MCP server into it over the next sections and push it back to GitLab.
+
+Each repository in this workshop is cloned and opened the same way, one Bob window per repository. Later modules clone two more.
 ====
-
-Confirm the folder is in place:
-
-[source,sh,role="copypaste"]
-----
-cd globex-store-mcp && ls -la
-----
-
-You should see a listing for the cloned folder.

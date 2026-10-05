@@ -32,16 +32,7 @@ The *transport type* is fixed when the application is built, so it belongs in th
 quarkus.langchain4j.mcp.orders.transport-type=streamable-http
 ----
 
-Add the *URL* to `.env`:
-
-[source,properties,role="copypaste",subs="attributes+"]
-----
-quarkus.langchain4j.mcp.orders.url=https://globex-store-mcp.{openshift_subdomain}/mcp
-----
-
-`orders` is the name of the client, and it is the same name in both files. You use that name in the agent to say which tools it gets.
-
-The URL is the deployed route you tested at the end of Module 1.
+`orders` is the name of the client. You use that name in `.env` below, and again in the agent to say which tools it gets.
 
 [IMPORTANT]
 ====
@@ -49,6 +40,19 @@ Quarkus works out which MCP clients exist at *build time*, from the `transport-t
 
 That is why `transport-type` goes in `application.properties`, which is part of the source and therefore part of the build, while the URL can come from `.env` now and from a Secret once the agent runs on OpenShift.
 ====
+
+== Add the runtime settings
+
+The other two settings are read at startup rather than built in, so both go in `.env`:
+
+[source,properties,role="copypaste",subs="attributes+"]
+----
+quarkus.langchain4j.mcp.orders.url=https://globex-store-mcp.{openshift_subdomain}/mcp
+quarkus.oidc.auth-server-url=https://sso.{openshift_subdomain}/realms/globex
+----
+
+* The MCP server URL -- the deployed route you tested at the end of Module 1, under the same `orders` name you just used in `application.properties`.
+* The Keycloak realm -- `application.properties` already sets `quarkus.oidc.application-type=service`, so the agent checks a bearer token on every request instead of redirecting anyone to a login page. It will not start without knowing which realm issued that token, and the chatbot in the next section signs a customer in against that same realm.
 
 == Give the tool to the agent
 
@@ -86,12 +90,13 @@ Edit the `@SystemMessage` in `ComplaintAgent.java` and replace step 1 of the con
 .After
 [source,text,role="copypaste"]
 ----
-1. **Product Confirmation**:
-   - Start the conversation by calling the getOrdersByCustomerId tool to fetch the customer's orders.
-   - Do not ask the customer who they are or for their customer id. The tool already knows.
-   - Show them the orders it returns and ask which order, and which product in that order, the complaint is about.
-   - Only ever refer to orders and products the tool returned. Never invent an order id or a product.
-   - If the tool returns no orders, tell them you cannot find any orders on their account and stop there.
+            1. **Product Confirmation**:
+               - Start the conversation by calling the getOrdersByCustomerId tool to fetch the customer's orders.
+               - Do not ask the customer who they are or for their customer id. The tool already knows.
+               - Show them the orders it returns and ask which order, and which product in that order, the complaint is about.
+               - Only ever refer to orders and products the tool returned. Never invent an order id or a product.
+               - If the tool returns no orders, tell them you cannot find any orders on their account and stop there.
+               
 ----
 
 Add the same rule at the top of the prompt, so it holds for the whole conversation and not just the first step. In the opening paragraph of the `@SystemMessage`, after `CRITICAL do not share your internal thinking.`:
@@ -105,4 +110,18 @@ Add the same rule at the top of the prompt, so it holds for the whole conversati
 [NOTE]
 ====
 This is the pattern for adding any MCP server to an agent: configure the client, name it in `@McpToolBox`, then say in the prompt when the tool should be used and what the model may not do without it.
+====
+
+== Start the agent
+
+[source,sh,role="copypaste"]
+----
+mvn quarkus:dev
+----
+
+Leave it running. The next section drives it from a chatbot.
+
+[NOTE]
+====
+Port 8081, not the Quarkus default. The agent sets `%dev.quarkus.http.port=8081` so it does not collide with `globex-store-mcp`, which keeps 8080 from Module 1. The agent calls that server, so the two have to run side by side. The `%dev.` prefix applies in dev mode only. In production environment on OpenShift, the deployed agent still listens on 8080.
 ====

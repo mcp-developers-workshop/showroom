@@ -14,11 +14,11 @@ This is the brownfield pattern: the existing API is untouched, and the MCP serve
 
 === Prompt IBM Bob
 
-In IBM Bob, make sure the `globex-store-mcp` folder is your working context, then enter the following prompt:
+With `globex-store-mcp` open in Bob, enter the following prompt:
 
 [source,text,role="copypaste",subs="attributes"]
 ----
-Within the globex-store-mcp folder, Download the openapi spec document located at https://globex-store.{openshift_subdomain}/q/openapi . Create a mcp server called "GlobexStoreMcpServer" which exposes a tool called "getOrdersByCustomerId" to get the orders for a given customerId. The tool implementation should connect to the API described in the openAPI spec document and return the API response. The mcp server should use the streamable http transport. Use the appropriate quarkus extension for the mcp server.
+Within the globex-store-mcp folder, Download the openapi spec document located at https://globex-store.{openshift_subdomain}/q/openapi . Create a mcp server called "GlobexStoreMcpServer" which exposes a tool called "getOrdersByCustomerId" to get the orders for a given customerId. The tool implementation should connect to the API described in the openAPI spec document and return the API response. The mcp server should use the streamable http transport. Use the appropriate quarkus extension for the mcp server. Use 'asilva' as the customer id when testing.
 ----
 
 === Approve Bob's tasks

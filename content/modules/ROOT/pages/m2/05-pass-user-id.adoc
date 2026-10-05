@@ -77,24 +77,17 @@ Inject the holder, below the existing `complaintService` field:
     AuthoritativeUserIdHolder authoritativeUserIdHolder;
 ----
 
-Then, inside the `handleUserRequest` method, find these three lines in the `.onItem().transform(r -> {` block:
+Then, inside the `handleUserRequest` method, add this line to the `.onItem().transform(r -> {` block:
 
-.Before
-[source,java]
-----
-                    String userName = jwt.claim(Claims.preferred_username).orElse("").toString();
-                    Log.infof("Agent request received: %s; userId: %s", r, userName);
-                    JsonObject jsonObject = new JsonObject(r);
-----
-
-Replace them with these four, which add the `setUserId` call after the log line:
-
-.After
 [source,java,role="copypaste"]
 ----
-                    String userName = jwt.claim(Claims.preferred_username).orElse("").toString();
-                    Log.infof("Agent request received: %s; userId: %s", r, userName);
                     authoritativeUserIdHolder.setUserId(userName);
+----
+
+It goes directly above:
+
+[source,java]
+----
                     JsonObject jsonObject = new JsonObject(r);
 ----
 

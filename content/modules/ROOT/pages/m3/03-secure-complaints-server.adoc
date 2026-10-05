@@ -12,12 +12,11 @@ Both have to be secured before the next page. Which tool the agent reaches for i
 
 == Clone the repository
 
-Open a new terminal in IBM Bob (*Terminal* -> *New Terminal*). From the `workshop` folder:
+Clone it the same way, into its own window:
 
-[source,sh,role="copypaste",subs="attributes+"]
+[source,text,role="copypaste",subs="attributes+"]
 ----
-git clone https://gitlab-gitlab.{openshift_subdomain}/globex/globex-complaints.git
-cd globex-complaints/
+https://gitlab-gitlab.{openshift_subdomain}/globex/globex-complaints.git
 ----
 
 == What is in the repository

@@ -18,12 +18,11 @@ The commands in this module use the watsonx Orchestrate ADK CLI (`orchestrate`).
 
 == Clone the workspace
 
-The three YAML files are written for you. Clone them, from the `workshop` folder:
+The three YAML files are written for you. Clone the repository the same way as the others, into its own window:
 
-[source,sh,role="copypaste"]
+[source,text,role="copypaste"]
 ----
-git clone https://github.com/mcp-developers-workshop/globex-complaints-orchestrate.git
-cd globex-complaints-orchestrate
+https://github.com/mcp-developers-workshop/globex-complaints-orchestrate.git
 ----
 
 [source,text]

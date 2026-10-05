@@ -76,37 +76,33 @@ You land on the *Applications* dashboard, which lists every application the work
 
 image::m1/argocd-applications.png[link=self,window=_blank]
 
-Two of them relate to what you just pushed:
+// Two of them relate to what you just pushed:
 
-[cols="1,2", options="header"]
-|===
-| Application | Role
+// [cols="1,2", options="header"]
+// |===
+// | Application | Role
 
-| `globex-store-mcp-build`
-| The build. It picks up your commit from GitLab and pushes a container image to the internal OpenShift registry, tagged `globex-store-mcp-build/globex-store-mcp:latest`.
+// | `globex-store-mcp-build`
+// | The build. It picks up your commit from GitLab and pushes a container image to the internal OpenShift registry, tagged `globex-store-mcp-build/globex-store-mcp:latest`.
 
-| `globex-store-mcp`
-| The deployment. Its pod spec points at `image-registry.openshift-image-registry.svc:5000/globex-store-mcp-build/globex-store-mcp:latest`, so it rolls out whenever the build pushes a new image to that tag.
-|===
+// | `globex-store-mcp`
+// | The deployment. Its pod spec points at `image-registry.openshift-image-registry.svc:5000/globex-store-mcp-build/globex-store-mcp:latest`, so it rolls out whenever the build pushes a new image to that tag.
+// |===
 
-[NOTE]
-====
-Neither application syncs from your GitLab repository -- both are defined in the workshop install repository. Your code reaches the cluster through the image tag, not through an ArgoCD sync.
-====
+// [NOTE]
+// ====
+// Neither application syncs from your GitLab repository -- both are defined in the workshop install repository. Your code reaches the cluster through the image tag, not through an ArgoCD sync.
+// ====
 
-Click the `globex-store-mcp` tile.
-
-=== Check the rollout
-
-The application details tree opens:
+Click the `globex-store-mcp` tile. The application details tree opens:
 
 image::m1/argocd-globex-store-mcp.png[link=self,window=_blank]
 
-The tree shows the resources that make up the application -- deployment, replica set, pod, service, route, service account. When the build pushes the new image, a new replica set and pod appear with an age of a few seconds while the older ones are scaled down.
+The tree shows the resources that make up the application. When the build pushes the new image, a new replica set and pod appear with an age of a few seconds while the older ones are scaled down.
 
-*App Health* reads *Progressing* while the new pod starts, then switches to *Healthy* once the new image is serving.
+*App Health* reads *Progressing* while the new pod starts, then switches to *Healthy* once the new image is serving. This might take a minute or two, depending on how long the build took.
 
-[NOTE]
-====
-If nothing has changed, the build has not finished yet. Open the `globex-store-mcp-build` application to check the pipeline run, then come back.
-====
+// [NOTE]
+// ====
+// If nothing has changed, the build has not finished yet. Open the `globex-store-mcp-build` application to check the pipeline run, then come back.
+// ====

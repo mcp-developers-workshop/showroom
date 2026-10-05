@@ -124,6 +124,15 @@ Keycloak is configured for it too -- the `client-auth-federated` and `spiffe` fe
 
 So Keycloak will not look up a secret for this client at all. It verifies the SVID's signature against the trust domain, reads the subject, and checks it matches the SPIFFE ID on the client.
 
+[NOTE]
+====
+Optional. To see the identity provider, open the https://sso.{openshift_subdomain}/admin[Keycloak admin console^] as `admin` / `{common_password}`, switch to the `internal` realm, and go to *Identity providers* -> *spiffe*.
+
+image::m3/keycloak-spiffe-identity-provider.png[link=self,window=_blank]
+
+*SPIFFE Trust Domain* must match the trust domain SPIRE issues SVIDs for, or every assertion is rejected. The bundle endpoint is where Keycloak fetches SPIRE's public keys to check the signature -- it is SPIRE's OIDC discovery route, not a Keycloak address. Both are already set; nothing here needs changing.
+====
+
 // RESOLVED 2026-10-05: the realm ships this way. The internal realm was rebased onto the
 // POC's SPIFFE realm import (install-helm/globex/keycloak-realmimport-internal), so the
 // identity provider, the federated client and the federated-jwt authenticator are all
@@ -458,10 +467,15 @@ Commit each file to `main`.
 // If attendees need to create one, it is a step that belongs on this page. This is now the
 // largest unknown left on the page -- everything else has been traced to a real value.
 //
-// TBC: the bundle endpoint the realm's identity provider points at is
-// https://oidc-discovery.<subdomain>/keys (_spiffe_bundle_endpoint). Derived, not yet
-// confirmed against a running SPIRE OIDC discovery provider. If Keycloak cannot fetch the
-// bundle it cannot verify any SVID, and every client assertion on this page fails.
+// RESOLVED 2026-10-05: the bundle endpoint is confirmed on the running cluster. The
+// identity provider screenshot in the optional NOTE above shows the `internal` realm with
+// alias `spiffe`, SPIFFE Trust Domain `spiffe://globex.com`, and SPIFFE Bundle or OIDC JWKs
+// endpoint `https://oidc-discovery.<subdomain>/keys` -- the derived _spiffe_bundle_endpoint
+// value, as installed. Max expiration for Client Assertions is left empty.
+// This also confirms the realm fold-back landed: the provider is in `internal`, not in a
+// separate `spiffe` realm, so the page's realm naming is correct as written.
+// Still unconfirmed: that Keycloak can actually REACH that endpoint. It is set correctly;
+// whether the fetch succeeds only shows up as a failed assertion at run time.
 
 == Watch the rollout
 

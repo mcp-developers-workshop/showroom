@@ -21,10 +21,15 @@ This is data minimisation, and the tool is where you enforce it. Once data is in
 
 [source,text,role="copypaste",subs="attributes"]
 ----
-Change the contents of the JSON data returned by the mcp server. The orders in the history should not contain the shipping address. The product line items should not contain the price, but they should contain the product code, quantity and the product name. This might need additional calls to the backend api described in https://globex-store.{openshift_subdomain}/q/openapi
+Change the contents of the JSON data returned by the mcp server. The orders in the history should not contain the shipping address. The product line items should not contain the price, but they should contain the product code, quantity and the product name. This might need additional calls to the backend api described in https://globex-store.{openshift_subdomain}/q/openapi . Use 'asilva' as the customer id when testing.
 ----
 
 As before, read Bob's questions and click *Approve*.
+
+[NOTE]
+====
+The last sentence saves time. Without a customer ID that exists, Bob tests against invented ones, gets empty responses back, and cannot tell a working change from a broken one.
+====
 
 == What changes
 
@@ -43,7 +48,9 @@ Each line item keeps its product code and quantity, and gains a product name.
 
 [NOTE]
 ====
-The orders endpoint returns product codes, not names, so Bob has to call a second endpoint from the same OpenAPI specification to resolve each code. That is what the last sentence of the prompt allows for.
+The orders endpoint returns product codes, not names, so Bob has to call a second endpoint from the same OpenAPI specification to resolve them. That is what the sentence about additional calls allows for.
+
+`/services/catalog/product/list/{ids}` takes a list, so one call resolves every code -- not one call per line item.
 ====
 
 == Verify the new minimised response 

@@ -15,13 +15,14 @@ The agent is a REST endpoint, so testing it by hand means posting JSON at it. Th
 
 == Clone the chatbot
 
-Open a new terminal in IBM Bob (*Terminal* -> *New Terminal*). The chatbot runs alongside the agent, so it needs a terminal of its own. From the `workshop` folder:
+Clone it the same way, into its own window:
 
-[source,sh,role="copypaste"]
+[source,text,role="copypaste"]
 ----
-git clone https://github.com/mcp-developers-workshop/mcp-workshop-chatbot.git
-cd mcp-workshop-chatbot
+https://github.com/mcp-developers-workshop/mcp-workshop-chatbot.git
 ----
+
+The chatbot runs alongside the agent, so both stay running at once.
 
 It is an Angular application that signs the user in and posts each message to the agent's `/api/v1/request` endpoint with the resulting token attached. That token is where the agent gets the `preferred_username` claim it uses as the memory ID.
 
@@ -34,38 +35,20 @@ npm install
 
 == Configure the chatbot
 
-`environment.ts` is the development configuration. It is only used when you run the chatbot locally with `npm start`, against your locally running agent.
-
-The repository ships an example configuration. Copy it into place:
+`environment.ts` holds the development configuration -- it is read only when you run the chatbot locally with `npm start`. The repository ships `environment.example` as a template. Copy it into place:
 
 [source,sh,role="copypaste"]
 ----
 cp src/environments/environment.example src/environments/environment.ts
 ----
 
-Edit `src/environments/environment.ts` and point `apiUrl` at your locally running agent:
-
-[source,typescript,role="copypaste"]
-----
-apiUrl: 'http://localhost:8081/api/v1',
-----
-
-The chatbot appends `/request` to that, which is the endpoint on `AgentResource`.
-
-[NOTE]
-====
-Port 8081, not the Quarkus default. The agent sets `%dev.quarkus.http.port=8081` so it
-does not collide with `globex-store-mcp`, which keeps 8080 from Module 1. The two can run
-side by side, and you will want that in Module 3. The `%dev.` prefix means this applies
-in dev mode only -- the deployed agent still listens on 8080.
-====
-
-== Point the chatbot at Keycloak
-
-The chatbot signs users in against the `globex` realm on the workshop Keycloak. Replace the `oauth` block in the same file with:
+Replace the contents of `src/environments/environment.ts` with:
 
 [source,typescript,role="copypaste",subs="attributes+"]
 ----
+export const environment = {
+  production: false,
+  apiUrl: 'http://localhost:8081/api/v1',
   oauth: {
     authorizationUrl: 'https://sso.{openshift_subdomain}/realms/globex/protocol/openid-connect/auth',
     tokenUrl: 'https://sso.{openshift_subdomain}/realms/globex/protocol/openid-connect/token',
@@ -78,41 +61,22 @@ The chatbot signs users in against the `globex` realm on the workshop Keycloak. 
     responseType: 'code',
     usePKCE: true
   }
+};
 ----
 
-The client is `globex-web-gateway` and it already exists in the realm, with `http://localhost:4200/auth/callback` registered as a redirect URI.
+* `apiUrl` -- your locally running agent, on port 8081 in dev mode. The chatbot appends `/request` to it.
+* The four URLs -- the endpoints the `globex` realm publishes at `/.well-known/openid-configuration`.
+* `clientId` -- `globex-web-gateway` already exists in that realm, with `http://localhost:4200/auth/callback` registered as a redirect URI.
+* `environment.ts` -- gitignored. It holds a client secret and is never committed.
 
-[NOTE]
-====
-The four URLs are the endpoints the realm publishes at `https://sso.{openshift_subdomain}/realms/globex/.well-known/openid-configuration`. Open that in a browser if you want to see where they come from.
-====
-
-== Point the agent at Keycloak
-
-The agent validates the token the chatbot sends, so it needs to know which realm issued it. Add this to the agent's `.env`, in `globex-complaint-agent`:
-
-[source,properties,role="copypaste",subs="attributes+"]
-----
-quarkus.oidc.auth-server-url=https://sso.{openshift_subdomain}/realms/globex
-----
-
-`application.properties` already has `quarkus.oidc.application-type=service`, which is what makes the agent check the bearer token on each request rather than redirect anyone to a login page.
-
-== Start the agent and the chatbot
-
-Run the agent in dev mode. In the `globex-complaint-agent` terminal:
-
-[source,sh,role="copypaste"]
-----
-mvn quarkus:dev
-----
-
-Leave it running and switch back to the `mcp-workshop-chatbot` terminal:
+== Start the chatbot
 
 [source,sh,role="copypaste"]
 ----
 npm start
 ----
+
+The agent should still be running in dev mode from the previous section. Both have to be up.
 
 == Sign in
 
@@ -137,7 +101,12 @@ Keycloak sends you back to the chatbot, which greets you by the name on the toke
 
 == Raise a complaint
 
-Type `I want to raise a complaint` and click *Send*.
+Type this and click *Send*:
+
+[source,text,role="copypaste"]
+----
+I want to raise a complaint
+----
 
 image::m2/chatbot-raise-complaint.png[link=self,window=_blank]
 
