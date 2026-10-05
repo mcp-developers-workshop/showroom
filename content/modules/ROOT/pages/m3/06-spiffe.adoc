@@ -87,7 +87,7 @@ The identity has to come from something that can actually verify the claim, and 
 
 The workload talks to its node's SPIRE agent over a local Unix socket, so there is no credential to put in a chart, in Git, or in an environment variable, and nothing to rotate on a schedule.
 
-== What Step 2 builds
+== What you build on this page
 
 A SPIRE agent attests the agent pod and issues it a short-lived JWT-SVID. The agent sends that SVID to Keycloak in place of the client secret, as a *client assertion*. Keycloak matches it to the Keycloak client the agent already uses and issues the same access token as before -- so the MCP servers need no change, and both `quarkus.oidc-client.*` blocks from the last page stay. What goes away is the secret in `values.yaml`.
 

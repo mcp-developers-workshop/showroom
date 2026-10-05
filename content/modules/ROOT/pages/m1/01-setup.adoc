@@ -44,31 +44,17 @@ On the desktop of your workshop VM, double-click the *IBM Bob* shortcut and wait
 
 === Give Bob the Quarkus tooling
 
-In the next section you ask Bob to generate a Quarkus MCP server. Register the Quarkus MCP server with Bob first, so it has tools for creating the project and adding extensions rather than writing the files from memory:
+In the next section you ask Bob to generate a Quarkus MCP server. Register the Quarkus MCP server with Bob first, so it has tools for creating the project and adding extensions rather than writing the files from memory.
 
-[source,bash,role=execute]
+Type this into the *New Task* box in the *IBM BOB* panel, not into a terminal:
+
+[source,text,role="copypaste"]
 ----
 mcp add quarkus-agent -- jbang quarkus-agent-mcp@quarkusio
 ----
 
-[cols="1,2", options="header"]
-|===
-| Part | Meaning
+image::m1/bob-mcp-add.png[link=self,window=_blank]
 
-| `mcp add`
-| Registers an MCP server with Bob.
-
-| `quarkus-agent`
-| The name Bob will know it by.
-
-| everything after `--`
-| The command Bob runs to start the server. `jbang` fetches `quarkus-agent-mcp` from the `quarkusio` catalog on first use, so there is nothing to install beforehand.
-|===
-
-[NOTE]
-====
-Bob is itself an MCP client. The tools it just gained are the same kind of thing you publish in this module, reached over the same protocol. The difference is the transport -- this server runs as a local process on the VM, while the one you build is reached over HTTP.
-====
 
 === Create and open the workshop folder
 

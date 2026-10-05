@@ -12,15 +12,11 @@ The Globex store exposes a REST API described by an OpenAPI specification. Inste
 
 This is the brownfield pattern: the existing API is untouched, and the MCP server sits in front of it.
 
-=== Review the OpenAPI specification
-
-Open https://globex-store.{openshift_subdomain}/q/openapi[the Globex Store OpenAPI specification^].
-
 === Prompt IBM Bob
 
 In IBM Bob, make sure the `globex-store-mcp` folder is your working context, then enter the following prompt:
 
-[source,bash,role=execute,subs="attributes"]
+[source,text,role="copypaste",subs="attributes"]
 ----
 Within the globex-store-mcp folder, Download the openapi spec document located at https://globex-store.{openshift_subdomain}/q/openapi . Create a mcp server called "GlobexStoreMcpServer" which exposes a tool called "getOrdersByCustomerId" to get the orders for a given customerId. The tool implementation should connect to the API described in the openAPI spec document and return the API response. The mcp server should use the streamable http transport. Use the appropriate quarkus extension for the mcp server.
 ----
@@ -30,33 +26,6 @@ Within the globex-store-mcp folder, Download the openapi spec document located a
 Bob breaks the request into tasks and asks for confirmation before running them -- downloading the specification, adding the Quarkus extension, creating files, running commands. Expect several prompts.
 
 Read each question, click *Approve*, and keep going until Bob reports that it has finished.
-
-[NOTE]
-====
-The questions tell you which extension and project layout Bob has settled on.
-====
-
-=== What the prompt specifies
-
-[cols="1,2", options="header"]
-|===
-| Instruction | Effect
-
-| Download the OpenAPI spec
-| Bob generates the client from the actual contract instead of guessing endpoint shapes.
-
-| Expose a tool to get orders for a given `customerId` 
-| One narrow tool rather than a mapping of every REST endpoint.
-
-| Connect to the API described in the spec and return the response
-| The MCP server wraps the API; it does not reimplement the logic.
-
-| Use the streamable HTTP transport
-| Needed for the server to be reachable once deployed on OpenShift.
-
-| Use the appropriate Quarkus extension
-| Points Bob at the Quarkus MCP server extension instead of a hand-rolled protocol implementation.
-|===
 
 === Review Bob's summary
 
@@ -87,14 +56,9 @@ quarkus.rest-client.globex-store-api.url=https://globex-store.{openshift_subdoma
 
 The URL came from the `servers` block of the OpenAPI document Bob downloaded.
 
-[NOTE]
-====
-That URL is hardcoded because this is a workshop and there is one environment. In production the base URL of a backing service is environment configuration -- a ConfigMap, a Secret or an environment variable -- so the same image can run against dev, test and production without being rebuilt. Leave it as it is here.
-====
-
 == Verify the Tool in the Quarkus Dev UI
 
-The Quarkus Dev UI is available whenever the application runs in dev mode. The MCP server extension adds its own page, which lists the registered tools.
+The MCP server extension adds a Dev UI page listing the registered tools.
 
 === Start the application in dev mode
 
@@ -105,17 +69,15 @@ If Bob left the application running after its test run, dev mode is already up. 
 ./mvnw quarkus:dev
 ----
 
-Wait for the `Listening on: http://localhost:8080` message.
+Wait for the startup message:
 
-=== Open the MCP tools page
-
-Open http://localhost:8080/q/dev-ui/quarkus-mcp-server-http/tools[the Dev UI tools page^].
-
-This is the *Tools* page of the *MCP Server - HTTP* section.
+....
+Listening on: http://localhost:8080
+....
 
 === Confirm the tool is registered
 
-One tool is listed:
+Open http://localhost:8080/q/dev-ui/quarkus-mcp-server-http/tools[the Dev UI tools page^]. One tool is listed:
 
 [cols="1,2", options="header"]
 |===
@@ -125,16 +87,11 @@ One tool is listed:
 | Get all orders for a given customer ID from the Globex Store
 |===
 
-The Globex Store REST API exposes many endpoints; the MCP server publishes this one.
+If nothing is listed, check the dev mode terminal for a failed restart.
 
 [NOTE]
 ====
-Bob may have named the tool something else -- `getOrders`, for example -- and may rename it again when you change it in the sections that follow. That is normal for generated code. Use whatever name your Dev UI shows wherever these instructions refer to `getOrdersByCustomerId`, in this module and in Module 2.
-====
-
-[NOTE]
-====
-If the page loads but lists no tools, the tool class is probably missing its MCP tool annotation, or the application failed to restart after the last edit. Check the dev mode terminal output.
+Bob may have named the tool something else -- `getOrders`, for example -- and may rename it again later. Use whatever name your Dev UI shows wherever these instructions say `getOrdersByCustomerId`.
 ====
 
 === Call the tool
@@ -155,4 +112,4 @@ Leave *Force new session* unticked and *Bearer Token* empty. The server has no a
 
 image::m1/devui-tool-call-result-full.png[link=self,window=_blank]
 
-The result is the Globex Store API's response passed straight through. Nothing asked for the shipping address or the line item prices, and an agent answering "what did I order?" has no use for them. Trimming the payload is the next section.
+The result is the API response passed straight through with the complete order information for that customer `asilva`. 

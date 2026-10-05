@@ -6,13 +6,20 @@
 :icons: font
 :source-highlighter: highlight.js
 
-The tool currently returns whatever the Globex Store API returns, including shipping addresses and prices that an agent does not need to answer a question about order history.
+The tool returns the API response untouched, and that response contains `asilva`'s home address.
 
-Next you trim and reshape the payload so the tool returns only the required fields.
+Everything a tool returns is sent to the model. In most deployments, that means customer data leaves your network and is sent to a hosted model provider. It becomes part of the prompt, and may then appear in model logs, traces, transcripts, and later responses.
+
+The address and prices make sense for the Globex web application, which needs them to render the page. An agent answering "what did I order?" needs neither.
+
+[NOTE]
+====
+This is data minimisation, and the tool is where you enforce it. Once data is in the prompt, you cannot reliably take it back.
+====
 
 == Prompt IBM Bob
 
-[source,bash,role=execute,subs="attributes"]
+[source,text,role="copypaste",subs="attributes"]
 ----
 Change the contents of the JSON data returned by the mcp server. The orders in the history should not contain the shipping address. The product line items should not contain the price, but they should contain the product code, quantity and the product name. This might need additional calls to the backend api described in https://globex-store.{openshift_subdomain}/q/openapi
 ----
@@ -21,51 +28,30 @@ As before, read Bob's questions and click *Approve*.
 
 == What changes
 
-[cols="1,1,2", options="header"]
+[cols="1,2", options="header"]
 |===
-| Field | Action | Reason
+| Dropped | Why
 
 | Shipping address
-| Removed
-| Personally identifiable information, not needed to describe an order.
+| Personal data. Identifies where a named customer lives.
 
 | Line item price
-| Removed
-| Commercially sensitive, not needed for an order-history question.
-
-| Product code
-| Kept
-| Identifies the item.
-
-| Quantity
-| Kept
-| Describes what was ordered.
-
-| Product name
-| Added
-| Human-readable label for the product code.
+| Commercially sensitive, and irrelevant to the question being asked.
 |===
+
+Each line item keeps its product code and quantity, and gains a product name.
 
 [NOTE]
 ====
-The orders endpoint returns product codes, not names, so Bob has to call a second endpoint from the same OpenAPI specification to resolve each code into a product name. That is what the last sentence of the prompt allows for.
+The orders endpoint returns product codes, not names, so Bob has to call a second endpoint from the same OpenAPI specification to resolve each code. That is what the last sentence of the prompt allows for.
 ====
 
-== Verify the new response shape
+== Verify the new minimised response 
 
 Bob rebuilds and re-tests. Once dev mode has restarted, call the tool again from http://localhost:8080/q/dev-ui/quarkus-mcp-server-http/tools[the Dev UI tools page^] with the same `asilva` customer ID:
 
 image::m1/devui-tool-call-result-shaped.png[link=self,window=_blank]
 
-Check the returned JSON:
+Each order is now `id`, `customer`, `timestamp`, and a `lineItems` array of `productCode`, `productName` and `quantity` -- and nothing else. Same question, same customer, none of the personal or commercial data.
 
-* No shipping address in the order history.
-* No price on any line item.
-* Every line item has a product code, a quantity, and a product name.
-
-Each order is now `id`, `customer`, `timestamp`, and a `lineItems` array of `productCode`, `productName` and `quantity` -- and nothing else. Compare it with the response from the previous section: same question, same customer, none of the personal or commercial data.
-
-[NOTE]
-====
-Data the tool never returns cannot leak. The address and the prices are still in the backing API, but they are no longer sent to the agent, no longer in the model's context, and no longer in whatever logs or traces that context passes through.
-====
+The address and the prices are still in the Globex Store API, available to anything with a legitimate reason to read them. They no longer leave the network on a tool call.

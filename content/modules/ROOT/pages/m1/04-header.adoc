@@ -6,7 +6,11 @@
 :icons: font
 :source-highlighter: highlight.js
 
-The tool takes `customerId` as a parameter, which means the model supplies it. Next you move it to an HTTP header on the MCP request, so the caller sets it and the model never sees it.
+The tool takes `customerId` as a parameter, which means the model supplies it. Whatever the model puts in that field decides whose orders come back.
+
+The model's input is the conversation: the customer's own words, plus any text that reached the context from somewhere else. So "show me the orders for another customer" is a valid tool call, and so is an instruction hidden in a document the agent was asked to read. The server cannot tell any of them apart from a legitimate request.
+
+Identity is not the model's to decide. Next you move the customer ID to an HTTP header on the MCP request, set by the caller. It leaves the tool's schema entirely, so the model has no field to fill in.
 
 == Prompt IBM Bob
 
@@ -44,32 +48,26 @@ Once dev mode restarts, open http://localhost:8080/q/dev-ui/quarkus-mcp-server-h
 
 image::m1/devui-getorders-no-parameters.png[link=self,window=_blank]
 
-The tool now declares no parameters. The customer identifier is no longer part of the contract the model sees, so there is nothing for it to supply or change.
+The tool declares no parameters. There is nothing left for the model to supply.
 
 == Test the header with MCP Inspector
 
-The Dev UI does not let you set request headers, so use the *MCP Inspector* to check the header handling. The Inspector is a standalone MCP client with a browser UI, so it connects to your server the same way an agent would.
+The Dev UI cannot set request headers. *MCP Inspector* is a standalone MCP client with a browser UI, and it connects to your server the same way an agent would.
 
-Leave dev mode running and open a second terminal.
-
-Start the Inspector:
+Leave dev mode running and start the Inspector from a second terminal:
 
 [source,sh,role="copypaste"]
 ----
 npx @modelcontextprotocol/inspector
 ----
 
-It starts a local proxy and prints a URL for the UI (default `http://localhost:6274`) and the inspector is opened in the browser.
-
-The landing page lists the servers the Inspector knows about, all disconnected:
+It prints a URL for the UI (default `http://localhost:6274`) and opens it in the browser.
 
 image::m1/mcp-inspector-servers.png[link=self,window=_blank]
 
 === Add your server
 
-The three entries on the page are the Inspector's built-in examples. Add your own.
-
-Click *Add Servers* -> *Add Manually* and fill in the dialog:
+The three servers listed are the Inspector's built-in examples. Click *Add Servers* -> *Add Manually* and fill in the dialog:
 
 image::m1/mcp-inspector-add-server.png[link=self,window=_blank]
 
@@ -89,42 +87,33 @@ image::m1/mcp-inspector-add-server.png[link=self,window=_blank]
 
 Click *Add*.
 
-
 === Connect to the server
 
-A card for `order-mcp-local` appears alongside the examples, marked *Disconnected*:
+Click the *Disconnected* toggle on the new `order-mcp-local` card.
 
 image::m1/mcp-inspector-server-added.png[link=self,window=_blank]
 
-Click the *Disconnected* toggle on that card to connect.
-
-The card turns green and reads *Connected*, the server's name (`GlobexStoreMcpServer`) appears in the top-left, the negotiated protocol version is shown on the card, and a *Tools* tab appears next to *Servers*:
+The card turns green, the server reports itself as `GlobexStoreMcpServer`, and a *Tools* tab appears:
 
 image::m1/mcp-inspector-connected.png[link=self,window=_blank]
 
 === Check the tool schema
 
-Open the *Tools* tab. The left-hand panel lists the tools the server advertises -- just `getOrdersByCustomerId`:
-
-image::m1/mcp-inspector-tools-list.png[link=self,window=_blank]
-
-Click the tool to see its details:
+Open the *Tools* tab and click `getOrdersByCustomerId`:
 
 image::m1/mcp-inspector-tool-detail.png[link=self,window=_blank]
 
-The panel shows the description and an *Execute Tool* button, and nothing else. There are no input fields, because the tool no longer declares any parameters -- the customer ID comes from the `X-User-Id` header instead.
+A description and an *Execute Tool* button, and no input fields. This is the tool contract as a model receives it -- there is no customer ID in it.
 
 === Call the tool without the header
 
-Click *Execute Tool*.
-
-The call fails with *Tool Call Failed* / *Internal error*, because the tool throws when `X-User-Id` is missing:
+Click *Execute Tool*. The call fails, because the tool throws when `X-User-Id` is missing:
 
 image::m1/mcp-inspector-tool-error.png[link=self,window=_blank]
 
 [NOTE]
 ====
-The *Network* panel on the right records the request as `200 OK`. The HTTP request itself succeeded; the failure is carried inside the MCP response, which is how tool errors are reported.
+The *Network* panel records the request as `200 OK`. The HTTP request succeeded; the failure is carried inside the MCP response, which is how tool errors are reported.
 ====
 
 === Add the header
@@ -133,7 +122,7 @@ Go back to the *Servers* tab and click *Settings* on the `order-mcp-local` card:
 
 image::m1/mcp-inspector-card-settings.png[link=self,window=_blank]
 
-The *Server Settings* dialog opens on the *Options* section. Scroll to the bottom and expand *Custom Headers*:
+Scroll to the bottom of the *Options* section and expand *Custom Headers*:
 
 image::m1/mcp-inspector-server-settings.png[link=self,window=_blank]
 
@@ -156,20 +145,13 @@ Close the dialog.
 
 [IMPORTANT]
 ====
-Custom headers only take effect on a new connection, and the Inspector does not pick them up on a reconnect alone. Reload the browser page, then connect to `order-mcp-local` again as you did earlier.
+Custom headers only take effect on a new connection, and a reconnect is not enough. Reload the browser page, then connect to `order-mcp-local` again.
 ====
 
 === Call the tool with the header
 
 Go to the *Tools* tab, select `getOrdersByCustomerId`, and click *Execute Tool*.
 
-The call succeeds and the *Results* panel shows the shaped order history for `asilva`:
-
 image::m1/mcp-inspector-tool-result.png[link=self,window=_blank]
 
-Check the JSON against the two changes you made:
-
-* No shipping address on any order.
-* No price on any line item, and every line item has `productCode`, `productName` and `quantity`.
-
-The tool took no arguments. The customer whose orders came back was determined entirely by the `X-User-Id` header, which the model never sees and cannot change.
+The call took no arguments, and `asilva`'s shaped order history came back. Whose orders those were was decided entirely by the `X-User-Id` header -- a value the model never sees and cannot change.

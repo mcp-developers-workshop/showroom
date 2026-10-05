@@ -263,7 +263,7 @@ If ArgoCD shows `nil pointer evaluating interface {}.secret`, the template is re
 ====
 `values.yaml` is committed to Git, so the secret is committed with it. In production the secret would come from a secret manager, rotate on a schedule, and never reach the repository. The workshop keeps it in Git to avoid standing up another system.
 
-Step 2 of this module removes the secret entirely.
+The next page removes the secret entirely.
 ====
 
 == Watch the rollout
