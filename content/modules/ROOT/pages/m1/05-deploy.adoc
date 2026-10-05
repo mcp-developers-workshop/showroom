@@ -18,11 +18,6 @@ git add .
 git commit -m "my first MCP server"
 ----
 
-[TIP]
-====
-Bob's *Source Control* panel does the same thing: stage the changed files, type the commit message, and commit.
-====
-
 === Push to GitLab
 
 [source,sh,role="copypaste"]
