@@ -13,7 +13,6 @@ You took two MCP servers that would talk to anyone and closed them to everything
 * Cloned the complaints server and did the same to both of its MCP endpoints, including the read-only one Module 5 uses.
 * Watched the agent fail, unchanged, because it had never had a token to send.
 * Gave the agent two Keycloak client identities, added an `McpClientAuthProvider` per MCP client, and put the secrets in the chart rather than the image.
-* Added an `OidcRequestFilter` so the agent sends Keycloak the SPIFFE client assertion type.
 * Moved the agent's chart to SPIFFE in one commit -- an init container and a sidecar writing a JWT-SVID to a shared volume, and both OIDC clients reading it in place of a secret. That collapsed the agent's two Keycloak identities into one and deleted the secrets from the chart.
 
 A resource server needs no credentials -- it validates with the realm's public keys. A client does. `quarkus-oidc` validates tokens, `quarkus-oidc-client` fetches them.

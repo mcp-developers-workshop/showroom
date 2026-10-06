@@ -1,0 +1,110 @@
+:experimental:
+:imagesdir: ../../assets/images
+
+= What the Pod Logs Cannot Tell You
+
+:numbered:
+:icons: font
+:source-highlighter: highlight.js
+
+Nothing is installed or changed on this page. You raise one complaint, then try to answer five questions about it from the logs you already have.
+
+== Raise a complaint
+
+Open the https://globex-web-globex.{openshift_subdomain}/[Globex storefront^], sign in as `asilva` / `openshift`, go to *Customer Care*, and ask:
+
+[source,text,role="copypaste"]
+----
+raise a complaint
+----
+
+[source,text,role="copypaste"]
+----
+I want to raise a complaint about the Stojo Collapsible Silicone Bottle. the cap was broken on arrival. It is such a critical problem for me. I want a replacement
+----
+
+Confirm the summary and note the complaint ID that comes back. Note the time as well, to the minute.
+
+== Open the three logs
+
+Three pods handled that turn. In the https://console-openshift-console.{openshift_subdomain}/[OpenShift console^], open each one's *Logs* tab:
+
+[cols="2,2,3", options="header"]
+|===
+| Project | Pod | What it is configured to log
+
+| `globex-complaint-agent`
+| `globex-complaint-agent`
+| The full request and response body of every model call. `quarkus.langchain4j.openai.complaint.log-requests` and `log-responses` were set to `true` before you ever saw the repository.
+
+| `globex-complaints`
+| `globex-complaints`
+| The JSON-RPC messages in and out of its MCP endpoints, truncated at 1000 characters. That is `quarkus.mcp.server.traffic-logging`, which the repository ships enabled.
+
+| `globex-store-mcp`
+| `globex-store-mcp`
+| Nothing about the request. The server you built in Module 1 has no traffic logging and Quarkus writes no access log by default.
+|===
+
+== Five questions
+
+Work through these against the logs. The point is not to fail at all of them -- some are answerable with effort -- it is to notice what the effort consists of.
+
+[cols="1,4", options="header"]
+|===
+| | Question
+
+| 1
+| Which lines in the complaints server log belong to *your* turn, rather than to another attendee signed in at the same moment?
+
+| 2
+| Did the model call the orders tool before it called the complaints tool, or not at all?
+
+| 3
+| Of the total time between pressing *Send* and seeing the summary, how much was the model, how much was the complaints server, and how much was the database write?
+
+| 4
+| How many input and output tokens did the turn cost, across all model calls?
+
+| 5
+| What did the second model call receive as input -- specifically, what the first tool returned?
+|===
+
+Question 1 has no answer in the logs. The agent log, the complaints log and the store log share no identifier: there is no request ID, no correlation ID and no session ID common to the three. The only join available is the timestamp, which works when you are the only person on the cluster and stops working the moment you are not.
+
+Question 2 is unanswerable for the orders server specifically, because that pod logs nothing. Absence of a log line is not absence of a call.
+
+Question 3 needs durations. None of the three applications logs one. You can subtract timestamps across two pods, which assumes their clocks agree and that the two lines you picked belong to the same request -- the assumption question 1 just showed you cannot make.
+
+Question 4 is answerable. The OpenAI response body carries a `usage` object and the agent logs the whole body. You get it by reading JSON out of a log line, per call, and adding up.
+
+Question 5 is partly answerable and silently wrong. The complaints server truncates at 1000 characters, so a long tool result is cut, and nothing in the log says what was cut or how much.
+
+== What is missing
+
+Not data. Most of what you want is written down somewhere. What is missing is that the records are in three places, carry no shared key, and have no durations -- so reconstructing one turn is a manual join on timestamps that stops being correct as soon as two people use the system at once.
+
+A trace fixes exactly that and nothing else. Each application stamps the work it does with a trace ID it was given by its caller, and sends the result to one place. The next two pages do that for all three applications.
+
+// VERIFIED 2026-10-06 against the working copies in ~/workshop. The logging claims in the
+// table are read from src/main/resources/application.properties in each repository:
+//   * globex-complaint-agent: quarkus.langchain4j.openai.complaint.log-requests=true and
+//     log-responses=true.
+//   * globex-complaints: quarkus.mcp.server.traffic-logging.enabled=true with
+//     text-limit=1000, and the same pair on the named `read` server.
+//   * globex-store-mcp: no traffic-logging and no access-log property of any kind.
+// Those files are the live clones, not the canonical GitHub repos. If the seed repositories
+// differ, this page's table is the first thing that goes stale.
+//
+// NOT VERIFIED: the exact shape of the log lines. No log output is quoted on this page on
+// purpose -- the questions are phrased so that they can be attempted against whatever the
+// pods actually print. If a walkthrough shows the agent log is far noisier or far quieter
+// than this implies, adjust the questions, not the claim.
+//
+// TBC: screenshot of the three Logs tabs side by side would make the "three places, no
+// shared key" point in one image. Not added -- no such file exists in assets/images.
+//
+// OPEN: question 1 assumes other attendees share the cluster. Confirm the workshop is
+// multi-tenant on one cluster rather than one cluster per attendee. If every attendee has
+// their own cluster the question still stands -- concurrency is normal in production -- but
+// it should be worded as a production observation rather than something they can reproduce.

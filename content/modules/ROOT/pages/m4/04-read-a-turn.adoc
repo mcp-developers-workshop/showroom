@@ -1,0 +1,154 @@
+:experimental:
+:imagesdir: ../../assets/images
+
+= Read One Turn End to End
+
+:numbered:
+:icons: font
+:source-highlighter: highlight.js
+
+Nothing to install. Open the trace from the end of the previous page in LangFuse and answer the questions below from the UI.
+
+== The two views
+
+LangFuse renders the same trace twice and you need both.
+
+The *span tree* is the distributed trace: one node per unit of work, nested by caller, each with a start time and a duration, each tagged with the `service.name` it came from.
+
+The *observation detail* is the LLM view. Spans that carry `gen_ai.operation.name` are promoted: a span with `chat` becomes a generation, with input, output, model and token counts as first-class fields; a span with `execute_tool` becomes a tool call, with its arguments and result.
+
+Both are built from the same OTLP spans. Nothing in this workshop sends LangFuse anything else.
+
+== Where the fields come from
+
+Useful when a field is empty and you need to know which end to go and look at.
+
+[cols="2,3", options="header"]
+|===
+| LangFuse field | Span attribute
+
+| Input
+| `gen_ai.prompt`
+
+| Output
+| `gen_ai.completion`
+
+| Model
+| `gen_ai.request.model`, `gen_ai.response.model`
+
+| Usage
+| `gen_ai.usage.input_tokens`, `gen_ai.usage.output_tokens`
+
+| Model parameters
+| `gen_ai.request.temperature`, `gen_ai.request.top_p`
+
+| Tool name and arguments
+| `gen_ai.tool.name`, `gen_ai.tool.call.arguments`, `gen_ai.tool.call.result`
+|===
+
+`gen_ai.prompt`, `gen_ai.completion`, `gen_ai.tool.call.arguments` and `gen_ai.tool.call.result` are the four you switched on in the chart. If Input and Output are empty, those four properties did not reach the running pod.
+
+== The questions
+
+These are the five from the first page of this module, plus three more. Answer each from the LangFuse UI and note how long it takes compared with the log reading you did earlier.
+
+[cols="1,4,3", options="header"]
+|===
+| | Question | Where
+
+| 1
+| Which work belongs to this turn, and nothing else?
+| The trace is the answer. Every span in it shares one trace ID, assigned by the agent when the storefront request arrived and carried through every hop.
+
+| 2
+| Did the model call the orders tool, the complaints tool, or both -- and in what order?
+| The span tree, left to right in time. Tool spans are named for the tool.
+
+| 3
+| How long did the model take, how long did the MCP call take, and how long did the database write take?
+| Durations on the three nested spans. The database write is a JDBC span inside the complaints server.
+
+| 4
+| How many input and output tokens did the turn cost in total?
+| Usage, per generation. More than one generation means adding them up -- the trace-level total covers it.
+
+| 5
+| What did the second model call receive as input?
+| Input on the second generation. The first tool's result is in it, in full, not truncated.
+
+| 6
+| What was in the system message, and what tool definitions were sent with it?
+| Input on the *first* generation. This is the prompt as sent, after everything the framework added -- not the prompt as written in the source.
+
+| 7
+| Why did the model stop when it did?
+| `gen_ai.response.finish_reasons` on the generation. `tool_calls` and `stop` mean different things.
+
+| 8
+| Which of the three services was the slowest, and was it slow because of its own work or because of something it called?
+| Compare a span's duration with the sum of its children's.
+|===
+
+Question 6 is the one that is hard to get any other way. The prompt the model receives is assembled at runtime from the `@SystemMessage`, the conversation so far and the tool definitions that `quarkus-langchain4j-mcp` generated from each MCP server's `tools/list`. You wrote one part of that in Module 2. The trace shows all of it.
+
+[NOTE]
+====
+Cost. LangFuse prices a generation from its own model table, keyed on the model name in the span. If the model you are using is not in that table, cost shows as zero while tokens show correctly -- that is a missing price, not missing telemetry. Quarkus does put a cost estimate of its own on the span, as `gen_ai.client.estimated_cost`, but it is not one of the attributes LangFuse reads.
+====
+
+== What the trace does not contain
+
+Two things worth checking for and failing to find.
+
+*The customer.* Search the trace for `asilva`, or for the customer ID the storefront signed in with. It is not there as a field. The agent sends it as the `X-User-Id` header on every MCP call -- the header you built in Module 1 and wired up in Module 2 -- and Quarkus does not put request headers on spans. The one place it may surface is inside `gen_ai.prompt`, if the conversation happens to mention it.
+
+*The token.* The agent's access token and its SPIFFE SVID are not in the trace either, which is the correct outcome rather than a gap. A trace is sent to a third-party backend; credentials do not belong in it.
+
+Both of those are the subject of the summary.
+
+// VERIFIED 2026-10-06 by reading the bytecode of quarkus-langchain4j 1.11.2 in ~/.m2.
+// The attribute names in the mapping table are string constants in:
+//   * SpanChatModelListener -- gen_ai.operation.name (value "chat"), gen_ai.provider.name,
+//     gen_ai.request.model, gen_ai.response.model, gen_ai.request.temperature,
+//     gen_ai.request.top_p, gen_ai.usage.input_tokens, gen_ai.usage.output_tokens,
+//     gen_ai.response.finish_reasons, gen_ai.response.id, gen_ai.client.estimated_cost.
+//   * PromptTextSpanContributor -- gen_ai.prompt. CompletionTextSpanContributor --
+//     gen_ai.completion.
+//   * ToolSpanWrapper -- gen_ai.operation.name (value "execute_tool"), gen_ai.tool.name,
+//     gen_ai.tool.type, gen_ai.tool.call.id, gen_ai.tool.call.arguments,
+//     gen_ai.tool.call.result.
+// The LangFuse side of the table is from langfuse.com/integrations/native/opentelemetry
+// (fetched 2026-10-06): input <- gen_ai.prompt, output <- gen_ai.completion, model <-
+// gen_ai.request.model / gen_ai.response.model, usage <- gen_ai.usage.*, modelParameters
+// <- gen_ai.request.*, cost <- gen_ai.usage.cost. Note the last one: LangFuse looks for
+// gen_ai.usage.cost and Quarkus emits gen_ai.client.estimated_cost, which is why the cost
+// NOTE above says what it says. If a walkthrough shows a non-zero cost, it came from
+// LangFuse's price table, not from the span.
+//
+// NOT VERIFIED, and this is the page most exposed to it:
+//   * The LangFuse UI itself. "Tracing -> Traces", "span tree", "observation detail",
+//     "generation" and the field labels Input / Output / Usage / Model parameters are
+//     LangFuse's documented vocabulary, but the installed version and its navigation have
+//     not been seen. Every question above is phrased around what the data IS rather than
+//     where to click, so the questions survive a UI change; the two paragraphs under
+//     "The two views" may not.
+//   * Whether LangFuse promotes a Quarkus `chat` span to a generation in practice. The
+//     attribute contract matches on both sides, which is the basis for the claim, but the
+//     rendering has not been observed. If it does not promote, the span tree still works
+//     and this page loses the LLM view -- which would be the single biggest finding of a
+//     walkthrough, because it is the reason LangFuse was chosen over a plain trace store.
+//   * Question 3 assumes a JDBC span is visible. That depends on
+//     quarkus.datasource.jdbc.telemetry taking effect on the complaints server.
+//   * Question 2 assumes both tools get called. See the open item on page 03.
+//
+// TBC: screenshots. Two would earn their place -- the span tree with all three services
+// visible, and one generation with Input, Output and Usage populated. Neither exists in
+// assets/images and neither can be invented. Capture both on the first walkthrough.
+//
+// DELIBERATELY NOT HERE: trace-level userId, sessionId and tags. LangFuse reads those from
+// dedicated attributes and recommends OpenTelemetry Baggage to propagate them across
+// services. Setting them would need a custom span processor or an explicit Baggage write
+// in the agent, which is a Java change this module does not otherwise make, and it would
+// weaken the point the summary closes on. If the module is ever allowed to grow, this is
+// the first thing to add: it turns "which turn was this" into "every turn this customer
+// had", and it is the natural bridge to the unsolved X-User-Id problem.

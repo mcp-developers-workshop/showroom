@@ -1,7 +1,7 @@
 :experimental:
 :imagesdir: ../../assets/images
 
-= SPIFFE Step 3: Confirm the Agent Has No Secret
+= SPIFFE Step 2: Confirm the Agent Has No Secret
 :numbered:
 :icons: font
 :source-highlighter: highlight.js
@@ -29,7 +29,7 @@ mcp server reconnection failed: io.quarkus.oidc.client.OidcClientException:
 {"error":"invalid_client","error_description":"Token is not active"}
 ....
 
-That is Keycloak rejecting an expired SVID. The init container wrote one token and exited; without the sidecar nothing renews it. Go back to SPIFFE Step 2 and re-paste the whole of `templates/deployment.yaml` -- a partial edit that drops the sidecar, or leaves two `containers:` keys, produces exactly this.
+That is Keycloak rejecting an expired SVID. The init container wrote one token and exited; without the sidecar nothing renews it. Go back to SPIFFE Step 1 and re-paste the whole of `templates/deployment.yaml` -- a partial edit that drops the sidecar, or leaves two `containers:` keys, produces exactly this.
 ====
 
 // VERIFIED 2026-10-05 on the live cluster. This is not a predicted failure -- it happened.

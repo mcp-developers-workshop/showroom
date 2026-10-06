@@ -1,0 +1,205 @@
+:experimental:
+:imagesdir: ../../assets/images
+
+= Send the Agent's Traces to LangFuse
+
+:numbered:
+:icons: font
+:source-highlighter: highlight.js
+
+[IMPORTANT]
+====
+This page works in the *`globex-complaint-agent`* window and in the *`globex-complaint-agent-helm`* repository. One extension, then three properties.
+====
+
+== Build the credential first
+
+LangFuse authenticates OTLP with HTTP Basic auth: the project's public key and secret key, joined by a colon and base64-encoded. You need that string before you edit anything, because it goes into the chart.
+
+In a terminal on your workshop VM:
+
+[source,sh,role="copypaste",subs="attributes+"]
+----
+echo -n '{langfuse_public_key}:{langfuse_secret_key}' | base64 -w 0
+----
+
+Keep the output. It is one long line with no spaces, and it usually ends in `=` or `==`.
+
+[WARNING]
+====
+`-n` and `-w 0` are both load-bearing. Without `-n`, `echo` adds a newline and the encoded credential is wrong. Without `-w 0`, GNU `base64` wraps the output at 76 characters and you will paste a two-line value into a single-line property.
+====
+
+== Add the extension
+
+The agent has no Maven wrapper, so plain `mvn`:
+
+[source,sh,role="copypaste"]
+----
+mvn quarkus:add-extension -Dextensions="opentelemetry"
+----
+
+That is the whole code change. You write no instrumentation: the extension traces inbound HTTP on its own, `quarkus-langchain4j` contributes a span per model call, and `quarkus-langchain4j-mcp` contributes a span per MCP tool call. All three were already on the classpath and all three have been checking for OpenTelemetry since Module 2, finding nothing.
+
+[source,sh,role="copypaste"]
+----
+mvn clean compile
+----
+
+== Commit and push
+
+[source,sh,role="copypaste"]
+----
+git add .
+git commit -m "export traces over OTLP"
+git push
+----
+
+The webhook starts the pipeline. *Do not wait for it* -- the chart edits below have to be in place before it finishes, and the next section explains why.
+
+== What the pipeline does at the end
+
+The pipeline builds the image, pushes it, and then runs a final task that deletes the agent pod. The replacement pod pulls the new image and reads the Secret *as it stands at that moment*.
+
+That is the whole ordering problem on this page. The code change and the configuration change travel separately, as in Module 2, but here the second one is what makes the first one do anything: an agent with `quarkus-opentelemetry` and no OTLP endpoint exports to `localhost:4317`, fails quietly, and looks exactly like an agent that was never instrumented.
+
+So: push the code, make the chart edits while the build runs, and the pod that the pipeline deletes comes back with both halves. If you are slower than the build, nothing breaks -- you restart the pod yourself at the end of the page.
+
+== Edit the values
+
+Open https://gitlab-gitlab.{openshift_subdomain}/globex/globex-complaint-agent-helm/-/edit/main/values.yaml[values.yaml^] and add at the end:
+
+[source,yaml,role="copypaste",subs="attributes+"]
+----
+langfuse:
+  otlpEndpoint: https://{langfuse_host}/api/public/otel
+  authHeader: <the base64 string from the first section>
+----
+
+Commit to `main`. Values first, template second -- a template that reads a value which does not exist yet fails to render, and ArgoCD reports the application broken until the second commit lands.
+
+[NOTE]
+====
+`/api/public/otel` is the whole endpoint. The exporter appends `/v1/traces` to it, so do not write the signal path yourself.
+====
+
+[WARNING]
+====
+This puts a LangFuse secret key in a Git repository, the same trade the OpenAI key made in Module 2. It is acceptable on a cluster that is destroyed at the end of the day and is not how you would hold an ingest credential otherwise.
+====
+
+== Edit the Secret template
+
+Open https://gitlab-gitlab.{openshift_subdomain}/globex/globex-complaint-agent-helm/-/edit/main/templates/secret.yaml[templates/secret.yaml^] and add under the existing properties:
+
+[source,yaml,role="copypaste"]
+----
+    quarkus.otel.exporter.otlp.traces.protocol=http/protobuf
+    quarkus.otel.exporter.otlp.traces.endpoint={{ .Values.langfuse.otlpEndpoint }}
+    quarkus.otel.exporter.otlp.traces.headers=Authorization=Basic {{ .Values.langfuse.authHeader }}
+
+    quarkus.langchain4j.tracing.include-prompt=true
+    quarkus.langchain4j.tracing.include-completion=true
+    quarkus.langchain4j.tracing.include-tool-arguments=true
+    quarkus.langchain4j.tracing.include-tool-result=true
+----
+
+Four spaces of indentation, like everything else under `stringData.application.properties`.
+
+[WARNING]
+====
+No trailing spaces at the ends of these lines. The block is a YAML literal scalar, so a space after `}}` ends up inside the value -- and a space at the end of a base64 credential produces a 401 from LangFuse with no other symptom.
+====
+
+Commit to `main`.
+
+=== What those seven lines do
+
+`protocol=http/protobuf` is not optional. The Quarkus default is gRPC and LangFuse does not accept gRPC on this endpoint.
+
+`headers` takes a comma-separated list of `key=value` pairs. The value is split on the *first* `=` only, which is why a base64 string ending in `==` survives intact.
+
+The four `quarkus.langchain4j.tracing.*` properties all default to `false`. Without them you get the span tree, the timings and the token counts, but every span is empty of content: no prompt, no completion, no tool arguments, no tool result. Page 04 reads all four.
+
+[NOTE]
+====
+These are all runtime properties, which is why they can live in the Secret. The build-time half of the OpenTelemetry configuration needs nothing: traces are enabled by default, metrics and logs export are disabled by default, and LangFuse is a trace-only backend that would reject metrics anyway.
+====
+
+== Confirm it arrived
+
+Wait for the pipeline to finish and the agent pod to come back. Then raise another complaint in the storefront, exactly as on the previous page.
+
+Open LangFuse at https://{langfuse_host}/[the workshop instance^] and go to *Tracing* -> *Traces*. One trace for the turn, with the agent's HTTP request as the root and, under it, a span per model call and a span per tool call.
+
+[NOTE]
+====
+`service.name` on those spans is `globex-complaint-agent`. Nothing sets it: `quarkus.otel.service-name` defaults to `quarkus.application.name`, which defaults to the Maven artifact ID.
+====
+
+The tool spans have no children yet. The agent records that it called a tool and how long the call took; what happened on the other side is the next page.
+
+=== If no trace appears
+
+Most likely the chart commits landed after the pipeline deleted the pod, so the running agent read a Secret with no OTLP endpoint in it. Check first, then restart:
+
+. In the https://console-openshift-console.{openshift_subdomain}/k8s/ns/globex-complaint-agent/secrets[OpenShift console^], open the `globex-complaint-agent` secret and reveal `application.properties`. The three `quarkus.otel.*` lines should be there with real values, not `<no value>`.
+. If they are, go to *Workloads* -> *Deployments* -> `globex-complaint-agent` and choose *Actions* -> *Restart rollout*.
+
+A Secret change on its own never restarts this Deployment -- the chart carries no `checksum/config` annotation, and Quarkus reads `/deployments/config/application.properties` once at boot. The same trap as SPIFFE Step 2 in Module 3, reached from the other direction: there the deployment change forced the roll, here the roll comes from the pipeline and the Secret has to beat it.
+
+If the Secret is correct and a restarted pod still sends nothing, the credential or the host is wrong. The agent log reports export failures from the OTLP exporter, usually as a 401 or a connection failure, and keeps serving requests either way.
+
+// VERIFIED 2026-10-06 against quarkus-opentelemetry 3.37.2 in ~/.m2 (the agent pom pins
+// quarkus.platform.version 3.37.0; 3.37.2 is the nearest artifact on disk and the config
+// surface is not expected to move in a patch release -- this is the one version skew on
+// the page and it is worth re-checking if a property is ever rejected):
+//   * @ConfigMapping prefix on OTelBuildConfig is "quarkus.otel"; on
+//     OtlpExporterRuntimeConfig it is "quarkus.otel.exporter.otlp". The per-signal
+//     `traces` sub-namespace is OtlpExporterRuntimeConfig.traces().
+//   * OtlpExporterConfig.protocol() @WithDefault "grpc". endpoint() @WithDefault
+//     "http://localhost:4317/". Hence protocol=http/protobuf is mandatory for LangFuse.
+//   * OTelExporterRecorder$1 passes the literal "/v1/traces" to VertxHttpSender as a
+//     separate signal path, and VertxHttpSender.determineBasePath strips a trailing slash
+//     and forces a leading one. So the endpoint value works with or without a trailing
+//     slash and must NOT already contain /v1/traces.
+//   * OTelExporterRecorder parses headers with String.split("=", 2) -- limit 2 -- so
+//     base64 padding in the value is safe. Confirmed in the bytecode, not assumed.
+//   * Defaults: quarkus.otel.enabled=true, traces.enabled=true, metrics.enabled=false,
+//     logs.enabled=false. So no build-time property is needed and no metrics are sent.
+//   * quarkus.otel.service-name @WithDefault "${quarkus.application.name:unset}".
+// VERIFIED against quarkus-langchain4j 1.11.2 (the version in the agent pom):
+//   * LangChain4jConfig is @ConfigRoot(phase = RUN_TIME), prefix "quarkus.langchain4j",
+//     with a tracing() group. TracingConfig.includePrompt / includeCompletion /
+//     includeToolArguments / includeToolResult are all @WithDefault "false". RUN_TIME is
+//     what makes the Secret the right place for them.
+//   * SpanChatModelListener, PromptTextSpanContributor, CompletionTextSpanContributor and
+//     ToolSpanWrapper are all present in quarkus-langchain4j-core 1.11.2, so no extra
+//     extension is needed for the model and tool spans.
+//
+// VERIFIED 2026-10-06 against the LangFuse OpenTelemetry documentation
+// (langfuse.com/integrations/native/opentelemetry, fetched):
+//   * The OTLP endpoint is <host>/api/public/otel; exporters append /v1/traces.
+//   * Auth is HTTP Basic, base64(public_key:secret_key), as an Authorization header.
+//   * HTTP/JSON and HTTP/protobuf are supported; gRPC is NOT.
+//   * LangFuse is trace-only -- it does not accept OTLP metrics.
+//
+// VERIFIED against install-helm/globex-complaint-agent-build: pipeline-build.yaml ends
+// with a `resync` task that runs after build-and-push-image, and task-resync.yaml is
+// `oc delete pod -n <ns> -l app.kubernetes.io/instance=<label>`. That is the mechanism
+// behind "the pipeline deletes the pod at the end", and behind the ordering advice. It is
+// read from the chart, not observed on a cluster.
+//
+// NOT VERIFIED, and the two things a walkthrough has to settle:
+//   * Whether {langfuse_public_key} and {langfuse_secret_key} are provisioned per attendee
+//     and surfaced as Showroom attributes at all. If they are not, this page needs a
+//     preceding section that signs in to LangFuse, creates or opens a project, and copies
+//     the keys from the project settings -- which also means knowing the LangFuse version
+//     installed, because the settings UI has moved between major versions.
+//   * Egress. The three services reach LangFuse over HTTPS on the cluster. If LangFuse is
+//     in-cluster this is trivial; if it is hosted, the cluster needs outbound access and
+//     the OTLP export is the first thing in this workshop that needs it besides the
+//     OpenAI API.
+//
+// TBC: screenshot of the first trace in the LangFuse trace list. Not added -- no such
+// file exists in assets/images, and the LangFuse version is unknown.

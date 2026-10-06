@@ -1,0 +1,32 @@
+:experimental:
+:imagesdir: ../../assets/images
+
+= Summary
+
+:numbered:
+:icons: font
+:source-highlighter: highlight.js
+
+You went from three pod logs that could not be joined to one trace per turn:
+
+* Tried to reconstruct a single complaint from the agent, complaints and orders logs, and found no shared identifier, no durations, and one pod that logs nothing at all.
+* Added `quarkus-opentelemetry` to the agent and pointed it at LangFuse over OTLP/HTTP, with the credential and the endpoint in the chart's Secret and the extension in the image.
+* Switched on prompt, completion, tool argument and tool result capture, which are all off by default.
+* Added the same extension to both MCP servers, in their repositories rather than a chart, because neither has one -- plus the server-side MCP tracing property, which is off by default, and JDBC tracing on the complaints server.
+* Read one turn end to end: the prompt as sent, the tool the model chose, the arguments, the result, the token counts and the duration of every step.
+
+One extension and a handful of properties. No code was written in this module. Every span came from instrumentation that was already in the extensions on the classpath and was waiting for an OpenTelemetry SDK to exist.
+
+Three things are worth separating out.
+
+*Build time and runtime are not interchangeable.* `quarkus.datasource.jdbc.telemetry` decides what is in the image; `quarkus.otel.exporter.otlp.traces.endpoint` is read at boot. The first cannot be fixed without a build, the second cannot be fixed without a restart -- and on the agent, where configuration arrives in a Secret, nothing restarts the pod when that Secret changes.
+
+*The trace ID is carried by the caller, not by the platform.* On the HTTP hops it travels as a `traceparent` header. On the MCP hop it travels in the `_meta` field of the JSON-RPC message, because MCP is not HTTP-shaped at that layer. Either way, a service that does not look for it starts a new trace, and two unrelated traces is what a missing propagation looks like.
+
+*A trace is not an audit log.* It goes to a third-party backend, it is sampled in any real deployment, and it contains whatever the application chose to put on a span. It is for understanding what happened, not for proving it.
+
+That last point is where Module 3 left something open and this module does not close it.
+
+The MCP servers believe the agent about which customer is asking. `X-User-Id` is a claim, not proof, and Module 3 narrowed who is allowed to make that claim without verifying it. Tracing does not change that, and it does not even help you notice: the header is not on any span, so the customer identity -- the one thing the whole chain exists to act on behalf of -- is the one thing the trace does not record.
+
+You could put it on a span. It would be a few lines, and it would make every turn searchable by customer. It would still be the agent asserting it, written down twice instead of once. Better observability of an unverified claim is not verification.

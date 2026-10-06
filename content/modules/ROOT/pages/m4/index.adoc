@@ -1,36 +1,40 @@
 :experimental:
 :imagesdir: ../assets/images
 
-= Module 4: Full-Stack Observability
+= Module 4: Observability with LangFuse
 :numbered:
 :icons: font
 :source-highlighter: highlight.js
 
 == Overview & Objectives
-This module establishes full-stack transparency across both AI Agents and MCP Servers. You will learn how to capture LLM execution traces, monitor prompt inputs/outputs, track latency, stream runtime logs, and visualize aggregate metrics using LangFuse and the LGTM (Loki, Grafana, Tempo, Mimir) observability stack.
+One question in the storefront now runs through three Quarkus applications, a model, a REST API and a database. Each application writes its own log, and nothing in one log says which line in another belongs to the same question. This module adds distributed tracing so that one turn is one object you can open.
+
+The backend is LangFuse. It accepts OTLP over HTTP and renders two views of the same data: the span tree, which is the distributed trace, and an LLM view that reads the GenAI span attributes -- prompt, completion, token counts, model. One exporter per service, pointed straight at LangFuse. There is no collector and no separate metrics or logs pipeline in this module.
 
 === Learning Objectives
-* Configure LLM call tracing to inspect prompt structures, system instruction evaluations, and model latencies.
-* Integrate LangFuse tracing into agent execution pipelines.
-* Stream telemetry (logs and metrics) from agents and MCP servers to Loki and Mimir.
-* Utilize pre-built Grafana dashboards to monitor request rates, error codes, and token utilization.
-* Audit agentic tool execution flows for performance bottlenecks and compliance.
+* Identify what pod logs cannot answer about a multi-service request, and why.
+* Add `quarkus-opentelemetry` to a Quarkus application and export spans over OTLP/HTTP.
+* Recognise which telemetry configuration is read at startup and which is fixed when the application is built, and where each has to live in this workshop.
+* Read a single agent turn as a trace: which tool the model chose, what it was sent, what came back, and where the time went.
+* State what a trace does and does not prove about the identity travelling with a call.
 
 == Architecture & Components
-* *LLM Tracing:* LangFuse Platform
-* *Telemetry Stack:* LGTM (Loki for logs, Grafana for visualization, Tempo for distributed traces, Mimir for metrics)
-* *Monitored Assets:* Globex AI Agent and Quarkus MCP Servers
+* *Tracing backend:* LangFuse, receiving OTLP/HTTP on its own ingest endpoint
+* *Instrumented services:* the agent, the orders MCP server, the complaints MCP server -- `quarkus-opentelemetry` in each
+* *Instrumentation already in the extensions:* HTTP server and REST client spans from Quarkus, model-call spans from `quarkus-langchain4j`, MCP client and MCP server spans from the MCP extensions, JDBC spans from Agroal
+* *Configuration:* the Helm chart's Secret for the agent, `application.properties` in the repository for the two MCP servers
+* *Deployment Pipeline:* GitLab, OpenShift pipeline, ArgoCD -- as in Modules 2 and 3
 
 == Prerequisites
-* Module 1-3 completed and services running on OpenShift
-* Access to LangFuse Dashboard and Grafana Workspace in OpenShift namespace
+* Modules 1 to 3 completed, with the agent and both MCP servers deployed and working
+* A LangFuse instance reachable from the cluster, and a project public key and secret key for it
+* The Globex storefront signing in as `asilva`, as used at the end of Module 3
 
-== Lab Agenda & Sub-Sections
-1. `01-observability-overview.adoc` - Architecture of Agentic & MCP Telemetry
-2. `02-langfuse-llm-tracing.adoc` - Setting Up Prompt Tracing and Token Auditing with LangFuse
-3. `03-lgtm-telemetry-setup.adoc` - Routing Logs and Metrics from Quarkus Services
-4. `04-grafana-dashboards.adoc` - Monitoring System Health and Operational Metrics in Grafana
-5. `05-end-to-end-audit.adoc` - Executing End-to-End Traced User Transactions
+== Lab Agenda
+1. Raise one complaint and try to reconstruct the turn from the three pod logs
+2. Add OpenTelemetry to the agent and send its spans to LangFuse
+3. Do the same on both MCP servers, so one trace covers all three applications
+4. Read one turn end to end in LangFuse and answer a fixed set of questions from the UI
 
 == Expected Outcomes
-Complete observability across the AI stack, allowing engineers to audit agent reasoning steps, trace MCP tool calls, and monitor resource usage and costs in real time.
+A single trace per storefront question, covering the agent, both MCP servers and the calls they make outwards, with the prompt, the tool choice, the token counts and the per-step latency readable in one place.

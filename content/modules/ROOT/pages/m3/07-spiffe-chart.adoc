@@ -1,7 +1,7 @@
 :experimental:
 :imagesdir: ../../assets/images
 
-= SPIFFE Step 2: Move the Chart to the SVID
+= SPIFFE Step 1: Move the Chart to the SVID
 :numbered:
 :icons: font
 :source-highlighter: highlight.js
@@ -291,13 +291,13 @@ stringData:
     quarkus.oidc-client.orders.auth-server-url={{ .Values.oidcClient.orders.authServerUrl }}
     quarkus.oidc-client.orders.client-id={{ .Values.spiffe.clientId }}
     quarkus.oidc-client.orders.credentials.jwt.token-path={{ .Values.spiffe.tokenPath }}
-    quarkus.oidc-client.orders.credentials.jwt.source=bearer
+    quarkus.oidc-client.orders.credentials.jwt.source=spiffe-jwt
     quarkus.oidc-client.orders.refresh-token-time-skew=10S
 
     quarkus.oidc-client.complaint.auth-server-url={{ .Values.oidcClient.complaint.authServerUrl }}
     quarkus.oidc-client.complaint.client-id={{ .Values.spiffe.clientId }}
     quarkus.oidc-client.complaint.credentials.jwt.token-path={{ .Values.spiffe.tokenPath }}
-    quarkus.oidc-client.complaint.credentials.jwt.source=bearer
+    quarkus.oidc-client.complaint.credentials.jwt.source=spiffe-jwt
     quarkus.oidc-client.complaint.refresh-token-time-skew=10S
 
     quarkus.http.cors.enabled={{ .Values.cors.enabled }}
@@ -360,7 +360,12 @@ Commit 5 is the only one you can skip without breaking anything, and skipping it
 
 == What you just configured
 
-`source=bearer` tells Quarkus the JWT is already signed and is to be sent as-is. Without it Quarkus mints and signs its own assertion, which is the normal RFC 7523 flow but would discard the SVID.
+`source=spiffe-jwt` does two things. It tells Quarkus the JWT at `token-path` is already signed and is to be sent as-is -- the default, `client`, has Quarkus mint and sign its own assertion, which is the normal RFC 7523 flow but would discard the SVID. And it sets `client_assertion_type` to `urn:ietf:params:oauth:client-assertion-type:jwt-spiffe`, which is what Keycloak's SPIFFE support expects. RFC 7523's own value, `...:jwt-bearer`, is what you would get from `source=bearer`, and Keycloak rejects it here.
+
+[NOTE]
+====
+With `spiffe-jwt`, Quarkus checks the token's `sub` claim starts with `spiffe://` *before* sending anything, and fails with `SPIFFE JWT-SVID token 'sub' claim is missing or does not start with 'spiffe://'`. A bad or truncated token file gives you that in the agent log, rather than an opaque `invalid_client` from Keycloak.
+====
 
 Both OIDC clients now send the same `client-id`. That is the shift this page makes: the agent had two Keycloak identities, one per downstream server, each with its own secret. It has one identity now -- itself -- and proves it the same way to both.
 
@@ -440,21 +445,37 @@ Then check the pod is *2/2* with `init-spiffe-helper` completed. If either is wr
 //     sub claim, which SPIRE sets, and false of the property it was attached to. Removed
 //     rather than reworded.
 //
+// DONE 2026-10-06: source=spiffe-jwt, and the filter page is deleted.
+//     The old 07-assertion-filter.adoc had the attendee hand-write an OidcRequestFilter
+//     (SpiffeClientAssertionTypeRequestFilter) that rewrote jwt-bearer to jwt-spiffe in the
+//     outgoing form body. Quarkus does it natively. Re-verified 2026-10-06 against
+//     quarkus-oidc-common-3.37.0-sources.jar, the version the agent builds against:
+//       * OidcClientCommonConfig.java:135-149  enum Source { CLIENT, BEARER, SPIFFE_JWT },
+//         SPIFFE_JWT's own javadoc naming the jwt-spiffe URN. Config value is `spiffe-jwt`.
+//       * OidcConstants.java:10  SPIFFE_SVID_CLIENT_ASSERTION_TYPE is the exact string the
+//         deleted class hand-wrote.
+//       * KubernetesServiceClientAssertionProvider.java:36-44  source == SPIFFE_JWT sets
+//         that assertion type; anything other than BEARER or SPIFFE_JWT throws.
+//       * OidcCommonUtils.java:189-193  token-path is REQUIRED when source != CLIENT, so
+//         token-path + spiffe-jwt is legal.
+//       * KubernetesServiceClientAssertionProvider.java:102-107  with the SPIFFE assertion
+//         type the sub claim is checked for the spiffe:// prefix BEFORE the request goes
+//         out. That is the NOTE under "What you just configured".
+//     Two pieces of misleading text in that jar, which is what made this look impossible
+//     for a while: the javadoc on tokenPath() still says "can only be set when source is
+//     BEARER" (contradicted by the validation above), and the ConfigurationException at
+//     :196 says 'bearer' or 'spiffe' rather than 'spiffe-jwt'.
+//     Behavioural confirmation on the cluster 2026-10-05: the agent obtained tokens from
+//     Keycloak with spiffe-jwt, and the failure that followed was an
+//     McpAuthenticationException (HTTP 401 from the complaints server) rather than an
+//     OidcClientException. An OIDC-client failure throws before any MCP call goes out, so
+//     a 401 arriving over HTTP proves the token had already been issued.
+//     Nothing to clean up upstream: SpiffeClientAssertionTypeRequestFilter.java was never
+//     in github.com/mcp-developers-workshop/globex-complaint-agent, so the GitLab reseed
+//     will not restore it.
+//
 // STILL OPEN, inherited:
-//   * source=spiffe-jwt instead of source=bearer, which deletes page 07 and its Java class.
-//     CONFIRMED WORKING on the cluster 2026-10-05 -- the agent obtained tokens from
-//     Keycloak, and the failure that followed was an McpAuthenticationException (HTTP 401
-//     from the complaints server) rather than an OidcClientException, which proves the
-//     token was obtained. Verified against quarkus-oidc-common-3.37.0-sources.jar:
-//     OidcClientCommonConfig.java:148 enum Source { CLIENT, BEARER, SPIFFE_JWT };
-//     OidcConstants.java:10 SPIFFE_SVID_CLIENT_ASSERTION_TYPE is the exact URN page 07
-//     hand-writes; KubernetesServiceClientAssertionProvider.java:39-41 sets it natively;
-//     OidcCommonUtils.java:189-193 permits token-path when source != CLIENT.
-//     Not swapped in here because page 07 still ships and still rewrites a jwt-bearer body.
-//     When it lands: change the two `source=bearer` lines to `source=spiffe-jwt`, delete
-//     page 07 and SpiffeClientAssertionTypeRequestFilter.java from globex-complaint-agent,
-//     and renumber Step 2/3 to Step 1/2.
-//   * The larger simplification after that: with spiffe-jwt both named clients are
+//   * The larger simplification: with spiffe-jwt both named clients are
 //     identical, so the agent could drop to ONE unnamed default OIDC client plus
 //     io.quarkiverse.langchain4j:quarkus-langchain4j-oidc-client-mcp-auth-provider, whose
 //     OidcClientMcpAuthProvider holds a plain @Inject OidcClient and returns
