@@ -312,7 +312,7 @@ There is no pipeline on this repository, so nothing builds. ArgoCD picks the com
 With `spiffe-jwt`, Quarkus checks the token's `sub` claim starts with `spiffe://` *before* sending anything, and fails with `SPIFFE JWT-SVID token 'sub' claim is missing or does not start with 'spiffe://'`. A bad or truncated token file gives you that in the agent log, rather than an opaque `invalid_client` from Keycloak.
 ====
 
-Both OIDC clients now send the same `client-id`. That is the shift this page makes: the agent had two Keycloak identities, one per downstream server, each with its own secret. It has one identity now -- itself -- and proves it the same way to both.
+Both OIDC clients now send the same `client-id`. The agent had two Keycloak identities, one per downstream server, each with its own secret. It has one identity now -- itself -- and proves it the same way to both.
 
 [NOTE]
 ====

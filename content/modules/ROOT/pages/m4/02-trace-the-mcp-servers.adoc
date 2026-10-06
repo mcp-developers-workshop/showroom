@@ -1,0 +1,169 @@
+:experimental:
+:imagesdir: ../../assets/images
+
+= Trace Both MCP Servers
+:numbered:
+:icons: font
+:source-highlighter: highlight.js
+
+The same two extensions on both MCP servers, with two extra properties each.
+
+[IMPORTANT]
+====
+Two repositories, two windows, two pipelines. Push the first before starting the second so both builds run together.
+====
+
+== Why these servers need more configuration than the agent
+
+`quarkus.langfuse.otel.span-filter` defaults to `ai-only`, which exports AI spans and their ancestors and drops everything else. The agent produces AI spans, so the default suits it. An MCP server produces none -- its spans are HTTP, MCP and JDBC -- so on the default it would export nothing. Both servers set `span-filter=all`.
+
+Server-side MCP tracing is also off by default. `quarkus.mcp.server.tracing.enabled` defaults to `false`, where the agent's MCP *client* tracing defaults to `true`.
+
+== The orders server
+
+In the `globex-store-mcp` window. This repository has a Maven wrapper:
+
+[source,sh,role="copypaste"]
+----
+./mvnw quarkus:add-extension -Dextensions="opentelemetry,io.quarkiverse.langfuse:quarkus-langfuse"
+----
+
+Add to `src/main/resources/application.properties`:
+
+[source,properties,role="copypaste",subs="attributes+"]
+----
+# Langfuse
+quarkus.langfuse.base-url={langfuse_internal_url}
+quarkus.langfuse.public-key={langfuse_public_key}
+quarkus.langfuse.secret-key={langfuse_secret_key}
+quarkus.langfuse.devservices.enabled=false
+
+# This server has no AI spans of its own, so export everything
+quarkus.langfuse.otel.span-filter=all
+
+# Trace the MCP endpoint
+quarkus.mcp.server.tracing.enabled=true
+----
+
+The same keys as the agent. All three applications report into one Langfuse project, which is what makes their spans one trace rather than three.
+
+[source,sh,role="copypaste"]
+----
+./mvnw clean compile
+----
+
+[source,sh,role="copypaste"]
+----
+git add .
+git commit -m "send traces to Langfuse"
+git push
+----
+
+Do not wait for the pipeline.
+
+== The complaints server
+
+In the `globex-complaints` window. No Maven wrapper here:
+
+[source,sh,role="copypaste"]
+----
+mvn quarkus:add-extension -Dextensions="opentelemetry,io.quarkiverse.langfuse:quarkus-langfuse"
+----
+
+Add to `src/main/resources/application.properties`:
+
+[source,properties,role="copypaste",subs="attributes+"]
+----
+# Langfuse
+quarkus.langfuse.base-url={langfuse_internal_url}
+quarkus.langfuse.public-key={langfuse_public_key}
+quarkus.langfuse.secret-key={langfuse_secret_key}
+quarkus.langfuse.devservices.enabled=false
+
+# This server has no AI spans of its own, so export everything
+quarkus.langfuse.otel.span-filter=all
+
+# Trace both MCP endpoints
+quarkus.mcp.server.tracing.enabled=true
+quarkus.mcp.server.read.tracing.enabled=true
+
+# Trace JDBC statements
+quarkus.datasource.jdbc.telemetry=true
+----
+
+Two more lines than the orders server.
+
+`quarkus.mcp.server.read.tracing.enabled` is the named server from Module 3, the read-only one at `/read/mcp`. Named servers are configured independently, so enabling the default server does not enable `read`.
+
+`quarkus.datasource.jdbc.telemetry` gives each SQL statement a span. It is a *build-time* property -- it decides whether the instrumentation is compiled into the image, so changing it later needs another build.
+
+[source,sh,role="copypaste"]
+----
+mvn clean compile
+----
+
+[source,sh,role="copypaste"]
+----
+git add .
+git commit -m "send traces to Langfuse"
+git push
+----
+
+== Watch both rollouts
+
+Open the https://openshift-gitops-server-openshift-gitops.{openshift_subdomain}/[ArgoCD console^] and wait for `globex-store-mcp` and `globex-complaints` to roll out new pods. Both, before continuing.
+
+== Raise another complaint
+
+Same complaint, same way, from the https://globex-web-globex.{openshift_subdomain}/[storefront^].
+
+In Langfuse, open the newest trace. The tool spans that were leaves now have children, and the spans carry three different `service.name` values.
+
+[cols="2,3", options="header"]
+|===
+| Under | You should see
+
+| the orders tool span
+| An MCP server span in `globex-store-mcp`, and under it an outbound HTTP span for the REST call to the Globex Store API.
+
+| the complaints tool span
+| An MCP server span in `globex-complaints`, and under it one or more JDBC spans carrying the SQL.
+|===
+
+The Globex Store API and PostgreSQL are not instrumented. They appear only as the client spans of the services calling them, which gives their latency but nothing about what happens inside.
+
+[NOTE]
+====
+The trace ID does not travel in an HTTP header on the MCP hop. The client puts `traceparent` in the `_meta` field of the JSON-RPC message and the server reads it from there. With `quarkus.mcp.server.tracing.enabled=false` the server still produces an inbound HTTP span but never looks in `_meta`, so that span starts a new trace. In Langfuse that shows up as two unrelated traces rather than one.
+====
+
+// VERIFIED 2026-10-06 against the jars in ~/.m2 and the working copies in ~/workshop:
+//   * SpanFilterType is { ALL, AI_ONLY }, @WithDefault "AI_ONLY", in
+//     io.quarkiverse.langfuse.config.LangfuseOtelConfig (quarkus-langfuse 0.7.2). That is
+//     the basis for span-filter=all on these two servers. The CONSEQUENCE -- that the
+//     default would drop their spans entirely -- follows from the documented "AI spans and
+//     their ancestors" behaviour and has NOT been observed. If the default turns out to
+//     export them anyway, drop the two lines and the section explaining them.
+//   * Build setup: globex-store-mcp HAS mvnw, globex-complaints does NOT. Verified
+//     separately for m3/02 and m3/03. Do not unify.
+//   * Both MCP servers pin Quarkus 3.38.0, not the agent's 3.37.0.
+//   * MCP extension: globex-store-mcp pins 2.0.2, globex-complaints 2.0.0. Both jars
+//     contain the runtime/tracing package. McpServerRuntimeConfig has
+//     @WithName("tracing.enabled") @WithDefault("false") under prefix quarkus.mcp.server,
+//     hence the explicit true and the separate `read.` key.
+//   * Agent side: McpRuntimeConfiguration has @WithDefault("true"). The asymmetry is real.
+//   * _meta propagation: TracingMcpMetaSupplier references "traceparent" and
+//     McpMetaTextMapGetter reads it back. Bytecode. The two-traces consequence in the
+//     final NOTE is predicted, not observed.
+//   * JDBC: DataSourceJdbcBuildTimeConfig.telemetry() is @WithDefault("false") in the
+//     BUILD TIME config root.
+//
+// OPEN for the walkthrough:
+//   * Whether the Globex Store API REST client span appears. quarkus-rest-client is
+//     instrumented by default, but globex-store-mcp uses quarkus-rest-client-jackson and
+//     the span was not observed.
+//   * Whether the orders tool is called for this prompt. It is the model's choice. If it
+//     reliably is not, the orders row above needs a second order-related prompt.
+//   * Whether MCP server spans nest under the agent's tool span or arrive as siblings.
+//     Page 03's "open the tool span" assumes nesting.
+//   * Whether quarkus-langfuse 0.7.2 resolves against Quarkus 3.38.0 on these two.

@@ -1,40 +1,85 @@
 :experimental:
 :imagesdir: ../assets/images
 
-= Module 4: Observability with LangFuse
+= Module 4: Make MCP Observable
 :numbered:
 :icons: font
 :source-highlighter: highlight.js
 
 == Overview & Objectives
-One question in the storefront now runs through three Quarkus applications, a model, a REST API and a database. Each application writes its own log, and nothing in one log says which line in another belongs to the same question. This module adds distributed tracing so that one turn is one object you can open.
 
-The backend is LangFuse. It accepts OTLP over HTTP and renders two views of the same data: the span tree, which is the distributed trace, and an LLM view that reads the GenAI span attributes -- prompt, completion, token counts, model. One exporter per service, pointed straight at LangFuse. There is no collector and no separate metrics or logs pipeline in this module.
+You have built an MCP-based application that works. The question now is how you know what is actually happening when something goes wrong.
 
-=== Learning Objectives
-* Identify what pod logs cannot answer about a multi-service request, and why.
-* Add `quarkus-opentelemetry` to a Quarkus application and export spans over OTLP/HTTP.
-* Recognise which telemetry configuration is read at startup and which is fixed when the application is built, and where each has to live in this workshop.
-* Read a single agent turn as a trace: which tool the model chose, what it was sent, what came back, and where the time went.
-* State what a trace does and does not prove about the identity travelling with a call.
+An MCP request crosses several components:
+
+....
+User
+  |
+  v
+AI Agent  -- calls the model, decides which tool to use
+  |
+  v
+MCP Server
+  |
+  v
+MCP Tool  -- the method the model actually invoked
+  |
+  v
+Backend Service, then the database
+....
+
+Logs tell you what each component recorded. They do not show the complete journey of a single request. When a request crosses several services you need to answer questions like:
+
+* Where did the request spend its time?
+* Which service was called next?
+* Which MCP tool was invoked?
+* Where did an error occur?
+* What did the agent send to the MCP server, and what came back?
+
+=== Tracing gives you the missing context
+
+Distributed tracing connects related operations into a single trace. Instead of reading separate logs from different pods, you follow one request across the whole application and see its sequence, timing and dependencies.
+
+This matters more for MCP than for a plain `Application -> REST API` call, because the path above has four hops where a plain REST call has one, and the decision about which tool to invoke is made by the model rather than written in the code.
+
+=== Why Langfuse
+
+For AI applications a conventional trace is only part of the picture. You also want the LLM and agent interactions that drive the workflow -- the prompt as sent, the tool the model chose, the token counts.
+
+Langfuse renders both from the same OTLP spans: the span tree, which is the distributed trace, and an LLM view built from the GenAI attributes on those spans. That means one backend and one exporter per service rather than a separate pipeline for each view.
+
+When an MCP workflow fails or behaves unexpectedly, you should be able to follow what happened rather than guess from individual logs.
 
 == Architecture & Components
-* *Tracing backend:* LangFuse, receiving OTLP/HTTP on its own ingest endpoint
-* *Instrumented services:* the agent, the orders MCP server, the complaints MCP server -- `quarkus-opentelemetry` in each
-* *Instrumentation already in the extensions:* HTTP server and REST client spans from Quarkus, model-call spans from `quarkus-langchain4j`, MCP client and MCP server spans from the MCP extensions, JDBC spans from Agroal
-* *Configuration:* the Helm chart's Secret for the agent, `application.properties` in the repository for the two MCP servers
+* *Tracing backend:* Langfuse, receiving OTLP/HTTP
+* *Instrumented services:* the agent and both MCP servers, with `quarkus-opentelemetry` and `quarkus-langfuse` in each
+* *Instrumentation already present:* HTTP and REST client spans from Quarkus, model-call spans from `quarkus-langchain4j`, MCP client and server spans from the MCP extensions, JDBC spans from Agroal
+* *Configuration:* `application.properties` in each of the three repositories
 * *Deployment Pipeline:* GitLab, OpenShift pipeline, ArgoCD -- as in Modules 2 and 3
 
 == Prerequisites
 * Modules 1 to 3 completed, with the agent and both MCP servers deployed and working
-* A LangFuse instance reachable from the cluster, and a project public key and secret key for it
-* The Globex storefront signing in as `asilva`, as used at the end of Module 3
+* A Langfuse instance on the cluster, with a project public key and secret key -- provided as workshop variables
+* The Globex storefront signing in as `asilva`, as at the end of Module 3
 
 == Lab Agenda
-1. Raise one complaint and try to reconstruct the turn from the three pod logs
-2. Add OpenTelemetry to the agent and send its spans to LangFuse
-3. Do the same on both MCP servers, so one trace covers all three applications
-4. Read one turn end to end in LangFuse and answer a fixed set of questions from the UI
+1. Add distributed tracing to the agent and send its traces to Langfuse
+2. Do the same on both MCP servers, so one trace covers all three applications
+3. Follow one MCP request across the agent, both MCP servers and the services behind them
 
 == Expected Outcomes
-A single trace per storefront question, covering the agent, both MCP servers and the calls they make outwards, with the prompt, the tool choice, the token counts and the per-step latency readable in one place.
+One trace per storefront question, covering the agent, both MCP servers and the calls they make outwards, with the prompt, the tool choice, the token counts and the per-step latency in one place.
+
+// 2026-10-06: Langfuse is now deployed on the cluster and surfaced as workshop variables
+// langfuse_url (route), langfuse_internal_url (in-cluster service), langfuse_admin_email,
+// langfuse_admin_password, langfuse_public_key and langfuse_secret_key. The applications
+// use langfuse_internal_url; the browser uses langfuse_url. All six are deliberately
+// undefined in content/antora.yml, per the existing convention.
+//
+// The module no longer uses raw OTLP configuration. io.quarkiverse.langfuse:quarkus-langfuse
+// 0.7.2 derives the ingestion URL from quarkus.langfuse.base-url and enables the
+// LangChain4j content properties, so there is no endpoint, protocol or Basic auth header
+// to configure. An earlier draft did all three by hand -- do not reintroduce it.
+//
+// The "read the logs first" page was removed 2026-10-06 as redundant: the five questions
+// in this overview make the same point without a page of lab time.

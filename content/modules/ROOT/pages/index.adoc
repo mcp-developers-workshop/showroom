@@ -49,7 +49,7 @@ This workshop addresses these challenges by establishing an *Intentional Agent A
 1. *Exposing Intent over Resources:* Standardize agent capabilities into well-defined MCP tools rather than granting raw API access.
 2. *Data Minimization & Sanitization:* Filter and massage backend payloads before they enter the LLM context window.
 3. *Zero-Trust Security & Identity:* Authenticate agents using cryptographic SPIFFE/SPIRE workload identities and Keycloak OIDC service accounts.
-4. *Observability:* Trace a single agent turn across the agent, both MCP servers and the model with OpenTelemetry, and read it in LangFuse.
+4. *Observability:* Trace a single agent turn across the agent, both MCP servers and the model with OpenTelemetry, and read it in Langfuse.
 5. *Centralized Governance:* Control tool sprawl with an enterprise MCP Gateway, keeping credentials and tool filtering rules in one place rather than copied into every agent.
 
 == Target Audience & Prerequisites
@@ -87,8 +87,8 @@ The workshop is structured into 5 progressive, hands-on modules:
 | Native SPIFFE/SPIRE, Keycloak OIDC, Guardrails
 
 | *Module 4*
-| xref:m4/index.adoc[Observability with LangFuse]
-| OpenTelemetry, OTLP, LangFuse, Distributed Tracing
+| xref:m4/index.adoc[Make MCP Observable]
+| OpenTelemetry, OTLP, Langfuse, Distributed Tracing
 
 | *Module 5*
 | xref:m5/index.adoc[Centralized Governance]
@@ -102,7 +102,7 @@ During this workshop, you will work within a dedicated Red Hat OpenShift Sandbox
 * *OpenShift Cluster Namespace:* Pre-provisioned workspace for building, running, and deploying microservices.
 * *Quarkus Runtime & AI Assistance:* Modern Java framework with Quarkus MCP extensions and AI-assisted developer tooling.
 * *Keycloak IAM & SPIRE Provider:* Identity management pre-configured for OIDC service accounts and native SPIFFE workload attestation.
-* *Observability:* A LangFuse instance receiving OpenTelemetry traces over OTLP from the agent and both MCP servers.
+* *Observability:* A Langfuse instance receiving OpenTelemetry traces over OTLP from the agent and both MCP servers.
 * *MCP Gateway:* Centralized proxy and policy engine for managing agent-to-server connections, virtual servers and tool filtering.
 
 == How to Use the Lab Guides

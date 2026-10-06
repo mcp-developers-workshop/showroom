@@ -1,0 +1,62 @@
+:experimental:
+:imagesdir: ../../assets/images
+
+= Read One Turn End to End
+:numbered:
+:icons: font
+:source-highlighter: highlight.js
+
+Open the newest trace in Langfuse and look at four things.
+
+== The span tree
+
+The whole turn, nested by caller, with a duration on every node. Check that all three `service.name` values are there -- `globex-complaint-agent`, and whichever MCP servers the model used.
+
+This answers the questions the logs could not: which service was called, in what order, and where the time went. The model call is usually most of it.
+
+== A generation
+
+Open a span named for a model call. Langfuse shows it as a generation, with:
+
+* *Input* -- the prompt as actually sent, including the system message and the tool definitions that `quarkus-langchain4j-mcp` generated from each server's `tools/list`. This is assembled at runtime and does not exist in the source anywhere.
+* *Output* -- what the model returned.
+* *Usage* -- input and output token counts.
+
+If there is more than one generation, the second one's Input contains the first tool's result in full.
+
+== A tool call
+
+Open a tool span. It carries the tool name, the arguments the model chose, and the result that came back.
+
+== What the MCP server did
+
+Expand the tool span. Underneath it is the MCP server's own span, and under that the work it did -- an outbound HTTP call to the Globex Store API, or JDBC spans carrying the SQL.
+
+[NOTE]
+====
+If Input and Output are empty on the generation, the agent is missing one of the two extensions. `quarkus-langfuse` only switches on prompt and completion capture when it finds `quarkus-opentelemetry` alongside it.
+
+If cost reads zero while tokens look right, that is a missing entry in Langfuse's model price table, not missing telemetry.
+====
+
+// VERIFIED 2026-10-06 from the bytecode of quarkus-langchain4j 1.11.2 in ~/.m2: the
+// generation fields come from gen_ai.prompt (PromptTextSpanContributor), gen_ai.completion
+// (CompletionTextSpanContributor) and gen_ai.usage.* / gen_ai.request.* / gen_ai.operation
+// .name=chat (SpanChatModelListener); tool spans from ToolSpanWrapper
+// (gen_ai.tool.name, gen_ai.tool.call.arguments, gen_ai.tool.call.result).
+// Langfuse reads gen_ai.usage.cost for cost; Quarkus emits gen_ai.client.estimated_cost,
+// which is why cost will usually read zero. Hence the second half of the NOTE.
+//
+// NOT VERIFIED: the Langfuse UI. The installed version has not been seen, so this page
+// names what to look at rather than where to click. Also unverified that Langfuse promotes
+// a Quarkus `chat` span to a generation at all -- the attribute contract matches on both
+// sides but the rendering is unobserved. If it does not, the span tree still works and
+// "A generation" needs rewriting.
+//
+// This page was cut down 2026-10-06. It previously had a six-row attribute mapping table,
+// eight questions with a "where to find it" column, and a section on what the trace does
+// NOT contain. The mapping table is debugging reference, not lab content; the X-User-Id
+// point is made once, in the summary. Do not add them back.
+//
+// TBC: two screenshots would earn their place -- the span tree with all three services,
+// and one generation with Input, Output and Usage populated.

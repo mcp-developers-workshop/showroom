@@ -1,0 +1,121 @@
+:experimental:
+:imagesdir: ../../assets/images
+
+= Trace the Agent
+:numbered:
+:icons: font
+:source-highlighter: highlight.js
+
+[IMPORTANT]
+====
+This page works in the *`globex-complaint-agent`* window. Two extensions and four properties, in one commit.
+====
+
+== Add the extensions
+
+The agent has no Maven wrapper, so plain `mvn`:
+
+[source,sh,role="copypaste"]
+----
+mvn quarkus:add-extension -Dextensions="opentelemetry,io.quarkiverse.langfuse:quarkus-langfuse"
+----
+
+`quarkus-opentelemetry` provides the SDK and the automatic instrumentation. `quarkus-langfuse` configures the OTLP exporter to point at Langfuse and turns on the LangChain4j span content, so you do not configure an endpoint, a protocol or an authentication header yourself.
+
+That is the only code change. `quarkus-langchain4j` contributes a span per model call and `quarkus-langchain4j-mcp` a span per MCP tool call. Both have been on the classpath since Module 2 and neither emits anything until an OpenTelemetry SDK is present to receive it.
+
+== Configure it
+
+Add to `src/main/resources/application.properties`:
+
+[source,properties,role="copypaste",subs="attributes+"]
+----
+# Langfuse
+quarkus.langfuse.base-url={langfuse_internal_url}
+quarkus.langfuse.public-key={langfuse_public_key}
+quarkus.langfuse.secret-key={langfuse_secret_key}
+quarkus.langfuse.devservices.enabled=false
+----
+
+`base-url` is the in-cluster service address, not the route you open in a browser. The agent and Langfuse are in the same cluster, so the traffic never leaves it and needs no TLS.
+
+The extension builds the ingestion URL from `base-url` -- the default `trace-ingestion-url` is `${quarkus.langfuse.base-url}/${quarkus.langfuse.otel.trace-ingestion-path}`, and the path defaults to `api/public/otel/v1/traces`.
+
+[NOTE]
+====
+`devservices.enabled=false` is there because the extension ships Dev Services that start Langfuse, PostgreSQL, ClickHouse, Redis and MinIO as containers. That is useful on a laptop with no Langfuse; here one already exists, and without this line a later `quarkus dev` would try to start all five.
+====
+
+[WARNING]
+====
+This puts the Langfuse secret key in a Git repository and bakes it into the image -- the same trade the OpenAI key made in Module 2. Acceptable on a cluster that is destroyed at the end of the day, not otherwise.
+====
+
+The four `quarkus.langchain4j.tracing.include-*` properties, which control whether the prompt, completion, tool arguments and tool result appear on the spans, all default to `false`. You do not need to set them: `quarkus-langfuse` turns all four on when it sees `quarkus-opentelemetry` and `quarkus-langchain4j` together.
+
+== Compile and push
+
+[source,sh,role="copypaste"]
+----
+mvn clean compile
+----
+
+[source,sh,role="copypaste"]
+----
+git add .
+git commit -m "send traces to Langfuse"
+git push
+----
+
+The webhook starts the pipeline, which builds the image and then deletes the agent pod so the replacement picks it up. Both the extension and its configuration are in this one commit, so there is nothing to race and nothing to restart by hand.
+
+== Confirm it arrived
+
+Wait for the new pod, then raise a complaint in the https://globex-web-globex.{openshift_subdomain}/[Globex storefront^] -- sign in as `asilva` / `openshift`, go to *Customer Care*, and ask:
+
+[source,text,role="copypaste"]
+----
+raise a complaint
+----
+
+[source,text,role="copypaste"]
+----
+I want to raise a complaint about the Stojo Collapsible Silicone Bottle. the cap was broken on arrival. It is such a critical problem for me. I want a replacement
+----
+
+Open Langfuse at https://{langfuse_url}/[the workshop instance^] and sign in as `{langfuse_admin_email}` / `{langfuse_admin_password}`. Go to *Tracing* -> *Traces*.
+
+One trace for the turn, with the agent's HTTP request as the root and a span per model call and per tool call under it. The tool spans have no children yet -- the agent records that it called a tool and how long it took, and the next page adds the other side.
+
+[NOTE]
+====
+`service.name` on those spans is `globex-complaint-agent`. Nothing sets it: `quarkus.otel.service-name` defaults to `quarkus.application.name`, which defaults to the Maven artifact ID.
+====
+
+=== If no trace appears
+
+Check the agent pod log. The OTLP exporter reports export failures there and the agent keeps serving requests either way, so a wrong key or an unreachable host is visible only in the log -- usually as a 401 or a connection failure.
+
+// VERIFIED 2026-10-06 against quarkus-langfuse 0.7.2 in ~/.m2 (runtime and deployment
+// jars, config model JSON and bytecode):
+//   * Coordinates io.quarkiverse.langfuse:quarkus-langfuse. Runtime properties are
+//     base-url, public-key, secret-key, environment, timeout, connect-timeout,
+//     read-timeout, log-requests, log-responses, pretty-print and api.*. Build-time are
+//     otel.enabled, otel.export-target and devservices.*.
+//   * LangfuseOtelConfig: traceIngestionPath @WithDefault "api/public/otel/v1/traces";
+//     traceIngestionUrl @WithDefault
+//     "${quarkus.langfuse.base-url}/${quarkus.langfuse.otel.trace-ingestion-path}".
+//     So base-url is the only endpoint input. No protocol or header property is needed.
+//   * SpanFilterType is { ALL, AI_ONLY } with @WithDefault "AI_ONLY". The agent HAS AI
+//     spans so the default is right here. The MCP servers do not -- see page 02.
+//   * The extension sets the four quarkus.langchain4j.tracing.include-* properties to true
+//     when quarkus-opentelemetry and quarkus-langchain4j are both present, which is why
+//     this page does not list them. Documented behaviour, not read from bytecode.
+//   * Dev Services default to enabled and start Langfuse, PostgreSQL, ClickHouse, Redis
+//     and MinIO. Hence devservices.enabled=false.
+//
+// NOT VERIFIED: that 0.7.2 resolves against the agent's Quarkus 3.37.0. The extension is
+// in ~/.m2 but the agent pom has not been built with it. If the build fails on a platform
+// mismatch, that is the first thing to check.
+//
+// TBC: screenshot of the first trace in the Langfuse trace list.
