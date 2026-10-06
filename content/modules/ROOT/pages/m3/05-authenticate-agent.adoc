@@ -8,7 +8,7 @@
 
 [IMPORTANT]
 ====
-This page switches projects. Everything here happens in the *`globex-complaint-agent`* folder -- the agent, not either MCP server. Open a terminal there before continuing.
+This page switches projects. Everything here happens in the *`globex-complaint-agent`* window -- the agent, not either MCP server. You cloned it in Module 2.
 ====
 
 The agent already holds a token -- the user's JWT from the chatbot. It cannot use that one to call an MCP server.
@@ -47,12 +47,14 @@ chatbot  --user JWT (globex realm)-->  agent  --agent token (internal realm)--> 
 
 == Add the OIDC client extension
 
+In a terminal in the `globex-complaint-agent` window:
+
 [source,sh,role="copypaste"]
 ----
 mvn quarkus:add-extension -Dextensions="oidc-client"
 ----
 
-`quarkus-oidc` is already on the agent, validating the user's JWT from the chatbot. That is the resource server side. What is new here is the client side: getting a token of the agent's own.
+`quarkus-oidc` is already on the agent, validating the user's JWT from the chatbot -- the resource server side. `quarkus-oidc-client` is the client side: fetching a token of the agent's own.
 
 [WARNING]
 ====
@@ -60,8 +62,6 @@ mvn quarkus:add-extension -Dextensions="oidc-client"
 
 * `quarkus.oidc.*` -- already configured, do not touch it. The agent *validating* incoming user tokens against the `globex` realm.
 * `quarkus.oidc-client.*` -- what you add below. The agent *fetching* its own token from the `internal` realm.
-
-Two realms, two opposite directions.
 ====
 
 The agent has a separate Keycloak identity for each MCP server, named `orders` and `complaint` after the MCP clients from Module 2. Each is a *client credentials* grant: the agent presents a client ID and secret to Keycloak and gets back an access token that says it is that client. No user is involved.
@@ -71,11 +71,11 @@ The agent has a separate Keycloak identity for each MCP server, named `orders` a
 `globex-mcp-client` and `globex-agent-complaints-client` already exist in the `internal` realm, with client credentials enabled and their secrets generated, created when your lab environment is provisioned. You are wiring the agent up to them, not creating them.
 ====
 
-Nothing goes in `application.properties` on this page. The realm URL differs per cluster and the secrets must not be in the image, so all six properties come from the chart. Write the code first and push it, then supply the configuration while the build runs.
+Nothing goes in `application.properties` on this page. The realm URL differs per cluster and the secrets must not be in the image, so all six properties come from the chart. Write the code first, push it, then add the configuration to the chart.
 
 == Write the auth providers
 
-An MCP client asks an `McpClientAuthProvider` for the `Authorization` header on every call. `@McpClientName` ties one provider to one MCP client, so two MCP clients need two providers -- there is no way to write a single class that covers both.
+An MCP client asks an `McpClientAuthProvider` for the `Authorization` header on every call. `@McpClientName` ties one provider to one MCP client, so two MCP clients need two providers.
 
 These go in the same `auth` package as `GlobexMcpHeadersSupplier` from Module 2:
 
@@ -130,7 +130,7 @@ Two annotations carry the name `orders`, and they refer to different things:
 * `@McpClientName("orders")` is the *MCP client* -- the one configured by `quarkus.langchain4j.mcp.orders.*` and named in `@McpToolBox("orders")`. It tells Quarkus which client this provider supplies the header for.
 * `@NamedOidcClient("orders")` is the *OIDC client* -- `quarkus.oidc-client.orders.*`, which you add to the chart below. It is where the token comes from.
 
-Both names must match their configuration exactly. A mismatch binds nothing.
+Both names must match their configuration exactly. If either is misspelled, nothing is bound and no error is raised.
 
 `TokensHelper` caches the token and refreshes it when it expires, so Keycloak is not called on every tool invocation.
 
@@ -192,7 +192,7 @@ git commit -m "authenticate to both MCP servers with client credentials"
 git push
 ----
 
-That starts the build. Leave it running and edit the chart while it works.
+The push starts a pipeline that builds a new agent image, which takes a few minutes. You do not need to wait for it -- carry on with the chart changes below while it runs.
 
 == Configure the OIDC clients in the chart
 
@@ -233,6 +233,11 @@ Then open https://gitlab-gitlab.{openshift_subdomain}/globex/globex-complaint-ag
 ----
 
 Keep the indentation. Everything under `stringData.application.properties` is indented four spaces.
+
+[WARNING]
+====
+No trailing spaces at the end of these lines. The block is a YAML literal scalar, so a space after `}}` ends up inside the value, and a secret with a space on the end is rejected by Keycloak with `unauthorized_client` -- indistinguishable from a wrong secret.
+====
 
 The `quarkus.oidc.*` block already in this file is the agent as a resource server, against the `globex` realm. These six are the other direction.
 

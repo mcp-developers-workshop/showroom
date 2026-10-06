@@ -1,0 +1,61 @@
+:experimental:
+:imagesdir: ../../assets/images
+
+= SPIFFE Step 4: Confirm the Agent Has No Secret
+:numbered:
+:icons: font
+:source-highlighter: highlight.js
+
+== Watch the rollout
+
+Open the https://openshift-gitops-server-openshift-gitops.{openshift_subdomain}/[ArgoCD console^] and open `globex-complaint-agent`.
+
+The pod now has three containers, and the order they come up in is the thing to watch: `init-spiffe-helper` must complete before anything else starts. If it hangs, the CSI volume is not mounting and no SVID is being issued -- the agent container never starts at all.
+
+Open the pod and select the `init-spiffe-helper` container on the *LOGS* tab:
+
+image::m3/spiffe-helper-init-log.png[link=self,window=_blank]
+
+It fetched a JWT-SVID to `/svids/jwt.token` and exited, which is what lets the agent container start.
+
+== Test it
+
+Nothing about the behaviour should change. Open the https://globex-web-globex.{openshift_subdomain}/[Globex storefront^], sign in as `asilva` / `openshift`, go to *Customer Care*, and raise a complaint exactly as you did before.
+
+It still works, and the agent authenticated to Keycloak twice with no secret anywhere in the chart, the repository, or the image.
+
+// TBC: the four SPIFFE pages currently prove the negative -- it still works, and the secret
+// is gone. A background agent was asked for ways to show positively that SPIFFE is what is
+// authenticating the agent (reading the SVID off disk and decoding it, watching the token
+// change inside five minutes, breaking the subject and watching Keycloak reject it).
+// Whatever of that survives review lands here. If nothing does, this page folds back into
+// 09-swap-the-secret.adoc.
+
+== What changed
+
+[cols="1,1,1", options="header"]
+|===
+| | Before SPIFFE | Now
+
+| What the agent presents
+| A client secret
+| A JWT-SVID, signed by SPIRE
+
+| Where it comes from
+| `values.yaml`, via a Kubernetes Secret
+| The SPIRE agent, over a Unix socket
+
+| How long it lasts
+| Until someone rotates it
+| Five minutes
+
+| What Keycloak checks
+| That the string matches
+| That the platform attested the workload
+
+| What is in Git
+| The secret
+| A SPIFFE ID, which is a name, not a credential
+|===
+
+The MCP servers were not touched. From their side nothing happened -- the same Keycloak, the same access token, the same audience check. Only how the agent proved itself to Keycloak changed.

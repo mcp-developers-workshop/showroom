@@ -18,6 +18,4 @@ A resource server needs no credentials -- it validates with the realm's public k
 
 The agent now carries two tokens' worth of identity on every call. The user's JWT, from the `globex` realm, stops at the agent and is never forwarded -- the MCP specification forbids the passthrough, and the audience check would reject it anyway. The agent's own client-credentials token, from the `internal` realm, is what the MCP servers validate.
 
-What is still open is the part Module 2 flagged. The MCP server believes the agent about which customer is asking, because `X-User-Id` is still a claim rather than proof. Step 1 narrowed who is allowed to make that claim; it did not verify it.
-
-And the agent's identity rests on a secret committed to a Git repository. Step 2 replaces it with an identity the platform attests, and takes the secret away.
+Two things are still open. The MCP server believes the agent about which customer is asking, because `X-User-Id` is a claim rather than proof -- Step 1 narrowed who is allowed to make that claim without verifying it. And the agent's identity rests on a secret committed to a Git repository. Step 2 replaces that secret with an identity the platform attests.

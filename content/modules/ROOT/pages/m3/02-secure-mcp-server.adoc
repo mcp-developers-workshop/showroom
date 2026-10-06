@@ -8,12 +8,12 @@
 
 [IMPORTANT]
 ====
-Everything on this page happens in the *`globex-store-mcp`* folder -- the MCP server you built in Module 1, not the agent.
+Everything on this page happens in the *`globex-store-mcp`* window -- the MCP server you built in Module 1, not the agent.
 ====
 
 == Add the OIDC extension
 
-From inside `globex-store-mcp`:
+In a terminal in the `globex-store-mcp` window:
 
 [source,sh,role="copypaste"]
 ----
@@ -68,7 +68,7 @@ The `internal` realm and every client this module names are created when your la
 
 [NOTE]
 ====
-No client secret appears anywhere on this page. The server only *validates* tokens, and it does that with the realm's public keys, which it downloads from `auth-server-url` when it starts. A resource server needs no credentials of its own. The agent is the one that has to prove who it is, and that is where secrets show up.
+No client secret appears anywhere on this page. The server only *validates* tokens, and it does that with the realm's public keys, which it downloads from `auth-server-url` when it starts. A resource server needs no credentials of its own. Only the caller does, which is why the agent gets a client ID and secret later in this module.
 ====
 
 == Compile

@@ -1,0 +1,206 @@
+:experimental:
+:imagesdir: ../../assets/images
+
+= Why Workload Identity
+:numbered:
+:icons: font
+:source-highlighter: highlight.js
+
+// TBC: FIRST DRAFT, NOT WALKTHROUGH-VERIFIED. Written 2026-10-01 from the `spiffe` branch
+// of /Users/jbaskara/Documents/GitHub/quarkus-mcp-demo/mcp-demo-poc, diffed against its
+// `oidc` branch. The POC works; pages 06-10 are a translation of it into the workshop's
+// repositories and naming, and NOTHING in them has been run here. User to validate.
+//
+// Translation notes -- where these pages deliberately differ from the POC:
+//   * MCP client names: POC uses `globex-store` / `complaints`, this workshop uses
+//     `orders` / `complaint` (page 05). Kept ours.
+//   * Realm: POC renamed `internal` to `spiffe` (commit f5d50b5). Kept `internal`.
+//   * Package: POC is org.globex.ai.spiffe, ours is org.globex.retail.ai.complaint.spiffe.
+//   * The POC's chart is install/helm/globex/globex-agent; ours is the GitLab repo
+//     globex-complaint-agent-helm. Same files, different home.
+//   * POC logging in the auth providers is dropped -- page 05's classes are unchanged by
+//     these pages and the POC's debug lines print access tokens.
+//
+// MECHANISM IS DECIDED, and it is client assertion. The POC does NOT do identity
+// federation in the token-exchange sense. It registers a SPIFFE identity provider of type
+// CLIENT_ASSERTION and sets the client's clientAuthenticatorType to federated-jwt, so the
+// SVID authenticates the client credentials grant rather than being exchanged for a realm
+// token. The two oidc-client blocks from page 05 stay, minus the secret.
+//
+// RESOLVED 2026-10-05: split from the single 565-line 06-spiffe.adoc into pages 06-10,
+// one repository and one commit each. The old page held five tasks and readers four
+// screens in had no idea which repo they were in.
+//
+// Still unresolved, unaffected by the split:
+//   * Whether token exchange lands at the head of Step 2 or the tail of Step 1. See the
+//     TBC at the end of 05-authenticate-agent.adoc.
+//   * Whether tool guardrails and prompt injection are in Module 3 at all. m3/index.adoc
+//     used to list them as a fifth section and the rewrite dropped the claim; the
+//     two-step plan never mentioned them. Dropped for good, or a later module?
+
+== Why the client secret is not enough
+
+Enabling OIDC authentication across the agent and the MCP servers left the agent holding a Keycloak identity of its own, and both servers accepting it. That identity is a client ID and a client secret.
+
+Keycloak checks that the secret matches the one it holds for that client -- nothing more. It cannot tell whether the caller is your agent or a laptop that copied the secret out of the Git repository you put it in on the last page.
+
+That is the weakness of any shared secret: it proves *what you have*, not *who you are*. And because changing it means changing it everywhere at once, it is rarely changed at all.
+
+== What SPIFFE is
+
+SPIFFE is a standard for giving a workload an identity based on what it actually is and where it actually runs, instead of a secret it carries.
+
+Three terms cover it:
+
+[cols="1,3", options="header"]
+|===
+| Term | What it means
+
+| Trust domain
+| The boundary that issues identities -- in practice, your cluster.
+
+| SPIFFE ID
+| The name of one workload, written as a URI: `spiffe://globex.com/ns/globex-complaint-agent/sa/globex-complaint-agent`. A username for a pod rather than a person.
+
+| SVID
+| The credential that proves the SPIFFE ID, as an X.509 certificate or a JWT. It is valid for minutes, not forever.
+|===
+
+The agent stores none of this. It asks for an SVID when it needs one and gets a fresh one each time.
+
+== What it takes to run it
+
+The identity has to be issued by something that can verify the claim independently of the workload, which means the platform it runs on. SPIRE is the implementation:
+
+* A *SPIRE server* -- the certificate authority for the trust domain.
+* A *SPIRE agent* on every node. When a pod asks for an identity, the agent asks the kubelet what that pod really is -- its namespace, its service account, its image -- and only then issues the SVID. That check is called *attestation*.
+* A *registration entry* per workload, mapping those pod properties to a SPIFFE ID. This is the one piece a human writes.
+* A consumer that trusts the trust domain. Here that is Keycloak, which has to accept an SVID where it currently expects a client secret.
+
+The workload talks to its node's SPIRE agent over a local Unix socket, so there is no credential to put in a chart, in Git, or in an environment variable, and nothing to rotate on a schedule.
+
+== What you build over the next four pages
+
+A SPIRE agent attests the agent pod and issues it a short-lived JWT-SVID. The agent sends that SVID to Keycloak in place of the client secret, as a *client assertion*. Keycloak matches it to the Keycloak client the agent already uses and issues the same access token as before -- so the MCP servers need no change, and both `quarkus.oidc-client.*` blocks from the last page stay. What goes away is the secret in `values.yaml`.
+
+[cols="1,2,2", options="header"]
+|===
+| Step | Where | What you do
+
+| SPIFFE Step 1: Send the SVID as a Client Assertion
+| `globex-complaint-agent`
+| One Java class, then push and let the build run.
+
+| SPIFFE Step 2: Add the SPIFFE Helper to the Agent Pod
+| `globex-complaint-agent-helm`
+| Three files, one commit: the helper image, a ConfigMap, the deployment.
+
+| SPIFFE Step 3: Swap the Secret for the SVID
+| `globex-complaint-agent-helm`
+| Two files, one commit: the SPIFFE values, the Secret template.
+
+| SPIFFE Step 4: Confirm the Agent Has No Secret
+| ArgoCD and the storefront
+| Watch the rollout and raise a complaint.
+|===
+
+The steps are numbered because they are ordered. Step 2 and Step 3 touch the same chart and must be committed in that order -- Step 3's `secret.yaml` points at a file that only exists once Step 2's helper is in the pod.
+
+[IMPORTANT]
+====
+These steps are drafted from a working proof of concept and have not been run on the workshop environment yet. Treat the exact values as provisional.
+====
+
+== What is already on the cluster
+
+The platform half is installed for you. The *Zero Trust Workload Identity Manager* operator runs SPIRE on OpenShift through four custom resources:
+
+[cols="1,2", options="header"]
+|===
+| Resource | What it does
+
+| `ZeroTrustWorkloadIdentityManager`
+| Sets the trust domain (`globex.com`) and cluster name for everything below.
+
+| `SpireServer`
+| The CA for the trust domain. JWT-SVIDs it issues are valid for *five minutes*.
+
+| `SpireAgent`
+| One per node. Attests pods using the Kubernetes projected service account token, then answers Workload API requests.
+
+| `SpiffeCSIDriver`
+| Publishes the SPIRE agent's Unix socket into a pod as a volume, so the workload can reach the Workload API without a host mount.
+|===
+
+Keycloak is configured for it too -- the `client-auth-federated` and `spiffe` features are enabled on the server, and the `internal` realm carries:
+
+* An identity provider named `spiffe`, of type `CLIENT_ASSERTION`, pointing at the trust domain `spiffe://globex.com` and SPIRE's bundle endpoint. This is what lets Keycloak verify an SVID it is handed.
+* A client whose `clientAuthenticatorType` is `federated-jwt` rather than `client-secret`, with the agent's SPIFFE ID recorded on it as `jwt.credential.sub`.
+
+So Keycloak will not look up a secret for this client at all. It verifies the SVID's signature against the trust domain, reads the subject, and checks it matches the SPIFFE ID on the client.
+
+[NOTE]
+====
+Optional. To see the identity provider, open the https://sso.{openshift_subdomain}/admin[Keycloak admin console^] as `admin` / `{common_password}`, switch to the `internal` realm, and go to *Identity providers* -> *spiffe*.
+
+image::m3/keycloak-spiffe-identity-provider.png[link=self,window=_blank]
+
+*SPIFFE Trust Domain* must match the trust domain SPIRE issues SVIDs for, or every assertion is rejected. The bundle endpoint is where Keycloak fetches SPIRE's public keys to check the signature -- it is SPIRE's OIDC discovery route, not a Keycloak address. Both are already set; nothing here needs changing.
+====
+
+// RESOLVED 2026-10-05: the realm ships this way. The internal realm was rebased onto the
+// POC's SPIFFE realm import (install-helm/globex/keycloak-realmimport-internal), so the
+// identity provider, the federated client and the federated-jwt authenticator are all
+// pre-seeded at install time, exactly as page 05's client-credentials clients are. This
+// is not optional plumbing -- the realm import job runs with --override=false, so a realm
+// that already exists is never updated. Anything an attendee needs has to be in the realm
+// at install time, and it is.
+//
+// RESOLVED 2026-10-05: ONE federated client, globex-agent-spiffe, for the agent as a
+// whole -- not one per downstream server. The four client-credentials clients from page 05
+// keep their IDs, their secrets and their client-secret authenticator; globex-agent-spiffe
+// is added alongside them. So the progression is additive and page 05 still demonstrates
+// exactly what it demonstrated before.
+//
+// The framing for attendees -- "why did two client IDs become one" -- is that client
+// identity and token audience are different things. The agent is one workload, so it has
+// one identity; audience is still carried per-request. Prose for this is on
+// 09-swap-the-secret.adoc.
+//
+// TBC, and the honest version of the above: globex-agent-spiffe is modelled on
+// globex-mcp-client, not on both page-05 clients. It carries an oidc-audience-mapper
+// hardcoded to clients.mcpServer.id and mcpServer.scope as an optional scope. The client
+// it displaces on the complaint path, globex-agent-complaints-client, has NO audience
+// mapper and no extra scope at all -- so the complaint path never had a distinct audience
+// to lose. Net effect of the switch:
+//   orders path    -- equivalent, except the mcp-server audience is now unconditional
+//                     (protocol mapper) rather than requested via the optional scope.
+//   complaint path -- the token now also carries a globex-mcp-server audience it did not
+//                     carry before.
+// That extra audience is harmless only if globex-complaints does not do a strict audience
+// check. Verify on the walkthrough. If it does check, globex-agent-spiffe needs a second
+// audience mapper rather than one hardcoded to mcpServer, and the sentence above about
+// audience being per-request needs rewriting to match whatever is true.
+//
+// TBC: whether a SPIRE registration entry has to be created for the agent workload, and by
+// whom. The SpireAgent uses automatic workload attestation, which suggests entries are
+// derived rather than hand-written, but no entry appears anywhere in the install
+// repository. If attendees need to create one, it is a step that belongs on page 08.
+// This is the largest unknown left -- everything else has been traced to a real value.
+
+== How the agent gets its SVID
+
+The agent does not call the Workload API itself. A helper does it, and leaves the token on disk where Quarkus can read it:
+
+....
+SPIRE agent (node)
+   |  Unix socket, mounted by the CSI driver
+   v
+spiffe-helper (init container)   -- fetches the first SVID before the agent starts
+spiffe-helper (sidecar)          -- renews it, every few minutes, for the life of the pod
+   |
+   v
+/svids/jwt.token   <-- shared emptyDir, read by the agent container
+....
+
+The init container matters: a JWT-SVID lasts five minutes, so the agent must not start before one exists, and must never be left holding an expired one.

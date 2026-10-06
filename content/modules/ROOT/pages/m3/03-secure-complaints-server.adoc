@@ -50,7 +50,7 @@ Named MCP servers are how one Quarkus application serves more than one endpoint.
 
 == Add the OIDC extension
 
-No Maven wrapper in this repository, so plain `mvn`:
+In a terminal in the `globex-complaints` window. No Maven wrapper in this repository, so plain `mvn`:
 
 [source,sh,role="copypaste"]
 ----
@@ -139,6 +139,8 @@ git push
 
 == Watch both rollouts
 
-Open the https://openshift-gitops-server-openshift-gitops.{openshift_subdomain}/[ArgoCD console^] and check that `globex-store-mcp` and `globex-complaints` both roll out a new pod. Two pipelines were triggered, a page apart, so the first one may already be finished.
+Open the https://openshift-gitops-server-openshift-gitops.{openshift_subdomain}/[ArgoCD console^] and check that `globex-store-mcp` and `globex-complaints` both roll out a new pod. 
+
+image::m3/argocd-applications.png[link=self,window=_blank]
 
 Wait for both before moving on. The next page depends on both servers rejecting the agent.

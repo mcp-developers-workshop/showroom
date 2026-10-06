@@ -36,19 +36,20 @@ curl -i -X POST https://globex-complaints.{openshift_subdomain}/mcp \
   -d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"curl","version":"1"}}}'
 ----
 
-Both routes are closed -- to `curl`, and to the agent, which the servers cannot tell apart from it.
-
-== Watch the agent get the same answer
-
-Open the https://console-openshift-console.{openshift_subdomain}/k8s/ns/globex-store-mcp/pods[pods in the `globex-store-mcp` project^], click the running pod and select the *Logs* tab. The 401s there are the agent's.
-
-// TBC: screenshot of the 401s in the globex-store-mcp pod log, once it is known what the
-// agent actually logs -- see the TBC below.
+Both routes are closed to `curl` call and therefore to the agent as well.
 
 [NOTE]
 ====
 You may also find the agent itself unhealthy in ArgoCD. An MCP client asks its server for the tool list when it starts, long before anyone chats to it, so the agent has been failing against these servers since the moment they rolled out.
 ====
+
+// CUT 2026-10-05: a "Watch the agent get the same answer" section sent attendees to the
+// globex-store-mcp pod log to see "the agent's" 401s. Removed as no-value: the curl above
+// already proves the route is closed, and the reader cannot attribute a 401 in that log to
+// the agent rather than to the curl they just ran. The one fact it carried that curl does
+// not -- that the deployed agent is already broken -- is in the [NOTE] above, and ArgoCD
+// shows it faster than a pod log. Restore only if the TBC below resolves to (a) or (b),
+// which would give the log something specific and attributable to look at.
 
 // TBC -- VERIFY ON THE WALKTHROUGH. The 401 above is confirmed against the deployed
 // route; what the AGENT does with it is not, and the [NOTE] above is deliberately vague
@@ -71,4 +72,4 @@ You may also find the agent itself unhealthy in ArgoCD. An MCP client asks its s
 // thing in one command. Attendees return to the chatbot at the end of the next page,
 // where it works.
 
-The fix is not to reopen the servers. It is to give the agent an identity.
+The next steps if to give the agent an identity so that it can authenticate to the servers. 
