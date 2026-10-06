@@ -29,11 +29,10 @@ curl -i -X POST https://globex-store-mcp.{openshift_subdomain}/mcp \
 
 The server answers. It tells an anonymous caller its name, its version and what it can do.
 
-// TBC: capture the exact response on a fresh environment, before the server is secured,
-// and paste it here as a literal block. Both servers on the walkthrough cluster are
-// already secured, so the pre-secured output could not be recorded. What matters for the
-// page is only that the status line is not 401 -- the contrast with the same command on
-// the next page is the whole point.
+// TBC: paste the real pre-secured response here as a literal block. It could not be
+// captured before -- both servers were already secured on the walkthrough cluster. All
+// that matters is that the status line is not 401; the contrast with the next page is
+// the point.
 
 == Call the complaints server with no token
 

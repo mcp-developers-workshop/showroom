@@ -43,33 +43,15 @@ Both routes are closed to `curl` call and therefore to the agent as well.
 You may also find the agent itself unhealthy in ArgoCD. An MCP client asks its server for the tool list when it starts, long before anyone chats to it, so the agent has been failing against these servers since the moment they rolled out.
 ====
 
-// CUT 2026-10-05: a "Watch the agent get the same answer" section sent attendees to the
-// globex-store-mcp pod log to see "the agent's" 401s. Removed as no-value: the curl above
-// already proves the route is closed, and the reader cannot attribute a 401 in that log to
-// the agent rather than to the curl they just ran. The one fact it carried that curl does
-// not -- that the deployed agent is already broken -- is in the [NOTE] above, and ArgoCD
-// shows it faster than a pod log. Restore only if the TBC below resolves to (a) or (b),
-// which would give the log something specific and attributable to look at.
-
-// TBC -- VERIFY ON THE WALKTHROUGH. The 401 above is confirmed against the deployed
-// route; what the AGENT does with it is not, and the [NOTE] above is deliberately vague
-// because of that. An MCP client sends initialize and then tools/list at startup. If
-// that gets a 401, the possibilities are:
-//   (a) the agent fails to start -- unhealthy deployment in ArgoCD, stack trace in the
-//       pod log. The [NOTE] becomes a definite statement and gets a screenshot.
-//   (b) the agent starts with zero tools registered, so the model answers from its own
-//       knowledge -- plausibly and wrongly. Worth showing in the chatbot after all,
-//       because a confident hallucination is a better lesson than a 401, and it is the
-//       strongest argument in the workshop for why the tool list is not cosmetic.
-//   (c) the client retries per tool call and the failure appears at call time, the way
-//       the missing-header failure did in Module 2.
-// Read the agent pod log and the MCP server pod log together from the moment the secured
-// servers roll out, then make the [NOTE] say which. If it turns out to be (b), consider
-// adding the chatbot step back to this page -- but only then, and only as a short one.
-//
-// The chatbot walkthrough that used to be on this page was cut 2026-10-01: it was the
-// slowest step and the one resting on this unknown, while the curl above proves the same
-// thing in one command. Attendees return to the chatbot at the end of the next page,
-// where it works.
+// TBC -- VERIFY ON THE WALKTHROUGH, and the environment is now fresh enough to do it.
+// The 401 is confirmed against the deployed route; what the AGENT does with one is not,
+// which is why the [NOTE] above is vague. An MCP client sends initialize then tools/list
+// at startup. Read the agent pod log and the MCP server pod log together from the moment
+// the secured servers roll out, and make the [NOTE] say which of these happens:
+//   (a) the agent fails to start -- unhealthy in ArgoCD, stack trace in the log.
+//   (b) the agent starts with zero tools and the model answers from its own knowledge,
+//       confidently and wrongly. If so, add a short chatbot step back to this page: a
+//       hallucination is a better lesson than a 401.
+//   (c) the client retries per tool call and it surfaces at call time.
 
 The next steps if to give the agent an identity so that it can authenticate to the servers. 

@@ -41,15 +41,27 @@ The push prompts you for GitLab credentials. Use the workshop developer account:
 
 A webhook on the repository starts an OpenShift pipeline, which builds the image and pushes it to the internal registry. Leave it to run and move on to the chart.
 
+== Clone the chart
+
+The chart lives in its own repository, and you will come back to it in Module 3. Clone it now, the same way you cloned the agent:
+
+[source,text,role="copypaste",subs="attributes+"]
+----
+https://gitlab-gitlab.{openshift_subdomain}/globex/globex-complaint-agent-helm.git
+----
+
+Open it in a new window when Bob offers, and leave it open for the rest of the workshop.
+
+[NOTE]
+====
+You could edit these files in the GitLab web editor, but it commits one file at a time. The two changes below depend on each other -- a template that reads a value which does not exist yet fails to render, and ArgoCD reports the whole application as broken until the second commit lands. From a clone both files go in one commit and that gap never exists.
+====
+
 == Edit the values
 
 The chart renders a complete `application.properties` into a Secret, from `templates/secret.yaml`. The deployment mounts that Secret at `/deployments/config`, which is where Quarkus reads configuration at runtime. It has blocks for OIDC, the model and CORS, but nothing for MCP -- so the URLs that were in your `.env` have to come from here instead.
 
-You edit the two chart files directly in GitLab and commit each one, so there are two commits. Do the values first: a template that reads a value which does not exist yet fails to render, and ArgoCD reports the whole application as broken until the second commit lands.
-
-Open https://gitlab-gitlab.{openshift_subdomain}/globex/globex-complaint-agent-helm/-/edit/main/values.yaml[values.yaml^].
-
-Two things to change here.
+Open `values.yaml`. Two things to change here.
 
 First, the model settings, which ship unset:
 
@@ -103,10 +115,7 @@ mcp:
   complaint:
     url: https://globex-complaints.{openshift_subdomain}/mcp
 
-
 ----
-
-Commit the change to `main`.
 
 [WARNING]
 ====
@@ -115,7 +124,7 @@ This puts your OpenAI API key in a Git repository. That is fine for a workshop o
 
 == Edit the Secret template
 
-Open https://gitlab-gitlab.{openshift_subdomain}/globex/globex-complaint-agent-helm/-/edit/main/templates/secret.yaml[templates/secret.yaml^] and add the two URLs under the existing properties, reading them from the values you just added:
+Open `templates/secret.yaml` and add the two URLs under the existing properties, reading them from the values you just added:
 
 [source,yaml,role="copypaste"]
 ----
@@ -127,14 +136,24 @@ Keep the indentation. Everything under `stringData.application.properties` is in
 
 Only the URLs belong here. The transport types are already in the image, and repeating them in the Secret would not create a client anyway.
 
-Commit the change to `main`.
+== Commit and push the chart
+
+From inside the `globex-complaint-agent-helm` folder:
+
+[source,sh,role="copypaste"]
+----
+git add .
+git commit -m "Point the deployed agent at both MCP servers"
+git push
+----
+
+Both files in one commit. There is no pipeline on this repository -- it is a chart, not an application -- so nothing builds and ArgoCD picks the change up directly.
 
 == Watch the rollout
 
 Open the https://openshift-gitops-server-openshift-gitops.{openshift_subdomain}/[ArgoCD console^] -- the same one you used in Module 1, with the same `{openshift_gitops_user}` account -- and open the `globex-complaint-agent` application.
 
 Auto sync is on, so you do not have to press anything. ArgoCD picks up your edits to globex-complaint-agent-helm and re-rendered the Secret. The agent restarted and picked up both the new Secret and the new image. A new pod is started cleanly.
-
 
 [NOTE]
 ====

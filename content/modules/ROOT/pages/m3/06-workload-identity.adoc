@@ -6,56 +6,9 @@
 :icons: font
 :source-highlighter: highlight.js
 
-// PARTLY WALKTHROUGH-VERIFIED as of 2026-10-05. Written 2026-10-01 from the `spiffe`
-// branch of /Users/jbaskara/Documents/GitHub/quarkus-mcp-demo/mcp-demo-poc, diffed against
-// its `oidc` branch, then translated into the workshop's repositories and naming.
-//
-// Verified on the live cluster 2026-10-05:
-//   * Step 2 (07-spiffe-chart.adoc) end to end. The ConfigMap and the complete
-//     deployment.yaml apply cleanly, the pod rolls out with init-spiffe-helper +
-//     spiffe-helper + the app container, and the agent reaches Keycloak with the SVID.
-//   * The failure mode when the sidecar is missing -- see the VERIFIED note on
-//     08-verify-spiffe.adoc.
-//
-//   * Step 3 with source=spiffe-jwt and the four jwt.issuer/jwt.subject lines removed.
-//     The agent obtained tokens from Keycloak, so Step 1's filter class is confirmed
-//     UNNECESSARY on Quarkus 3.37.0 and page 07 is slated for deletion. See the
-//     REMAINING WORK list on 07-spiffe-chart.adoc.
-//
-// NOT yet verified: everything on 08-verify-spiffe.adoc past "Test it" and the sidecar
-// log block.
-//
-// NOT A SPIFFE PROBLEM, resolved 2026-10-05 and moved off these pages: the periodic HTTP
-// 401 from both MCP servers. It is the 300-second accessTokenLifespan boundary and it
-// reproduces on page 05's client-secret configuration. Diagnosis and proposed fix are in
-// the TBC at the end of 05-authenticate-agent.adoc.
-//
-// Translation notes -- where these pages deliberately differ from the POC:
-//   * MCP client names: POC uses `globex-store` / `complaints`, this workshop uses
-//     `orders` / `complaint` (page 05). Kept ours.
-//   * Realm: POC renamed `internal` to `spiffe` (commit f5d50b5). Kept `internal`.
-//   * Package: POC is org.globex.ai.spiffe, ours is org.globex.retail.ai.complaint.spiffe.
-//   * The POC's chart is install/helm/globex/globex-agent; ours is the GitLab repo
-//     globex-complaint-agent-helm. Same files, different home.
-//   * POC logging in the auth providers is dropped -- page 05's classes are unchanged by
-//     these pages and the POC's debug lines print access tokens.
-//
-// MECHANISM IS DECIDED, and it is client assertion. The POC does NOT do identity
-// federation in the token-exchange sense. It registers a SPIFFE identity provider of type
-// CLIENT_ASSERTION and sets the client's clientAuthenticatorType to federated-jwt, so the
-// SVID authenticates the client credentials grant rather than being exchanged for a realm
-// token. The two oidc-client blocks from page 05 stay, minus the secret.
-//
-// RESOLVED 2026-10-05: split from the single 565-line 06-spiffe.adoc into pages 06-10,
-// one repository and one commit each. The old page held five tasks and readers four
-// screens in had no idea which repo they were in.
-//
-// Still unresolved, unaffected by the split:
-//   * Whether token exchange lands at the head of Step 2 or the tail of Step 1. See the
-//     TBC at the end of 05-authenticate-agent.adoc.
-//   * Whether tool guardrails and prompt injection are in Module 3 at all. m3/index.adoc
-//     used to list them as a fifth section and the rewrite dropped the claim; the
-//     two-step plan never mentioned them. Dropped for good, or a later module?
+// OPEN: are tool guardrails and prompt injection in Module 3 at all? An earlier
+// m3/index.adoc listed them as a fifth section and the rewrite dropped the claim.
+// Dropped for good, or a later module?
 
 == Why the client secret is not enough
 
@@ -119,11 +72,8 @@ No Java changes, and no rebuild. The agent's image is the one Module 2 built -- 
 
 Everything in the chart goes in a single commit. The Secret tells the agent to read a token file, and the deployment is what puts the file there and rolls the pod that reads it. Landing one without the other gives you a chart that renders into a pod configured for a file nothing is writing.
 
-// 2026-10-06: was four steps, then three, now two. The filter class page is gone --
-// credentials.jwt.source=spiffe-jwt sets the jwt-spiffe client_assertion_type natively on
-// Quarkus 3.37.0, which is what the hand-written OidcRequestFilter existed to do. Verified
-// against quarkus-oidc-common-3.37.0-sources.jar and confirmed on the cluster 2026-10-05.
-// Full evidence is in the comment block on 07-spiffe-chart.adoc.
+// 2026-10-06: was four steps, then three, now two -- source=spiffe-jwt removed the need
+// for the hand-written filter class and its page. Evidence is on 07-spiffe-chart.adoc.
 
 [NOTE]
 ====
@@ -167,71 +117,19 @@ image::m3/keycloak-spiffe-identity-provider.png[link=self,window=_blank]
 *SPIFFE Trust Domain* must match the trust domain SPIRE issues SVIDs for, or every assertion is rejected. The bundle endpoint is where Keycloak fetches SPIRE's public keys to check the signature -- it is SPIRE's OIDC discovery route, not a Keycloak address. Both are already set; nothing here needs changing.
 ====
 
-// RESOLVED 2026-10-05: the realm ships this way. The internal realm was rebased onto the
-// POC's SPIFFE realm import (install-helm/globex/keycloak-realmimport-internal), so the
-// identity provider, the federated client and the federated-jwt authenticator are all
-// pre-seeded at install time, exactly as page 05's client-credentials clients are. This
-// is not optional plumbing -- the realm import job runs with --override=false, so a realm
-// that already exists is never updated. Anything an attendee needs has to be in the realm
-// at install time, and it is.
+// Two facts behind this page that are not obvious from the cluster:
+//   * No SPIRE registration entry is written, by an attendee or the installer. The ZTWIM
+//     operator ships a cluster-wide fallback ClusterSPIFFEID whose template is
+//     spiffe://{{ .TrustDomain }}/ns/{{ .PodMeta.Namespace }}/sa/{{ .PodSpec.ServiceAccountName }}
+//     and the spire-controller-manager renders it against every pod. That is why the
+//     SPIFFE ID has that shape and why there is no lab step.
+//     Read-only check: oc get clusterspiffeid zero-trust-workload-identity-manager-spire-default -o yaml
+//   * The realm import runs with --override=false, so an existing realm is never updated.
+//     Anything an attendee needs must be seeded at install time, and it is.
 //
-// RESOLVED 2026-10-05: ONE federated client, globex-agent-spiffe, for the agent as a
-// whole -- not one per downstream server. The four client-credentials clients from page 05
-// keep their IDs, their secrets and their client-secret authenticator; globex-agent-spiffe
-// is added alongside them. So the progression is additive and page 05 still demonstrates
-// exactly what it demonstrated before.
-//
-// The framing for attendees -- "why did two client IDs become one" -- is that client
-// identity and token audience are different things. The agent is one workload, so it has
-// one identity; audience is still carried per-request. Prose for this is on
-// 07-spiffe-chart.adoc.
-//
-// TBC, and the honest version of the above: globex-agent-spiffe is modelled on
-// globex-mcp-client, not on both page-05 clients. It carries an oidc-audience-mapper
-// hardcoded to clients.mcpServer.id and mcpServer.scope as an optional scope. The client
-// it displaces on the complaint path, globex-agent-complaints-client, has NO audience
-// mapper and no extra scope at all -- so the complaint path never had a distinct audience
-// to lose. Net effect of the switch:
-//   orders path    -- equivalent, except the mcp-server audience is now unconditional
-//                     (protocol mapper) rather than requested via the optional scope.
-//   complaint path -- the token now also carries a globex-mcp-server audience it did not
-//                     carry before.
-// That extra audience is harmless only if globex-complaints does not do a strict audience
-// check. Verify on the walkthrough. If it does check, globex-agent-spiffe needs a second
-// audience mapper rather than one hardcoded to mcpServer, and the sentence above about
-// audience being per-request needs rewriting to match whatever is true.
-//
-// RESOLVED 2026-10-05, ON THE WALKTHROUGH: it IS harmless, because globex-complaints does
-// no audience check at all. The running deployment carries no OIDC Secret, ConfigMap or
-// env var -- its config is baked into the image -- and the built application.properties
-// has exactly two OIDC keys:
-//   quarkus.oidc.auth-server-url=https://sso.<subdomain>/realms/internal
-//   quarkus.oidc.client-id=globex-complaints-server
-// No quarkus.oidc.token.audience. This is the same asymmetry already noted on
-// 03-secure-complaints-server.adoc, now confirmed against the running server rather than
-// the source. So globex-agent-spiffe's hardcoded globex-mcp-server audience changes
-// nothing on the complaint path, and no second audience mapper is needed.
-//
-// Side effect worth knowing when reading logs: the complaints server's rejection warnings
-// read "Verification of the token issued to client globex-complaints-server has failed".
-// That names the RESOURCE SERVER's own configured client-id, not the token's azp. It does
-// not mean globex-complaints-server issued or requested the token.
-//
-// RESOLVED 2026-10-05: no SPIRE registration entry is written, by an attendee or by the
-// installer. The ZTWIM operator ships a cluster-wide fallback ClusterSPIFFEID --
-// pkg/controller/spire-oidc-discovery-provider/clusterspiffeid.go,
-// generateDefaultFallbackClusterSPIFFEID:
-//   name:             zero-trust-workload-identity-manager-spire-default
-//   className:        zero-trust-workload-identity-manager-spire
-//   spiffeIDTemplate: spiffe://{{ .TrustDomain }}/ns/{{ .PodMeta.Namespace }}/sa/{{ .PodSpec.ServiceAccountName }}
-//   fallback:         true
-//   namespaceSelector: kubernetes.io/metadata.name NotIn [zero-trust-workload-identity-manager]
-// The spire-controller-manager sidecar in spire-server-0 renders that template against
-// every pod and writes the real entries into the SPIRE server. That is why the SPIFFE ID
-// has the ns/.../sa/... shape, why nothing appears in install-helm, and why there is no
-// lab step. The bullet under "What it takes to run it" was corrected to say so.
-// Optional read-only command if this is ever shown:
-//   oc get clusterspiffeid zero-trust-workload-identity-manager-spire-default -o yaml
+// Reading logs: the complaints server's rejection warning reads "Verification of the token
+// issued to client globex-complaints-server has failed". That names the RESOURCE SERVER's
+// own configured client-id, not the token's azp.
 
 == How the agent gets its SVID
 

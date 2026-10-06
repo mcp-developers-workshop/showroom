@@ -76,30 +76,19 @@ quarkus.http.cors.enabled=true
 Both paths are listed. The read-only server reads the same complaints table. `globex-complaints-server` is already in the `internal` realm, like the orders client on the previous page.
 
 // TBC -- DOES THIS CLOSE MODULE 5'S TBC OR BREAK MODULE 5? /read/mcp is the endpoint
-// watsonx Orchestrate connects to in Module 5. m5/02-connection.adoc already tells
-// attendees to run `orchestrate connections set-credentials` and carries its own open TBC
-// about where the Keycloak client ID and secret come from -- which suggests that endpoint
-// was always meant to be authenticated, and that this page is where those credentials
-// start existing. If that holds, both TBCs close together and the two modules join up:
-// point m5/02-connection.adoc at the client created here.
-// If Module 5 in fact expects /read/mcp open, drop it from the permission path above and
-// say why on this page. Verify on the walkthrough -- Module 5 has been run successfully
-// against the OPEN endpoint, so this is a real risk of breaking a working module.
+// watsonx Orchestrate connects to in Module 5, and m5/02-connection.adoc carries its own
+// TBC about where its Keycloak client ID and secret come from -- which suggests this page
+// is where those credentials start existing, and both TBCs close together.
+// But Module 5 has been run successfully against the OPEN endpoint, so this is a real risk
+// of breaking a working module. Verify before shipping: if Module 5 needs it open, drop
+// /read/mcp from the permission path above and say why here.
 
-// TBC: quarkus.http.cors.enabled=true is unexplained in the prose, deliberately -- CORS
-// teaches nothing about MCP and is kept out of the content everywhere else. It is here
-// because a message in the complaints pod log asked for it and it is in the working
-// configuration on the cluster. The reason is NOT established: quarkus-mcp-server-http
-// 2.0.0 contains no CORS string in its runtime or deployment jars, so the message did not
-// come from the MCP extension, and globex-store-mcp runs streamable HTTP without it.
-// Leading hypothesis: with policy=authenticated and CORS disabled, a browser preflight
-// OPTIONS is handled by the auth layer and 401s. Capture the exact log line on the next
-// walkthrough. Low priority -- the user parked this deliberately.
-// 2026-10-01: still parked, to be tested on the next walkthrough round. A CORS failure on
-// the AGENT that day turned out to be unrelated -- a trailing space in the chart template
-// broke an MCP client URL, the pod never went Ready, and the browser blamed CORS. The
-// agent needs no CORS configuration of its own. That says nothing about this line, which
-// is on the complaints server: test whether it works without it once authenticated.
+// TBC, parked deliberately: quarkus.http.cors.enabled=true is unexplained in the prose
+// because CORS teaches nothing about MCP. It is here because the complaints pod log asked
+// for it. Cause not established -- quarkus-mcp-server-http 2.0.0 has no CORS string in its
+// jars, and globex-store-mcp runs without it. Hypothesis: with policy=authenticated, a
+// browser preflight OPTIONS is handled by the auth layer and 401s. Test whether the server
+// works without the line once authenticated.
 
 [NOTE]
 ====
@@ -107,19 +96,15 @@ No `token.audience` here, unlike the orders server on the previous page. The Key
 ====
 
 // TBC -- CAUSE FOUND, FIX NOT MADE. The asymmetry above is a realm-seed issue, not a
-// property of the complaints server, and the [NOTE] is worded to be true without going
-// into realm internals. In
-// install-helm/globex/keycloak-realmimport-internal/templates/keycloak-realmimport.yaml
-// the realm defines two audience client scopes, each with an oidc-audience-mapper (lines
-// 1392 and 1415). globex-mcp-client carries its one as a DEFAULT scope, so page 02's
-// audience check passes unaided. globex-agent-complaints-client has both only as OPTIONAL
-// scopes, and quarkus-oidc-client requests no extra scopes, so its tokens carry no aud.
-// Preferred fix: move the scope into defaultClientScopes for complaintsClient in the
-// realm import -- mirrors mcpClient, needs no agent change, and lets this [NOTE] be
-// deleted and token.audience added above. Blocking check first: confirm which of
-// mcpServer.id / mcpService.id is globex-complaints-server. Both are empty in that
-// chart's values.yaml and injected from outside the repo, so read them off the running
-// realm.
+// property of the complaints server. In keycloak-realmimport-internal the realm defines
+// two audience client scopes with an oidc-audience-mapper each. globex-mcp-client carries
+// its one as a DEFAULT scope, so page 02's audience check passes unaided;
+// globex-agent-complaints-client has both only as OPTIONAL, and quarkus-oidc-client
+// requests no extra scopes, so its tokens carry no aud.
+// Fix: move the scope into defaultClientScopes for complaintsClient in the realm import.
+// Then token.audience can be added above and this [NOTE] deleted. Confirm first which of
+// mcpServer.id / mcpService.id is globex-complaints-server -- both are injected from
+// outside that chart, so read them off the running realm.
 
 == Compile
 

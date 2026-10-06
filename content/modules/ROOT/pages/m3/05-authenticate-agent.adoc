@@ -196,9 +196,16 @@ The push starts a pipeline that builds a new agent image, which takes a few minu
 
 == Configure the OIDC clients in the chart
 
-Two files in `globex-complaint-agent-helm`, edited directly in GitLab, one commit each. Do them in this order: a template that reads a value which does not exist yet fails to render, and ArgoCD reports the whole application as broken until the second commit lands.
+Two files in `globex-complaint-agent-helm`, the chart you cloned in Module 2. Pull first, in case anything has moved:
 
-Open https://gitlab-gitlab.{openshift_subdomain}/globex/globex-complaint-agent-helm/-/edit/main/values.yaml[values.yaml^] and add a new block at the end of the file:
+[source,sh,role="copypaste"]
+----
+git pull
+----
+
+Both edits go in one commit. They depend on each other -- a template that reads a value which does not exist yet fails to render, and ArgoCD reports the whole application as broken for as long as the two are out of step.
+
+Open `values.yaml` and add a new block at the end of the file:
 
 [source,yaml,role="copypaste",subs="attributes+"]
 ----
@@ -218,9 +225,7 @@ oidcClient:
 `oidcClient` is a new top-level key. There is already an `oidc` key in this file for the agent as a resource server -- leave it alone, and do not merge these entries into it. Two keys with the same name in one YAML file do not merge; the second silently replaces the first, and you would lose the agent's existing OIDC configuration.
 ====
 
-Commit the change to `main`.
-
-Then open https://gitlab-gitlab.{openshift_subdomain}/globex/globex-complaint-agent-helm/-/edit/main/templates/secret.yaml[templates/secret.yaml^] and add eight properties under the existing ones, all reading from the values you just added:
+Then open `templates/secret.yaml` and add eight properties under the existing ones, all reading from the values you just added:
 
 [source,yaml,role="copypaste"]
 ----
@@ -243,30 +248,23 @@ Keep the indentation. Everything under `stringData.application.properties` is in
 No trailing spaces at the end of these lines. The block is a YAML literal scalar, so a space after `}}` ends up inside the value, and a secret with a space on the end is rejected by Keycloak with `unauthorized_client` -- indistinguishable from a wrong secret.
 ====
 
-The `quarkus.oidc.*` block already in this file is the agent as a resource server, against the `globex` realm. These six are the other direction.
+The `quarkus.oidc.*` block already in this file is the agent as a resource server, against the `globex` realm. These eight are the other direction.
 
-Commit the change to `main`.
+=== Commit and push
+
+[source,sh,role="copypaste"]
+----
+git add .
+git commit -m "Give the agent its own Keycloak credentials"
+git push
+----
 
 [NOTE]
 ====
 If ArgoCD shows `nil pointer evaluating interface {}.secret`, the template is reading a key that `values.yaml` does not define. The two files disagree -- check that the path after `.Values.` matches the block above exactly, including `oidcClient` rather than `oidc`.
-====
 
-// TBC: the values keys above (oidcClient.orders.* / oidcClient.complaint.*) are invented,
-// and the chart itself has still not been read. CONFIRMED 2026-10-01 that an `oidc:` key
-// already exists in values.yaml: the walkthrough pasted the earlier version of the
-// secret.yaml block, which read .Values.oidc.orders.secret, and ArgoCD failed with
-// "nil pointer evaluating interface {}.secret" -- nil on `.secret` rather than on
-// `.orders` means `oidc` resolved to a map that has no `orders` child. Hence `oidcClient`
-// as a separate top-level key, and the duplicate-key WARNING above.
-// Still to do: read globex-complaint-agent-helm off GitLab and confirm the existing
-// `oidc:` block's shape, in case there is a house convention worth following instead.
-//
-// RESOLVED 2026-10-01: moving every quarkus.oidc-client.* key out of
-// application.properties and into the chart works. @NamedOidcClient resolves from runtime
-// config alone -- the agent's MCP health check reported "orders":"OK" against the secured
-// server, so the client was created and its token was accepted. The client-id lines do not
-// need to stay in application.properties.
+If instead the agent comes up but never becomes ready, check the *rendered values* rather than the sync status. A path like `.Values.oidcClient.orders.clientId` where `oidcClient.orders` exists but `clientId` does not renders as an empty string, not an error -- ArgoCD reports `Synced` and the agent reports `'orders' client configuration is not initialized`.
+====
 
 [NOTE]
 ====
@@ -293,31 +291,6 @@ Both halves have to land before anything works:
 |===
 
 Wait for *Last Sync* to show your chart commit and the pod to be a few minutes old.
-
-// COMMENTED OUT 2026-10-01: the local chatbot test, superseded by the globex-web test
-// below. Both ran the same flow against the same deployed agent, and the chatbot costs
-// more -- npm start, a config value to re-verify from Module 2, and a client secret on the
-// attendee's laptop. Module 3 runs against the cluster, so the storefront is the right
-// client. User to confirm the flow on the next walkthrough before this is deleted.
-////
-== Test it
-
-Start the chatbot again with `npm start` from the `mcp-workshop-chatbot` folder, and check that `src/environments/environment.ts` points at the deployed agent:
-
-[source,typescript,subs="attributes+"]
-----
-apiUrl: 'https://globex-complaint-agent.{openshift_subdomain}/api/v1',
-----
-
-Sign in as `asilva` and ask again:
-
-[source,text,role="copypaste"]
-----
-I want to raise a complaint
-----
-
-The orders come back. The agent is now an authenticated workload.
-////
 
 == Test it
 
@@ -359,92 +332,20 @@ image::m3/globex-web-complaint-filed.png[link=self,window=_blank]
 
 The next step is to stop relying on a shared secret to establish the agent's identity at all.
 
-// TBC -- CARRYING THE USER'S IDENTITY DOWNSTREAM. Token exchange is in scope -- the user
-// confirmed 2026-10-01 that the Globex Store API gets secured next and that token exchange
-// is what it is for -- but how it is handled is not decided, so there are no steps yet.
-// It probably becomes its own page: the last of Step 1, or the first of Step 2.
-//
-// What is known:
-//   * The downstream hop is globex-store-mcp -> Globex Store REST API. That API is
-//     currently open (verified: GET /services/order/asilva/orders returns 200 with no
-//     token). Securing it is the next piece of work.
-//   * That brings quarkus-rest-client-oidc-token-propagation back into scope, on
-//     globex-store-mcp, with @io.quarkus.oidc.token.propagation.AccessToken on
-//     GlobexStoreRestClient -- which has three unannotated methods today. NOT on the
-//     agent: the agent holds its own client-credentials token, and forwarding the user's
-//     token is the passthrough the top of this page rules out.
-//   * m3/index.adoc promises "Enable secure downstream Token Exchange in Quarkus MCP
-//     Servers for backend API calls". That claim is unbuilt, not unsupported. Keep it.
-//
-// What is undecided:
-//   * Whether the Store API is secured at the platform level or by an edit attendees
-//     make. They never clone it and it ships from the install repository -- the same
-//     question globex-complaints raised, which was answered there with a clone.
-//   * Whether the exchanged token carries the USER's identity. If it does, this is what
-//     finally closes the "trusted rather than verified" gap that 07-summary.adoc states.
-//     If it only carries the MCP server's own identity, the gap stays open into Step 2.
+// TBC -- CARRYING THE USER'S IDENTITY DOWNSTREAM, not scoped to a module yet. The hop is
+// globex-store-mcp -> Globex Store REST API, and that API is currently OPEN (verified: GET
+// /services/order/asilva/orders returns 200 with no token). Securing it would bring
+// quarkus-rest-client-oidc-token-propagation into scope on globex-store-mcp -- not on the
+// agent, where forwarding the user's token is the passthrough this page rules out.
+// Open question if it is ever picked up: whether the exchanged token carries the USER's
+// identity, which is what would finally close the "trusted rather than verified" gap the
+// summary states.
 
-// RESOLVED 2026-10-06. Diagnosed, fixed, and confirmed on the cluster; the two
-// refresh-token-time-skew lines are now in the block above. Measurements at the end.
-// The six-line block above produces a 401 from the MCP servers roughly every five
-// minutes, for both clients, for the life of the workshop. It was first noticed during
-// the SPIFFE pages and misattributed there; it is NOT a SPIFFE problem and it starts on
-// THIS page.
-//
-// What happens. The `internal` realm sets accessTokenLifespan: 300
-// (install-helm/globex/keycloak-realmimport-internal/templates/keycloak-realmimport.yaml).
-// The two ends disagree about the expiry second by one:
-//   * CLIENT. Tokens.isAccessTokenExpired() is `nowSecs > expiresAt`, so at the instant
-//     now == exp the token is still considered good and TokensHelper hands out the
-//     cached one. (quarkus-oidc-client 3.37.0, Tokens.java:67-93, TokensHelper.java.)
-//   * SERVER. jose4j rejects at `now >= exp`.
-// So there is a one-second window per token in which the agent sends a token the server
-// will not accept. langchain4j's mcp-server-health-checker hits it, logs
-// McpAuthenticationException: Authentication required: HTTP 401, marks the MCP client
-// DOWN and reconnects. The SSE session survives and traffic resumes, but the smallrye
-// health endpoint reports DOWN in the meantime and the agent log carries a 401 stack.
-//
-// Evidence, globex-complaints pod globex-complaints-6c7b9df49b-pwpkn (started 17:07:20):
-//   twelve occurrences of "io.quarkus.oidc.runtime.OidcProvider ... The JWT is no longer
-//   valid - the evaluation time NumericDate{N} is on or after the Expiration Time
-//   (exp=NumericDate{N})" -- evaluation time and exp IDENTICAL -- at 17:28:29, 17:33:30,
-//   17:38:36, 17:48:24, 18:00:23, 18:06:23, 18:11:32. The first five predate any SPIFFE
-//   pod, so this reproduces on the client-secret configuration on this page.
-//   Agent-side counterpart at 18:06:23,471 (complaint) and 18:06:23,774 (orders), and a
-//   health report DOWN for both clients at 18:11:32,530 -- 13ms after the server's
-//   rejection at 18:11:32,517.
-//
-// PROPOSED FIX, one line per client, in the same secret.yaml block above:
-//     quarkus.oidc-client.orders.refresh-token-time-skew=10S
-//     quarkus.oidc-client.complaint.refresh-token-time-skew=10S
-// Verified as a real per-client property against quarkus-oidc-client-3.37.0-sources.jar:
-// OidcClientConfig.java:60-66 and :111. It makes Tokens.isAccessTokenWithinRefreshInterval()
-// return true ten seconds before exp, and because client_credentials returns no refresh
-// token TokensHelper takes the `!refreshTokenValid` branch and calls
-// oidcClient.getTokens() for a wholly new token. The window closes.
-//
-// CONFIRMED 2026-10-06. Before and after, on the same cluster:
-//   Without the skew, pod globex-complaint-agent-58df68d987-*, four consecutive hits with
-//   no misses -- 05:59:14, 06:04:24, 06:09:34, 06:14:44. Exactly 310s apart: 300s of token
-//   life plus ~10s for langchain4j to notice and reconnect.
-//   With the skew, pod globex-complaint-agent-555478bf8f-86dt8 booted 06:14:48 and ran
-//   11 minutes across both the 06:19:49 and 06:24:49 boundaries with ZERO server-side
-//   rejections, zero McpAuthenticationException, zero WARN and zero ERROR.
-//
-// Two dead ends worth not repeating:
-//   * The first test run was INVALID and looked like the fix had failed. The pod was
-//     restarted 9 seconds before argocd-controller wrote the Secret, so it booted from the
-//     old content. Always check the Secret's managedFields time against the Quarkus
-//     "started in" line before trusting a result.
-//   * A theory that langchain4j freezes the Authorization header into a long-lived SSE
-//     channel. QuarkusStreamableHttpMcpTransport does have two call sites --
-//     startSubsidiaryChannel() calls getAuthorization() once, execute() calls it per
-//     request -- but McpClientRuntimeConfig.subsidiaryChannel() is @WithDefault("false")
-//     and the agent does not enable it, so only execute() ever runs. Dead end.
-//
-// Prose for attendees was added above, deliberately. An attendee who opens the agent log
-// and finds a 401 stack trace concludes they broke something, and the next page tells them
-// to go and read that log.
-//
-// Carried into 07-spiffe-chart.adoc, which rewrites these same lines and would
-// otherwise reintroduce the bug at SPIFFE Step 1.
+// WHY refresh-token-time-skew IS THERE. Resolved and shipped 2026-10-06; do not remove
+// those two lines, and keep them in step with 07-spiffe-chart.adoc, which rewrites this
+// same block. Without them both MCP servers 401 every ~310 seconds, for the life of the
+// workshop. Cause: accessTokenLifespan is 300 in the internal realm, and the two ends
+// disagree by one second -- Tokens.isAccessTokenExpired() is `now > exp` (client) while
+// jose4j rejects at `now >= exp` (server). Measured before: 4/4 token boundaries failed.
+// After: 0 across two boundaries, zero WARN, zero ERROR. Full diagnosis is in memory
+// under token-lifespan-401.

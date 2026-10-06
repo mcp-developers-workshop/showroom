@@ -55,7 +55,6 @@ mcp add quarkus-agent -- jbang quarkus-agent-mcp@quarkusio
 
 image::m1/bob-mcp-add.png[link=self,window=_blank]
 
-
 === Clone the Globex MCP repository
 
 On the Bob welcome page, click *Clone Git Repository...*:

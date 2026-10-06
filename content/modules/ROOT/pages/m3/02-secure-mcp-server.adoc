@@ -57,15 +57,6 @@ Three things are happening:
 The `internal` realm and every client this module names are created when your lab environment is provisioned. `globex-mcp-server` above already exists, as do the complaints server client on the next page and the agent's two clients on page 5. You create nothing in Keycloak in this module -- the configuration you write refers to clients that are already there.
 ====
 
-// TBC -- OPTIONAL PAGE, WORTH CONSIDERING. A short page that fetches a token by hand
-// against the internal realm's token endpoint and decodes it would make the client
-// credentials grant and the aud claim visible, rather than something a framework does
-// invisibly two pages later. It would sit well either here or straight after
-// 05-authenticate-agent.adoc. Running on the cluster removed the forced NEED for one
-// -- the Dev UI is local-only, and m1/02-generate.adoc and the MCP Inspector pages are
-// used before auth exists, so they stay correct as written. So this is a teaching
-// improvement, not a gap, and it is the first thing to cut if the module runs long.
-
 [NOTE]
 ====
 No client secret appears anywhere on this page. The server only *validates* tokens, and it does that with the realm's public keys, which it downloads from `auth-server-url` when it starts. A resource server needs no credentials of its own. Only the caller does, which is why the agent gets a client ID and secret later in this module.
