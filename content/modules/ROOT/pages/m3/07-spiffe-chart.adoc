@@ -271,6 +271,10 @@ stringData:
     quarkus.langchain4j.openai.complaint.api-key={{ .Values.llm.complaint.apiKey }}
     quarkus.langchain4j.openai.complaint.base-url={{ .Values.llm.complaint.baseUrl }}
 
+    quarkus.http.cors.enabled={{ .Values.cors.enabled }}
+    quarkus.http.cors.origins= {{ .Values.cors.origins }}
+    quarkus.http.cors.methods={{ .Values.cors.methods }}
+
     quarkus.langchain4j.mcp.orders.url={{ .Values.mcp.orders.url }}
     quarkus.langchain4j.mcp.complaint.url={{ .Values.mcp.complaint.url }}
 
@@ -285,10 +289,6 @@ stringData:
     quarkus.oidc-client.complaint.credentials.jwt.token-path={{ .Values.spiffe.tokenPath }}
     quarkus.oidc-client.complaint.credentials.jwt.source=spiffe-jwt
     quarkus.oidc-client.complaint.refresh-token-time-skew=10S
-
-    quarkus.http.cors.enabled={{ .Values.cors.enabled }}
-    quarkus.http.cors.origins= {{ .Values.cors.origins }}
-    quarkus.http.cors.methods={{ .Values.cors.methods }}
 ----
 ====
 
