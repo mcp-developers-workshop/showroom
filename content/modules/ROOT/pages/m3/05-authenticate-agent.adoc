@@ -220,19 +220,23 @@ oidcClient:
 
 Commit the change to `main`.
 
-Then open https://gitlab-gitlab.{openshift_subdomain}/globex/globex-complaint-agent-helm/-/edit/main/templates/secret.yaml[templates/secret.yaml^] and add six properties under the existing ones, all reading from the values you just added:
+Then open https://gitlab-gitlab.{openshift_subdomain}/globex/globex-complaint-agent-helm/-/edit/main/templates/secret.yaml[templates/secret.yaml^] and add eight properties under the existing ones, all reading from the values you just added:
 
 [source,yaml,role="copypaste"]
 ----
     quarkus.oidc-client.orders.auth-server-url={{ .Values.oidcClient.orders.authServerUrl }}
     quarkus.oidc-client.orders.client-id={{ .Values.oidcClient.orders.clientId }}
     quarkus.oidc-client.orders.credentials.secret={{ .Values.oidcClient.orders.secret }}
+    quarkus.oidc-client.orders.refresh-token-time-skew=10S
     quarkus.oidc-client.complaint.auth-server-url={{ .Values.oidcClient.complaint.authServerUrl }}
     quarkus.oidc-client.complaint.client-id={{ .Values.oidcClient.complaint.clientId }}
     quarkus.oidc-client.complaint.credentials.secret={{ .Values.oidcClient.complaint.secret }}
+    quarkus.oidc-client.complaint.refresh-token-time-skew=10S
 ----
 
 Keep the indentation. Everything under `stringData.application.properties` is indented four spaces.
+
+`refresh-token-time-skew` is the one line here that is not about identity. Access tokens from this realm last five minutes, and without it the agent will keep using a token right up to the second it expires -- which is one second later than the MCP servers will accept it. The result is an HTTP 401 every five minutes, for the life of the workshop. Ten seconds of skew makes the agent fetch a new token just before the old one dies.
 
 [WARNING]
 ====
@@ -380,7 +384,8 @@ The next step is to stop relying on a shared secret to establish the agent's ide
 //     finally closes the "trusted rather than verified" gap that 07-summary.adoc states.
 //     If it only carries the MCP server's own identity, the gap stays open into Step 2.
 
-// TBC 2026-10-05, DIAGNOSED ON THE CLUSTER, FIX NOT YET APPLIED OR TESTED.
+// RESOLVED 2026-10-06. Diagnosed, fixed, and confirmed on the cluster; the two
+// refresh-token-time-skew lines are now in the block above. Measurements at the end.
 // The six-line block above produces a 401 from the MCP servers roughly every five
 // minutes, for both clients, for the life of the workshop. It was first noticed during
 // the SPIFFE pages and misattributed there; it is NOT a SPIFFE problem and it starts on
@@ -418,14 +423,28 @@ The next step is to stop relying on a shared secret to establish the agent's ide
 // token TokensHelper takes the `!refreshTokenValid` branch and calls
 // oidcClient.getTokens() for a wholly new token. The window closes.
 //
-// Not yet done: applying it, and watching for a sixth-minute 401 that does not come.
-// It is a chart-only edit, so no push and no pipeline -- but a Secret change does not
-// roll the Deployment, so the pod has to be restarted by hand.
+// CONFIRMED 2026-10-06. Before and after, on the same cluster:
+//   Without the skew, pod globex-complaint-agent-58df68d987-*, four consecutive hits with
+//   no misses -- 05:59:14, 06:04:24, 06:09:34, 06:14:44. Exactly 310s apart: 300s of token
+//   life plus ~10s for langchain4j to notice and reconnect.
+//   With the skew, pod globex-complaint-agent-555478bf8f-86dt8 booted 06:14:48 and ran
+//   11 minutes across both the 06:19:49 and 06:24:49 boundaries with ZERO server-side
+//   rejections, zero McpAuthenticationException, zero WARN and zero ERROR.
 //
-// If it is applied, it also has to go into the SPIFFE Step 3 block on
-// 09-swap-the-secret.adoc, which rewrites these same lines.
+// Two dead ends worth not repeating:
+//   * The first test run was INVALID and looked like the fix had failed. The pod was
+//     restarted 9 seconds before argocd-controller wrote the Secret, so it booted from the
+//     old content. Always check the Secret's managedFields time against the Quarkus
+//     "started in" line before trusting a result.
+//   * A theory that langchain4j freezes the Authorization header into a long-lived SSE
+//     channel. QuarkusStreamableHttpMcpTransport does have two call sites --
+//     startSubsidiaryChannel() calls getAuthorization() once, execute() calls it per
+//     request -- but McpClientRuntimeConfig.subsidiaryChannel() is @WithDefault("false")
+//     and the agent does not enable it, so only execute() ever runs. Dead end.
 //
-// Whether it is worth a sentence of attendee-facing prose is a separate call. Argument
-// for: an attendee who opens the agent log sees a 401 stack trace and reasonably
-// concludes they broke something. Argument against: it is a detail of token lifetimes,
-// not of MCP or OIDC, and the page is already long.
+// Prose for attendees was added above, deliberately. An attendee who opens the agent log
+// and finds a 401 stack trace concludes they broke something, and the next page tells them
+// to go and read that log.
+//
+// Carried into 09-swap-the-secret.adoc, which rewrites these same lines and would
+// otherwise reintroduce the bug at SPIFFE Step 3.
