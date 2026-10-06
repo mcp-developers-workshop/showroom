@@ -1,0 +1,53 @@
+= From Logs to a Trace
+
+Start with a single complaint in the Globex application.
+
+First, look at the logs from the services involved in handling the request. Try to reconstruct what happened and answer:
+
+* Which services were involved?
+* In what order were they called?
+* How long did each operation take?
+* Which MCP tools were invoked?
+* Where did an error or delay occur?
+
+You will quickly find that the logs provide pieces of the story, but not the complete picture.
+
+== Add tracing
+
+Now add distributed tracing to the applications and send the telemetry to Langfuse.
+
+Repeat the same request and open the resulting trace.
+
+Follow the request through:
+
+[source,text]
+----
+User → Agent → MCP Server → MCP Tool → Backend Service
+----
+
+Look at the span tree and explore the individual operations.
+
+Notice how the trace connects the different services and shows:
+
+* the sequence of operations
+* the time spent in each operation
+* the MCP tools that were called
+* the arguments and results of tool calls
+* the model interactions driving the workflow
+
+== Read the turn
+
+Follow one complete turn from the user's request through the agent, MCP server, and backend services.
+
+Compare what you can see now with what you could determine from the logs alone.
+
+The key difference is **context**. Logs show what individual components recorded. A distributed trace connects those events into one end-to-end request.
+
+For an AI application, Langfuse adds visibility into the AI interaction itself, including the model calls, tool calls, inputs, outputs, and token usage.
+
+[quote]
+____
+Logs give you pieces of the story. A trace connects the pieces.
+____
+
+By the end of this exercise, you should be able to follow an MCP request from the user prompt through the agent and MCP tools into the backend services, and understand where time was spent and what happened along the way.

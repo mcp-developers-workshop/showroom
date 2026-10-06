@@ -19,6 +19,7 @@
 ** xref:m2/06-add-complaints-tool.adoc[Give the Agent the Complaints Tool]
 ** xref:m2/07-deploy-agent.adoc[Deploy the Agent to OpenShift]
 ** xref:m2/08-summary.adoc[Summary]
+
 * xref:m3/index.adoc[Module 3: Enable Security & Identity (Zero-Trust)]
 ** xref:m3/01-baseline.adoc[Confirm the MCP Servers Are Open]
 ** xref:m3/02-secure-mcp-server.adoc[Require a Token on the Orders MCP Server]
@@ -29,11 +30,12 @@
 ** xref:m3/07-spiffe-chart.adoc[SPIFFE Step 1: Move the Chart to the SVID]
 ** xref:m3/08-verify-spiffe.adoc[SPIFFE Step 2: Confirm the Agent Has No Secret]
 ** xref:m3/09-summary.adoc[Summary]
+
 * xref:m4/index.adoc[Module 4: Make MCP Observable]
 ** xref:m4/01-trace-the-agent.adoc[Trace the Agent]
 ** xref:m4/02-trace-the-mcp-servers.adoc[Trace Both MCP Servers]
-** xref:m4/03-read-a-turn.adoc[Read One Turn End to End]
-** xref:m4/04-summary.adoc[Summary]
+** xref:m4/03-summary.adoc[Summary]
+
 * xref:m5/index.adoc[Module 5: Centralized Governance]
 ** xref:m5/01-clone-workspace.adoc[Clone the Workspace]
 ** xref:m5/02-connection.adoc[Create the Connection]
