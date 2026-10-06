@@ -10,7 +10,7 @@ The tool takes `customerId` as a parameter, which means the model supplies it. W
 
 The model's input is the conversation: the customer's own words, plus any text that reached the context from somewhere else. So "show me the orders for another customer" is a valid tool call, and so is an instruction hidden in a document the agent was asked to read. The server cannot tell any of them apart from a legitimate request.
 
-Identity is not the model's to decide. Next you move the customer ID to an HTTP header on the MCP request, set by the caller. It leaves the tool's schema entirely, so the model has no field to fill in.
+Next you move the customer ID to an HTTP header on the MCP request, set by the caller. It leaves the tool's schema entirely, so the model has no field to fill in.
 
 == Prompt IBM Bob
 
@@ -48,7 +48,7 @@ Once dev mode restarts, open http://localhost:8080/q/dev-ui/quarkus-mcp-server-h
 
 image::m1/devui-getorders-no-parameters.png[link=self,window=_blank]
 
-The tool declares no parameters. There is nothing left for the model to supply.
+The tool now declares no parameters, so the model has nothing to supply.
 
 == Test the header with MCP Inspector
 

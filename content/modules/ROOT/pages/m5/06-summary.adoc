@@ -31,5 +31,5 @@ The improvements the agent produced are displayed in the chat and go no further.
 ====
 This workshop can be extended by registering an external MCP server for an issue tracker -- Jira, for example -- as a second toolkit in the same workspace, and giving the agent its issue-creation tool alongside the four complaints tools.
 
-The agent would then do in one turn what currently takes a person copying the output: read the complaints from one MCP server and open the resulting improvements as issues in another. Nothing about the complaints server would change. The connection and toolkit pattern you used here is the same one the second server would need, which is the point -- adding a capability is adding two YAML files, not writing an integration.
+The agent would then do in one turn what currently takes a person copying the output: read the complaints from one MCP server and open the resulting improvements as issues in another. Nothing about the complaints server would change. The connection and toolkit pattern you used here is the same one the second server would need: adding a capability is adding two YAML files, not writing an integration.
 ====

@@ -9,7 +9,7 @@
 == Overview & Objectives
 The MCP servers you built and used in Modules 1 and 2 are on public routes and will answer anyone who can reach them. This module closes them. The agent gets a Keycloak identity of its own, proves it with the client credentials grant, and presents the resulting token on every MCP call -- while the signed-in customer's identity keeps travelling separately, in the header you built in Module 2.
 
-That is Step 1, and it is what this module currently covers end to end. Step 2 replaces the agent's shared secret with a SPIFFE workload identity that the platform attests; it is outlined here and still being written.
+That is the first half of the module, and it is complete end to end. The second half replaces the agent's shared secret with a SPIFFE workload identity that the platform attests, over four numbered pages -- *SPIFFE Step 1* to *SPIFFE Step 4*. Those four are drafted from a working proof of concept but have not been run on the workshop environment yet.
 
 === Learning Objectives
 * Understand the security hazards of direct, unauthenticated agentic access.
@@ -41,7 +41,7 @@ This module runs against the cluster. You edit code locally, push, and let the p
 3. Require an authenticated caller on both endpoints of the complaints MCP server
 4. Confirm both servers now reject anonymous callers, and that the unchanged agent is one of them
 5. Give the agent its own Keycloak client credentials and attach the resulting tokens to MCP calls, keeping workload identity separate from user identity
-6. Replace the shared secret with a SPIFFE workload identity -- outline only, still being written
+6. Replace the shared secret with a SPIFFE workload identity, in four steps: send the SVID as a client assertion, add the SPIFFE helper to the pod, swap the secret for the SVID, confirm the agent has no secret
 
 == Expected Outcomes
 Two MCP servers that reject anonymous callers, and an agent that reaches them as an authenticated workload with a token scoped to each server -- while the customer's identity continues to travel in a header the server has not yet verified.

@@ -54,7 +54,7 @@ If Bob flags the new file with errors that do not look real -- an unresolved pac
 
 `@RequestScoped` means one instance per HTTP request, so two customers using the agent at the same time cannot see each other's value.
 
-The name is the point: this is the *authoritative* user ID. It comes from the verified token, not from the conversation, and the model has no way to influence it.
+The value it holds comes from the verified token, not from the conversation, so the model cannot influence it. Hence *authoritative* in the class name.
 
 == Set it from the token
 

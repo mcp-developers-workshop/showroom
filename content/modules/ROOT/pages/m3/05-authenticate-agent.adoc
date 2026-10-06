@@ -379,3 +379,53 @@ The next step is to stop relying on a shared secret to establish the agent's ide
 //   * Whether the exchanged token carries the USER's identity. If it does, this is what
 //     finally closes the "trusted rather than verified" gap that 07-summary.adoc states.
 //     If it only carries the MCP server's own identity, the gap stays open into Step 2.
+
+// TBC 2026-10-05, DIAGNOSED ON THE CLUSTER, FIX NOT YET APPLIED OR TESTED.
+// The six-line block above produces a 401 from the MCP servers roughly every five
+// minutes, for both clients, for the life of the workshop. It was first noticed during
+// the SPIFFE pages and misattributed there; it is NOT a SPIFFE problem and it starts on
+// THIS page.
+//
+// What happens. The `internal` realm sets accessTokenLifespan: 300
+// (install-helm/globex/keycloak-realmimport-internal/templates/keycloak-realmimport.yaml).
+// The two ends disagree about the expiry second by one:
+//   * CLIENT. Tokens.isAccessTokenExpired() is `nowSecs > expiresAt`, so at the instant
+//     now == exp the token is still considered good and TokensHelper hands out the
+//     cached one. (quarkus-oidc-client 3.37.0, Tokens.java:67-93, TokensHelper.java.)
+//   * SERVER. jose4j rejects at `now >= exp`.
+// So there is a one-second window per token in which the agent sends a token the server
+// will not accept. langchain4j's mcp-server-health-checker hits it, logs
+// McpAuthenticationException: Authentication required: HTTP 401, marks the MCP client
+// DOWN and reconnects. The SSE session survives and traffic resumes, but the smallrye
+// health endpoint reports DOWN in the meantime and the agent log carries a 401 stack.
+//
+// Evidence, globex-complaints pod globex-complaints-6c7b9df49b-pwpkn (started 17:07:20):
+//   twelve occurrences of "io.quarkus.oidc.runtime.OidcProvider ... The JWT is no longer
+//   valid - the evaluation time NumericDate{N} is on or after the Expiration Time
+//   (exp=NumericDate{N})" -- evaluation time and exp IDENTICAL -- at 17:28:29, 17:33:30,
+//   17:38:36, 17:48:24, 18:00:23, 18:06:23, 18:11:32. The first five predate any SPIFFE
+//   pod, so this reproduces on the client-secret configuration on this page.
+//   Agent-side counterpart at 18:06:23,471 (complaint) and 18:06:23,774 (orders), and a
+//   health report DOWN for both clients at 18:11:32,530 -- 13ms after the server's
+//   rejection at 18:11:32,517.
+//
+// PROPOSED FIX, one line per client, in the same secret.yaml block above:
+//     quarkus.oidc-client.orders.refresh-token-time-skew=10S
+//     quarkus.oidc-client.complaint.refresh-token-time-skew=10S
+// Verified as a real per-client property against quarkus-oidc-client-3.37.0-sources.jar:
+// OidcClientConfig.java:60-66 and :111. It makes Tokens.isAccessTokenWithinRefreshInterval()
+// return true ten seconds before exp, and because client_credentials returns no refresh
+// token TokensHelper takes the `!refreshTokenValid` branch and calls
+// oidcClient.getTokens() for a wholly new token. The window closes.
+//
+// Not yet done: applying it, and watching for a sixth-minute 401 that does not come.
+// It is a chart-only edit, so no push and no pipeline -- but a Secret change does not
+// roll the Deployment, so the pod has to be restarted by hand.
+//
+// If it is applied, it also has to go into the SPIFFE Step 3 block on
+// 09-swap-the-secret.adoc, which rewrites these same lines.
+//
+// Whether it is worth a sentence of attendee-facing prose is a separate call. Argument
+// for: an attendee who opens the agent log sees a 401 stack trace and reasonably
+// concludes they broke something. Argument against: it is a detail of token lifetimes,
+// not of MCP or OIDC, and the page is already long.

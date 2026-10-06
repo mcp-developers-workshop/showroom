@@ -90,5 +90,5 @@ The complaint is recorded against order 231 with the issue type, severity and re
 
 [NOTE]
 ====
-Nothing about the agent's code changed to make it use the new tool -- only one line of configuration and one annotation. The prompt's conversation flow already ended with "Provide the complaint ID and next steps", and a tool that creates complaints was the missing half of it.
+Nothing about the agent's code changed to make it use the new tool -- only one line of configuration and one annotation.
 ====

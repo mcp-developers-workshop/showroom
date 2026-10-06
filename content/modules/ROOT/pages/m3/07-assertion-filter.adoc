@@ -11,6 +11,25 @@
 This page works in the *`globex-complaint-agent`* repository, in your IDE. One commit.
 ====
 
+// TBC, 2026-10-05, AND IT MAY DELETE THIS ENTIRE PAGE. globex-complaint-agent/pom.xml sets
+// quarkus.platform.version 3.37.0. In the 3.37.0 tag,
+// OidcClientCommonConfig.Credentials.Jwt.Source already has a SPIFFE_JWT constant, and
+// KubernetesServiceClientAssertionProvider does:
+//     if (source == Source.BEARER)          { clientAssertionType = JWT_BEARER_...; }
+//     else if (source == Source.SPIFFE_JWT) { clientAssertionType = SPIFFE_SVID_...; }
+// So setting
+//     quarkus.oidc-client.orders.credentials.jwt.source=spiffe-jwt
+// on 09-swap-the-secret.adoc sends the jwt-spiffe assertion type natively, and this class,
+// the compile and the push all disappear. 3.37.0's own validation explicitly permits
+// token-path with spiffe-jwt ("Token path can only be set when the JWT source is 'bearer'
+// or 'spiffe'"). The filter is needed ONLY because 09 currently uses source=bearer.
+//
+// Test this on the walkthrough before deciding. Keeping the filter is defensible as a
+// teaching device -- it makes the assertion-type mismatch visible, and the mismatch is
+// real and surprising -- but the page currently presents it as NECESSARY, and on this
+// Quarkus version it is not. If it stays, the opening paragraph has to say "no
+// configuration setting bridges the two" differently, because one does.
+
 == Add the client assertion type filter
 
 When Quarkus authenticates with a JWT instead of a secret, it sends `client_assertion_type=urn:ietf:params:oauth:client-assertion-type:jwt-bearer`, which is what RFC 7523 specifies. Keycloak's SPIFFE support expects `urn:ietf:params:oauth:client-assertion-type:jwt-spiffe`, and no configuration setting bridges the two. One class rewrites the value in the request body on its way to Keycloak.

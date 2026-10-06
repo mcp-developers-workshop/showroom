@@ -6,10 +6,29 @@
 :icons: font
 :source-highlighter: highlight.js
 
-// TBC: FIRST DRAFT, NOT WALKTHROUGH-VERIFIED. Written 2026-10-01 from the `spiffe` branch
-// of /Users/jbaskara/Documents/GitHub/quarkus-mcp-demo/mcp-demo-poc, diffed against its
-// `oidc` branch. The POC works; pages 06-10 are a translation of it into the workshop's
-// repositories and naming, and NOTHING in them has been run here. User to validate.
+// PARTLY WALKTHROUGH-VERIFIED as of 2026-10-05. Written 2026-10-01 from the `spiffe`
+// branch of /Users/jbaskara/Documents/GitHub/quarkus-mcp-demo/mcp-demo-poc, diffed against
+// its `oidc` branch, then translated into the workshop's repositories and naming.
+//
+// Verified on the live cluster 2026-10-05:
+//   * Step 2 (08-spiffe-helper.adoc) end to end. The ConfigMap and the complete
+//     deployment.yaml apply cleanly, the pod rolls out with init-spiffe-helper +
+//     spiffe-helper + the app container, and the agent reaches Keycloak with the SVID.
+//   * The failure mode when the sidecar is missing -- see the VERIFIED note on
+//     10-verify-spiffe.adoc.
+//
+//   * Step 3 with source=spiffe-jwt and the four jwt.issuer/jwt.subject lines removed.
+//     The agent obtained tokens from Keycloak, so Step 1's filter class is confirmed
+//     UNNECESSARY on Quarkus 3.37.0 and page 07 is slated for deletion. See the
+//     REMAINING WORK list on 09-swap-the-secret.adoc.
+//
+// NOT yet verified: everything on 10-verify-spiffe.adoc past "Test it" and the sidecar
+// log block.
+//
+// NOT A SPIFFE PROBLEM, resolved 2026-10-05 and moved off these pages: the periodic HTTP
+// 401 from both MCP servers. It is the 300-second accessTokenLifespan boundary and it
+// reproduces on page 05's client-secret configuration. Diagnosis and proposed fix are in
+// the TBC at the end of 05-authenticate-agent.adoc.
 //
 // Translation notes -- where these pages deliberately differ from the POC:
 //   * MCP client names: POC uses `globex-store` / `complaints`, this workshop uses
@@ -74,7 +93,7 @@ The identity has to be issued by something that can verify the claim independent
 
 * A *SPIRE server* -- the certificate authority for the trust domain.
 * A *SPIRE agent* on every node. When a pod asks for an identity, the agent asks the kubelet what that pod really is -- its namespace, its service account, its image -- and only then issues the SVID. That check is called *attestation*.
-* A *registration entry* per workload, mapping those pod properties to a SPIFFE ID. This is the one piece a human writes.
+* A *registration entry* per workload, mapping those pod properties to a SPIFFE ID. On a bare SPIRE install this is the one piece a human writes. Not here -- see below.
 * A consumer that trusts the trust domain. Here that is Keycloak, which has to accept an SVID where it currently expects a client secret.
 
 The workload talks to its node's SPIRE agent over a local Unix socket, so there is no credential to put in a chart, in Git, or in an environment variable, and nothing to rotate on a schedule.
@@ -106,9 +125,15 @@ A SPIRE agent attests the agent pod and issues it a short-lived JWT-SVID. The ag
 
 The steps are numbered because they are ordered. Step 2 and Step 3 touch the same chart and must be committed in that order -- Step 3's `secret.yaml` points at a file that only exists once Step 2's helper is in the pod.
 
-[IMPORTANT]
+// 2026-10-05: banner softened. The four steps have now been run on the workshop cluster
+// and the agent authenticates to Keycloak with an SVID. What is still unsettled is whether
+// two of them can be SHORTER -- the filter class on Step 1 and four of the twelve
+// properties on Step 3 may both be unnecessary on Quarkus 3.37.0. See the TBCs on those
+// pages. Remove this banner once those two are tested either way.
+
+[NOTE]
 ====
-These steps are drafted from a working proof of concept and have not been run on the workshop environment yet. Treat the exact values as provisional.
+These four steps work on the workshop cluster, but they are newer than the rest of the module and may still be simplified. If something here reads as more work than it should be, it probably is.
 ====
 
 == What is already on the cluster
@@ -182,11 +207,37 @@ image::m3/keycloak-spiffe-identity-provider.png[link=self,window=_blank]
 // audience mapper rather than one hardcoded to mcpServer, and the sentence above about
 // audience being per-request needs rewriting to match whatever is true.
 //
-// TBC: whether a SPIRE registration entry has to be created for the agent workload, and by
-// whom. The SpireAgent uses automatic workload attestation, which suggests entries are
-// derived rather than hand-written, but no entry appears anywhere in the install
-// repository. If attendees need to create one, it is a step that belongs on page 08.
-// This is the largest unknown left -- everything else has been traced to a real value.
+// RESOLVED 2026-10-05, ON THE WALKTHROUGH: it IS harmless, because globex-complaints does
+// no audience check at all. The running deployment carries no OIDC Secret, ConfigMap or
+// env var -- its config is baked into the image -- and the built application.properties
+// has exactly two OIDC keys:
+//   quarkus.oidc.auth-server-url=https://sso.<subdomain>/realms/internal
+//   quarkus.oidc.client-id=globex-complaints-server
+// No quarkus.oidc.token.audience. This is the same asymmetry already noted on
+// 03-secure-complaints-server.adoc, now confirmed against the running server rather than
+// the source. So globex-agent-spiffe's hardcoded globex-mcp-server audience changes
+// nothing on the complaint path, and no second audience mapper is needed.
+//
+// Side effect worth knowing when reading logs: the complaints server's rejection warnings
+// read "Verification of the token issued to client globex-complaints-server has failed".
+// That names the RESOURCE SERVER's own configured client-id, not the token's azp. It does
+// not mean globex-complaints-server issued or requested the token.
+//
+// RESOLVED 2026-10-05: no SPIRE registration entry is written, by an attendee or by the
+// installer. The ZTWIM operator ships a cluster-wide fallback ClusterSPIFFEID --
+// pkg/controller/spire-oidc-discovery-provider/clusterspiffeid.go,
+// generateDefaultFallbackClusterSPIFFEID:
+//   name:             zero-trust-workload-identity-manager-spire-default
+//   className:        zero-trust-workload-identity-manager-spire
+//   spiffeIDTemplate: spiffe://{{ .TrustDomain }}/ns/{{ .PodMeta.Namespace }}/sa/{{ .PodSpec.ServiceAccountName }}
+//   fallback:         true
+//   namespaceSelector: kubernetes.io/metadata.name NotIn [zero-trust-workload-identity-manager]
+// The spire-controller-manager sidecar in spire-server-0 renders that template against
+// every pod and writes the real entries into the SPIRE server. That is why the SPIFFE ID
+// has the ns/.../sa/... shape, why nothing appears in install-helm, and why there is no
+// lab step. The bullet under "What it takes to run it" was corrected to say so.
+// Optional read-only command if this is ever shown:
+//   oc get clusterspiffeid zero-trust-workload-identity-manager-spire-default -o yaml
 
 == How the agent gets its SVID
 

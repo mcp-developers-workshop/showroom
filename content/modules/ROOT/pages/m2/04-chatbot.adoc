@@ -49,6 +49,7 @@ Replace the contents of `src/environments/environment.ts` with:
 export const environment = {
   production: false,
   apiUrl: 'http://localhost:8081/api/v1',
+
   oauth: {
     authorizationUrl: 'https://sso.{openshift_subdomain}/realms/globex/protocol/openid-connect/auth',
     tokenUrl: 'https://sso.{openshift_subdomain}/realms/globex/protocol/openid-connect/token',
@@ -61,6 +62,7 @@ export const environment = {
     responseType: 'code',
     usePKCE: true
   }
+  
 };
 ----
 

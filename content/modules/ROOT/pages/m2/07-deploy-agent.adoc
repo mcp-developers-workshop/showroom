@@ -11,7 +11,7 @@ Everything so far has run on your machine. Getting it onto the cluster takes two
 * The *code* -- the header supplier, the two annotations, the prompt -- goes to the `globex-complaint-agent` repository on GitLab, where a build turns it into a container image. `application.properties` is part of that repository, so the two `transport-type` entries are built into the image along with the code.
 * The *runtime configuration* goes to the `globex-complaint-agent-helm` repository. `.env` is for local testing only; it is in `.gitignore` and never leaves your laptop. The deployed agent reads the same properties from a Kubernetes Secret that the chart renders.
 
-Do the code first, since the build takes a few minutes to run while you edit the chart.
+Push the code first. That starts a pipeline that builds the agent image, which takes a few minutes, and you can make the chart changes while it runs.
 
 == Commit and push the agent
 
@@ -82,6 +82,7 @@ mcp:
     url: https://globex-store-mcp.{openshift_subdomain}/mcp
   complaint:
     url: https://globex-complaints.{openshift_subdomain}/mcp
+
 ----
 
 These are the same two URLs from your `.env`.
@@ -101,6 +102,8 @@ mcp:
     url: https://globex-store-mcp.{openshift_subdomain}/mcp
   complaint:
     url: https://globex-complaints.{openshift_subdomain}/mcp
+
+
 ----
 
 Commit the change to `main`.
@@ -130,23 +133,8 @@ Commit the change to `main`.
 
 Open the https://openshift-gitops-server-openshift-gitops.{openshift_subdomain}/[ArgoCD console^] -- the same one you used in Module 1, with the same `{openshift_gitops_user}` account -- and open the `globex-complaint-agent` application.
 
-Auto sync is on, so you do not have to press anything. Three things tell you your changes landed:
+Auto sync is on, so you do not have to press anything. ArgoCD picks up your edits to globex-complaint-agent-helm and re-rendered the Secret. The agent restarted and picked up both the new Secret and the new image. A new pod is started cleanly.
 
-[cols="1,2", options="header"]
-|===
-| What to look for | What it means
-
-| *Last Sync* shows a recent timestamp, with the comment from your chart commit
-| ArgoCD picked up your edits to `globex-complaint-agent-helm` and re-rendered the Secret.
-
-| The `deploy` node has a new revision, and the `pod` under it is a few minutes old
-| The agent restarted and picked up both the new Secret and the new image.
-
-| *App Health* is *Healthy* and *Sync Status* is *Synced*
-| The new pod started cleanly.
-|===
-
-// TBC: screenshot of the globex-complaint-agent application details tree, Healthy and Synced, with a recent Last Sync timestamp and a freshly rolled pod. User to re-capture with a current timestamp.
 
 [NOTE]
 ====

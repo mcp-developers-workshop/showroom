@@ -18,18 +18,190 @@ image::m3/spiffe-helper-init-log.png[link=self,window=_blank]
 
 It fetched a JWT-SVID to `/svids/jwt.token` and exited, which is what lets the agent container start.
 
+The pod should report *2/2* containers running, `globex-complaint-agent` and `spiffe-helper`, with `init-spiffe-helper` completed.
+
+[WARNING]
+====
+If it reports *1/1* with no `spiffe-helper` container, only the init container landed. The agent will work for about five minutes and then start failing on every reconnect with:
+
+....
+mcp server reconnection failed: io.quarkus.oidc.client.OidcClientException:
+{"error":"invalid_client","error_description":"Token is not active"}
+....
+
+That is Keycloak rejecting an expired SVID. The init container wrote one token and exited; without the sidecar nothing renews it. Go back to SPIFFE Step 2 and re-paste the whole of `templates/deployment.yaml` -- a partial edit that drops the sidecar, or leaves two `containers:` keys, produces exactly this.
+====
+
+// VERIFIED 2026-10-05 on the live cluster. This is not a predicted failure -- it happened.
+// The chart had been edited by hand rather than replaced wholesale, which left a duplicate
+// `containers:` key and no spiffe-helper container. The agent came up, worked, and then
+// logged the error above from the mcp-server-health-checker on every reconnect once the
+// init container's SVID passed five minutes. Re-pasting the complete deployment.yaml from
+// Step 2 fixed it. This is the evidence for the collapsible whole-file block on that page:
+// four anchored edits in the GitLab web editor is not a safe instruction.
+
 == Test it
 
 Nothing about the behaviour should change. Open the https://globex-web-globex.{openshift_subdomain}/[Globex storefront^], sign in as `asilva` / `openshift`, go to *Customer Care*, and raise a complaint exactly as you did before.
 
 It still works, and the agent authenticated to Keycloak twice with no secret anywhere in the chart, the repository, or the image.
 
-// TBC: the four SPIFFE pages currently prove the negative -- it still works, and the secret
-// is gone. A background agent was asked for ways to show positively that SPIFFE is what is
-// authenticating the agent (reading the SVID off disk and decoding it, watching the token
-// change inside five minutes, breaking the subject and watching Keycloak reject it).
-// Whatever of that survives review lands here. If nothing does, this page folds back into
-// 09-swap-the-secret.adoc.
+== See the identity the platform issued
+
+Open the pod again and select the `spiffe-helper` container -- the sidecar this time, not the init container -- on the *LOGS* tab:
+
+....
+level=info msg="Using configuration file: \"/etc/helper.conf\"" system=spiffe-helper
+level=info msg="Launching daemon" system=spiffe-helper
+level=info msg="Watching for X509 Context" system=spiffe-helper
+level=info msg="Watching for JWT Bundles" system=spiffe-helper
+level=info msg="Received update" spiffe_id="spiffe://globex.com/ns/globex-complaint-agent/sa/globex-complaint-agent" system=spiffe-helper
+level=info msg="JWT SVID updated" system=spiffe-helper
+level=info msg="JWT bundle updated" system=spiffe-helper
+level=info msg="X.509 certificates updated" system=spiffe-helper
+....
+
+`spiffe_id` on the *Received update* line is the identity SPIRE attested this pod as, and nobody typed it anywhere. It is assembled from the pod's namespace and service account by a cluster-wide template the operator installs, which is why it reads `/ns/globex-complaint-agent/sa/globex-complaint-agent`. Change the service account and the identity changes with it.
+
+`Launching daemon` is the difference from the init container's log above. This one stays running.
+
+Leave the tab open for a few minutes. `JWT SVID updated` appears again, roughly every two and a half minutes -- `spiffe-helper` renews at half the remaining lifetime, so a five-minute SVID is replaced on a 2m31s cycle, indefinitely, with nothing scheduled and nobody rotating anything.
+
+== Optional: look at the files
+
+The credential is a file, not a Kubernetes Secret. In the https://console-openshift-console.{openshift_subdomain}/k8s/ns/globex-complaint-agent/pods[OpenShift console^], open the running pod, go to the *Terminal* tab, and select the `globex-complaint-agent` container:
+
+[source,sh,role="copypaste"]
+----
+ls -l /svids
+----
+
+Five files, written by the helper:
+
+[cols="1,2", options="header"]
+|===
+| File | What it is
+
+| `jwt.token`
+| The JWT-SVID. This is the one that authenticates to Keycloak.
+
+| `svid.pem`, `svid_key.pem`
+| An X.509-SVID and its key. `spiffe-helper` always writes these; nothing here uses them.
+
+| `svid_bundle.pem`, `jwt_bundle.json`
+| The trust bundles for the domain.
+|===
+
+Decode the JWT payload:
+
+[source,sh,role="copypaste"]
+----
+cut -d. -f2 /svids/jwt.token | base64 -d 2>/dev/null; echo
+----
+
+[source,json]
+----
+{
+  "aud": [ "https://sso.<your subdomain>/realms/internal" ],
+  "exp": 1791234567,
+  "iat": 1791234267,
+  "iss": "https://oidc-discovery.<your subdomain>",
+  "sub": "spiffe://globex.com/ns/globex-complaint-agent/sa/globex-complaint-agent"
+}
+----
+
+Three of those are worth stopping on:
+
+* `exp - iat` is *300* -- five minutes, as set on the `SpireServer` resource.
+* `aud` is the realm URL you typed into `helper.conf`. SPIRE minted the token for that audience and Keycloak rejects one minted for anything else.
+* `sub` is the SPIFFE ID, and nobody typed it anywhere. The ZTWIM operator assembled it from the pod's namespace and service account.
+
+[NOTE]
+====
+This file is a live credential. For the next few minutes anyone holding it can authenticate to Keycloak as the agent. That it stops mattering so quickly is the point of the exercise -- compare it with the client secret from the previous page, which was valid until someone went and changed it.
+
+Do not paste it into an online JWT decoder. The command above does the same job without sending the token anywhere.
+====
+
+== Confirm the secret is gone
+
+Two views, one on each side.
+
+*The chart.* In the console, go to *Workloads* -> *Secrets* in the `globex-complaint-agent` project, open the `globex-complaint-agent` secret, and reveal `application.properties`. On the previous page this showed `quarkus.oidc-client.orders.credentials.secret=` with the secret in clear. The `quarkus.oidc-client.*` lines are still there and there is no `credentials.secret` among them.
+
+*Keycloak.* Open the https://sso.{openshift_subdomain}/admin[admin console^] as `admin` / `{common_password}`, switch to the `internal` realm, and open *Clients* -> `globex-agent-spiffe` -> *Credentials*. The *Client Authenticator* is *Signed JWT - Federated*, with *Identity provider* `spiffe` and *Federated subject* set to the SPIFFE ID you just decoded. There is no client secret field and no regenerate button. Compare with `globex-mcp-client` in the same realm, which still has both.
+
+// TBC: finding A4 from the research pass -- globex-agent-spiffe DOES carry a `secret` in
+// the realm import (keycloak-realmimport.yaml:723, from
+// ocp4_workload_mcp_workshop_oidc_internal_agent_spiffe_client_secret). It is never
+// consulted, because clientAuthenticatorType: federated-jwt routes authentication to
+// FederatedJWTClientAuthenticator. The prose above is phrased to survive that -- it
+// describes the Credentials tab, which will not offer a secret field for this
+// authenticator. Confirm on the walkthrough that the tab really shows no secret; if it
+// does show one, say "Keycloak does not consult it" rather than "there is none".
+
+== Optional: do the grant by hand
+
+This removes the application from the picture entirely. Copy the token out of the pod, then from a terminal:
+
+[source,sh,subs="attributes+"]
+----
+curl -s https://sso.{openshift_subdomain}/realms/internal/protocol/openid-connect/token \
+  -d grant_type=client_credentials \
+  -d client_id=globex-agent-spiffe \
+  -d client_assertion_type=urn:ietf:params:oauth:client-assertion-type:jwt-spiffe \
+  --data-urlencode client_assertion="<the contents of /svids/jwt.token>"
+----
+
+An access token comes back and no secret was involved anywhere in the exchange.
+
+Run it again six minutes later with the same assertion and Keycloak answers `{"error":"invalid_client","error_description":"Token is not active"}` -- the five-minute lifetime, demonstrated rather than asserted. It is also the error you would see in the agent log if the renewing sidecar were missing.
+
+// VERIFIED 2026-10-05: the spiffe-helper sidecar log block under "See the identity the
+// platform issued" is real output from the cluster, pasted by the user, not predicted.
+// Two things it changed about this page:
+//   * The "Received update" line carries spiffe_id= in plain text. That is better
+//     evidence than decoding the JWT -- it needs no exec, no terminal tab, no base64, and
+//     it is in a log the console already shows. It is now the primary demonstration and
+//     the pod-terminal material below is marked Optional.
+//   * "Launching daemon" is the visible difference from the init container's log, which
+//     is cleaner than the predicted ABSENCE of a "Daemon mode disabled" line.
+// Timestamps in the pasted log were all within one second of container start, so the
+// 2m31s renewal cadence is still computed from the v0.10.0 source
+// (getRefreshInterval = time.Until(svid.Expiry)/2 + time.Second) and not yet observed.
+// Confirm a second "JWT SVID updated" lands ~2m31s after the first.
+//
+// TBC: the rest of this page beyond "Watch the rollout", "Test it" and the sidecar log is
+// from the 2026-10-05 research pass and has NOT been run. Specifically unverified:
+//   * That `base64` and `cut` exist in the Quarkus runtime image. If not, the decode has
+//     to move to the spiffe-helper container (rhel9-based, likelier to have them) or be
+//     done on the workshop VM after copying the token out. `keytool -printcert -file
+//     /svids/svid.pem` is the no-extra-binaries fallback for the X.509 SVID, and shows
+//     the SPIFFE ID in the SAN -- a SPIFFE cert has an empty subject and puts the
+//     identity in the SAN URI, which is worth a sentence if that route is taken.
+//   * The exact spiffe-helper v0.10.0 log lines. These are read from the v0.10.0 source
+//     (pkg/sidecar/sidecar.go:357, info level, so no log-level change needed) but not
+//     from this cluster. The sidecar logs no "Daemon mode disabled" line, which is the
+//     one visual difference from the init container's log shown above.
+//   * Whether the OpenShift console Terminal tab is reachable with the attendee's
+//     permissions. No other page in this workshop uses `oc` or a pod terminal; if the
+//     console route does not work, this page introduces a dependency the rest of the
+//     module does not have.
+//
+// Rejected during the research pass, with reasons, in case they come back up:
+//   * Keycloak login events -- the realm ships eventsEnabled: false, so the attendee has
+//     to turn them on, and it is unverified whether the event detail names federated-jwt.
+//   * `spire-server entry show` -- needs cluster-admin and an exec into the operator
+//     namespace. The read-only `oc get clusterspiffeid ...` on 06 covers the same ground.
+//   * Breaking the Federated subject in Keycloak to watch it fail. Best demo on paper --
+//     no restart, no commit, instant -- but keycloak#46669 is open against exactly that
+//     path (NPE when no client matches the assertion subject), so the error text cannot
+//     be promised. If this is wanted, the identity provider's "Max expiration for Client
+//     Assertions" field set to 60 gives a precisely-worded failure for one click:
+//     {"error":"invalid_client","error_description":"Token was issued too far in the past
+//     to be used now"}, logged in the agent pod where the attendee is already looking.
+//   * Pointing jwt_audience at the wrong realm -- precise error, but needs a ConfigMap
+//     commit and a pod roll each way, and ArgoCD owns the ConfigMap.
 
 == What changed
 

@@ -59,6 +59,6 @@ Bob rebuilds and re-tests. Once dev mode has restarted, call the tool again from
 
 image::m1/devui-tool-call-result-shaped.png[link=self,window=_blank]
 
-Each order is now `id`, `customer`, `timestamp`, and a `lineItems` array of `productCode`, `productName` and `quantity` -- and nothing else. Same question, same customer, none of the personal or commercial data.
+Each order is now `id`, `customer`, `timestamp`, and a `lineItems` array of `productCode`, `productName` and `quantity`. No shipping address and no prices.
 
 The address and the prices are still in the Globex Store API, available to anything with a legitimate reason to read them. They no longer leave the network on a tool call.
