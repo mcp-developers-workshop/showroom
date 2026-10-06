@@ -11,18 +11,18 @@
 // its `oidc` branch, then translated into the workshop's repositories and naming.
 //
 // Verified on the live cluster 2026-10-05:
-//   * Step 2 (08-spiffe-helper.adoc) end to end. The ConfigMap and the complete
+//   * Step 2 (08-spiffe-chart.adoc) end to end. The ConfigMap and the complete
 //     deployment.yaml apply cleanly, the pod rolls out with init-spiffe-helper +
 //     spiffe-helper + the app container, and the agent reaches Keycloak with the SVID.
 //   * The failure mode when the sidecar is missing -- see the VERIFIED note on
-//     10-verify-spiffe.adoc.
+//     09-verify-spiffe.adoc.
 //
 //   * Step 3 with source=spiffe-jwt and the four jwt.issuer/jwt.subject lines removed.
 //     The agent obtained tokens from Keycloak, so Step 1's filter class is confirmed
 //     UNNECESSARY on Quarkus 3.37.0 and page 07 is slated for deletion. See the
-//     REMAINING WORK list on 09-swap-the-secret.adoc.
+//     REMAINING WORK list on 08-spiffe-chart.adoc.
 //
-// NOT yet verified: everything on 10-verify-spiffe.adoc past "Test it" and the sidecar
+// NOT yet verified: everything on 09-verify-spiffe.adoc past "Test it" and the sidecar
 // log block.
 //
 // NOT A SPIFFE PROBLEM, resolved 2026-10-05 and moved off these pages: the periodic HTTP
@@ -98,7 +98,7 @@ The identity has to be issued by something that can verify the claim independent
 
 The workload talks to its node's SPIRE agent over a local Unix socket, so there is no credential to put in a chart, in Git, or in an environment variable, and nothing to rotate on a schedule.
 
-== What you build over the next four pages
+== What you build over the next three pages
 
 A SPIRE agent attests the agent pod and issues it a short-lived JWT-SVID. The agent sends that SVID to Keycloak in place of the client secret, as a *client assertion*. Keycloak matches it to the Keycloak client the agent already uses and issues the same access token as before -- so the MCP servers need no change, and both `quarkus.oidc-client.*` blocks from the last page stay. What goes away is the secret in `values.yaml`.
 
@@ -110,20 +110,16 @@ A SPIRE agent attests the agent pod and issues it a short-lived JWT-SVID. The ag
 | `globex-complaint-agent`
 | One Java class, then push and let the build run.
 
-| SPIFFE Step 2: Add the SPIFFE Helper to the Agent Pod
+| SPIFFE Step 2: Move the Chart to the SVID
 | `globex-complaint-agent-helm`
-| Three files, one commit: the helper image, a ConfigMap, the deployment.
+| Four files, one commit: the SPIFFE values, a ConfigMap, the deployment, the Secret template.
 
-| SPIFFE Step 3: Swap the Secret for the SVID
-| `globex-complaint-agent-helm`
-| Two files, one commit: the SPIFFE values, the Secret template.
-
-| SPIFFE Step 4: Confirm the Agent Has No Secret
+| SPIFFE Step 3: Confirm the Agent Has No Secret
 | ArgoCD and the storefront
 | Watch the rollout and raise a complaint.
 |===
 
-The steps are numbered because they are ordered. Step 2 and Step 3 touch the same chart and must be committed in that order -- Step 3's `secret.yaml` points at a file that only exists once Step 2's helper is in the pod.
+The steps are numbered because they are ordered. Everything in the chart goes in a single commit -- the Secret tells the agent to read a token file, and the deployment is what puts the file there and rolls the pod that reads it. Landing one without the other gives you a chart that renders into a pod configured for a file nothing is writing.
 
 // 2026-10-05: banner softened. The four steps have now been run on the workshop cluster
 // and the agent authenticates to Keycloak with an SVID. What is still unsettled is whether
@@ -133,7 +129,7 @@ The steps are numbered because they are ordered. Step 2 and Step 3 touch the sam
 
 [NOTE]
 ====
-These four steps work on the workshop cluster, but they are newer than the rest of the module and may still be simplified. If something here reads as more work than it should be, it probably is.
+These three steps work on the workshop cluster, but they are newer than the rest of the module and may still be simplified. If something here reads as more work than it should be, it probably is.
 ====
 
 == What is already on the cluster
@@ -190,7 +186,7 @@ image::m3/keycloak-spiffe-identity-provider.png[link=self,window=_blank]
 // The framing for attendees -- "why did two client IDs become one" -- is that client
 // identity and token audience are different things. The agent is one workload, so it has
 // one identity; audience is still carried per-request. Prose for this is on
-// 09-swap-the-secret.adoc.
+// 08-spiffe-chart.adoc.
 //
 // TBC, and the honest version of the above: globex-agent-spiffe is modelled on
 // globex-mcp-client, not on both page-05 clients. It carries an oidc-audience-mapper

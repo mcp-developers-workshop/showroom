@@ -19,7 +19,7 @@ This page works in the *`globex-complaint-agent`* repository, in your IDE. One c
 //     else if (source == Source.SPIFFE_JWT) { clientAssertionType = SPIFFE_SVID_...; }
 // So setting
 //     quarkus.oidc-client.orders.credentials.jwt.source=spiffe-jwt
-// on 09-swap-the-secret.adoc sends the jwt-spiffe assertion type natively, and this class,
+// on 08-spiffe-chart.adoc sends the jwt-spiffe assertion type natively, and this class,
 // the compile and the push all disappear. 3.37.0's own validation explicitly permits
 // token-path with spiffe-jwt ("Token path can only be set when the JWT source is 'bearer'
 // or 'spiffe'"). The filter is needed ONLY because 09 currently uses source=bearer.

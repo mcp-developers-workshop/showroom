@@ -1,7 +1,7 @@
 :experimental:
 :imagesdir: ../../assets/images
 
-= SPIFFE Step 4: Confirm the Agent Has No Secret
+= SPIFFE Step 3: Confirm the Agent Has No Secret
 :numbered:
 :icons: font
 :source-highlighter: highlight.js
@@ -127,7 +127,7 @@ Do not paste it into an online JWT decoder. The command above does the same job 
 
 Two views, one on each side.
 
-*The chart.* In the console, go to *Workloads* -> *Secrets* in the `globex-complaint-agent` project, open the `globex-complaint-agent` secret, and reveal `application.properties`. On the previous page this showed `quarkus.oidc-client.orders.credentials.secret=` with the secret in clear. The `quarkus.oidc-client.*` lines are still there and there is no `credentials.secret` among them.
+*The chart.* In the console, go to *Workloads* -> *Secrets* in the `globex-complaint-agent` project, open the `globex-complaint-agent` secret, and reveal `application.properties`. Back on `Authenticate the Agent to the MCP Servers` this showed `quarkus.oidc-client.orders.credentials.secret=` with the secret in clear. The `quarkus.oidc-client.*` lines are still there and there is no `credentials.secret` among them.
 
 *Keycloak.* Open the https://sso.{openshift_subdomain}/admin[admin console^] as `admin` / `{common_password}`, switch to the `internal` realm, and open *Clients* -> `globex-agent-spiffe` -> *Credentials*. The *Client Authenticator* is *Signed JWT - Federated*, with *Identity provider* `spiffe` and *Federated subject* set to the SPIFFE ID you just decoded. There is no client secret field and no regenerate button. Compare with `globex-mcp-client` in the same realm, which still has both.
 

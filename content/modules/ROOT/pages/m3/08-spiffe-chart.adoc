@@ -1,0 +1,504 @@
+:experimental:
+:imagesdir: ../../assets/images
+
+= SPIFFE Step 2: Move the Chart to the SVID
+:numbered:
+:icons: font
+:source-highlighter: highlight.js
+
+[IMPORTANT]
+====
+This page works in the *`globex-complaint-agent-helm`* repository. Four files, and they belong in *one commit*.
+====
+
+Everything the agent needs to stop using its client secret is in this one chart, and the four files only work together:
+
+[cols="1,2", options="header"]
+|===
+| File | What it does
+
+| `values.yaml`
+| The helper image, and the SPIFFE identity the chart is built around.
+
+| `templates/configmap.yaml`
+| New. Tells `spiffe-helper` which socket to use, where to write, and what audience to ask for.
+
+| `templates/deployment.yaml`
+| Adds an init container, a sidecar, a shared volume and the mount that puts the token where the application can read it.
+
+| `templates/secret.yaml`
+| Points both OIDC clients at the token file instead of at a secret.
+|===
+
+Commit them separately and the chart spends the gaps in a state that does not render, or renders into a pod configured to read a file that nothing is writing. ArgoCD syncs on every push, so each gap is a real, visible failure.
+
+== Why one commit also saves you a restart
+
+`templates/secret.yaml` is where the behaviour actually changes -- but *a Secret change on its own does not restart a Deployment*. ArgoCD updates the Secret, the file inside the running pod changes, and the agent carries on with the configuration it read at startup. The chart has no `checksum/config` annotation to force the roll.
+
+`templates/deployment.yaml` changes the pod template, which does roll the pod. Put both in the same commit and ArgoCD applies them in the same sync -- Secrets and ConfigMaps before workloads, which is its default ordering for resources in the same sync wave. The new Secret is in place before the new pod starts, and the pod that comes up is reading it.
+
+Split them across two commits and you are back to restarting the pod by hand, in the right order, with no signal telling you which order you got.
+
+== Option A: clone the chart and commit once
+
+Every chart edit so far has been in the GitLab web editor, which commits one file at a time. Clone the repository instead and all four files go in a single commit.
+
+Clone it the same way you cloned the agent in Module 2 -- *Clone Git Repository...* on the Bob welcome page, or *File* -> *Clone Repository*:
+
+[source,text,role="copypaste",subs="attributes+"]
+----
+https://gitlab-gitlab.{openshift_subdomain}/globex/globex-complaint-agent-helm.git
+----
+
+Open it in a new window when Bob offers. This is the chart you have been editing in the browser since Module 2, so the clone already has your model settings, your MCP URLs and the `oidcClient` block.
+
+=== `values.yaml`
+
+Two blocks to add and two entries to delete. This file holds your OpenAI API key and your cluster URLs, so edit it rather than replacing it.
+
+Add at the end:
+
+[source,yaml,role="copypaste"]
+----
+spiffeHelper:
+  image: registry.redhat.io/zero-trust-workload-identity-manager/spiffe-helper-rhel9:v0.10.0
+
+spiffe:
+  trustDomain: globex.com
+  namespace: globex-complaint-agent
+  serviceAccount: globex-complaint-agent
+  clientId: globex-agent-spiffe
+  tokenPath: /svids/jwt.token
+----
+
+Then cut the `oidcClient` block down to the two URLs. Nothing reads the client IDs or the secrets after this page, and leaving a live secret in Git after a page about removing it defeats the exercise:
+
+[source,yaml,role="copypaste",subs="attributes+"]
+----
+oidcClient:
+  orders:
+    authServerUrl: https://sso.{openshift_subdomain}/realms/internal
+  complaint:
+    authServerUrl: https://sso.{openshift_subdomain}/realms/internal
+----
+
+[WARNING]
+====
+Keep both `authServerUrl` entries. `configmap.yaml` below reads `oidcClient.orders.authServerUrl` to decide which audience SPIRE mints the SVID for, so deleting the whole block -- the tidy-looking thing to do, since almost everything in it is now dead -- produces an SVID that Keycloak rejects, two pages after the edit that caused it.
+====
+
+=== `templates/configmap.yaml`
+
+New file:
+
+[source,yaml,role="copypaste"]
+----
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: spiffe-workload-agent-spiffe-helper
+data:
+  helper.conf: |-
+    agent_address = "/spiffe-workload-agent/spire-agent.sock"
+    cmd = ""
+    cmd_args = ""
+    cert_dir = "/svids"
+    renew_signal = ""
+    svid_file_name = "svid.pem"
+    svid_key_file_name = "svid_key.pem"
+    svid_bundle_file_name = "svid_bundle.pem"
+    jwt_svids = [{jwt_audience="{{ .Values.oidcClient.orders.authServerUrl }}", jwt_svid_file_name="jwt.token"}]
+    jwt_bundle_file_name  = "jwt_bundle.json"
+----
+
+`jwt_audience` is the Keycloak realm URL. SPIRE mints the SVID *for* that audience and Keycloak rejects one minted for anything else. Both OIDC clients point at the same realm, so either key gives the same value.
+
+=== `templates/deployment.yaml`
+
+The file describes a single-container pod today. It gains four things:
+
+* An *init container*, `init-spiffe-helper`, which fetches the first SVID and exits before the agent starts.
+* A *sidecar*, `spiffe-helper`, which renews it for the life of the pod. Same image and same configuration -- `-daemon-mode=false` is the only difference between them. Neither needs a `securityContext`; the pod-level one already in the file applies to all three containers.
+* A `svids` *mount on the application container*, next to the `/deployments/config` mount it already has. This is the one that matters: everything else here exists to put a current token at `/svids/jwt.token` for the application to read.
+* Three more *volumes*: `spiffe-helper-config` for the ConfigMap, `svids` as the scratch directory all three containers share, and `spiffe-workload-agent` for the socket.
+
+That is four edits scattered through a YAML file where indentation decides whether it parses. Select all and replace:
+
+.The complete `templates/deployment.yaml`
+[%collapsible]
+====
+[source,yaml,role="copypaste"]
+----
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "globex-complaint-agent.name" . }}
+  labels:
+    {{- include "globex-complaint-agent.labels" . | nindent 4 }}
+    app.openshift.io/runtime: quarkus
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "globex-complaint-agent.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "globex-complaint-agent.labels" . | nindent 8 }}
+        {{- with .Values.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      serviceAccountName: {{ include "globex-complaint-agent.serviceAccountName" . }}
+      {{- with .Values.podSecurityContext }}
+      securityContext:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      initContainers:
+        - name: init-spiffe-helper
+          image: {{ .Values.spiffeHelper.image }}
+          imagePullPolicy: IfNotPresent
+          args:
+            - '-config'
+            - /etc/helper.conf
+            - '-daemon-mode=false'
+          volumeMounts:
+            - name: spiffe-helper-config
+              readOnly: true
+              mountPath: /etc/helper.conf
+              subPath: helper.conf
+            - name: spiffe-workload-agent
+              readOnly: true
+              mountPath: /spiffe-workload-agent
+            - name: svids
+              mountPath: /svids
+      containers:
+        - name: spiffe-helper
+          image: {{ .Values.spiffeHelper.image }}
+          imagePullPolicy: IfNotPresent
+          args:
+            - '-config'
+            - /etc/helper.conf
+          volumeMounts:
+            - name: spiffe-helper-config
+              readOnly: true
+              mountPath: /etc/helper.conf
+              subPath: helper.conf
+            - name: spiffe-workload-agent
+              readOnly: true
+              mountPath: /spiffe-workload-agent
+            - name: svids
+              mountPath: /svids
+        - name: {{ .Chart.Name }}
+          {{- with .Values.securityContext }}
+          securityContext:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.service.containerPort }}
+              protocol: TCP
+          {{- with .Values.livenessProbe }}
+          livenessProbe:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.readinessProbe }}
+          readinessProbe:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          volumeMounts:
+            - mountPath: /deployments/config
+              name: config
+            - name: svids
+              mountPath: /svids
+          {{- with .Values.volumeMounts }}
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+      volumes:
+        - name: config
+          secret:
+            secretName: {{ include "globex-complaint-agent.name" . }}
+        - name: spiffe-helper-config
+          configMap:
+            name: spiffe-workload-agent-spiffe-helper
+            defaultMode: 420
+        - name: svids
+          emptyDir: {}
+        - name: spiffe-workload-agent
+          csi:
+            driver: csi.spiffe.io
+            readOnly: true
+      {{- with .Values.volumes }}
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+----
+====
+
+[NOTE]
+====
+`csi.spiffe.io` carries no data. It mounts the node's SPIRE agent socket into the pod. The SPIRE agent on the other end identifies the caller from the kernel, by process, and cross-checks it with the kubelet, so the pod supplies no credential and cannot misreport which pod it is.
+
+The SPIFFE ID it is issued is built from the pod's namespace and service account, and the Keycloak client is pinned to that exact string. Leave `serviceAccountName` alone.
+====
+
+=== `templates/secret.yaml`
+
+This file is pure template -- no API key, no cluster URL -- so replace it rather than editing around the `quarkus.oidc-client.*` lines:
+
+.The complete `templates/secret.yaml`
+[%collapsible]
+====
+[source,yaml,role="copypaste"]
+----
+apiVersion: v1
+kind: Secret
+metadata:
+  name: {{ include "globex-complaint-agent.name" . }}
+  labels:
+    {{- include "globex-complaint-agent.labels" . | nindent 4 }}
+  annotations:
+    {{- include "globex-complaint-agent.argocd-syncwave" . | nindent 4 }}
+type: "Opaque"
+stringData:
+  application.properties: |-
+
+    quarkus.oidc.auth-server-url={{ .Values.oidc.authServerUrl }}/realms/{{ .Values.oidc.realm }}
+    quarkus.oidc.client-id={{ .Values.oidc.clientId }}
+    quarkus.oidc.credentials.client-secret.value={{ .Values.oidc.clientSecret }}
+
+    quarkus.langchain4j.openai.chat-model.model-name={{ .Values.llm.complaint.modelName }}
+    quarkus.langchain4j.openai.api-key={{ .Values.llm.complaint.apiKey }}
+    quarkus.langchain4j.openai.base-url={{ .Values.llm.complaint.baseUrl }}
+
+    quarkus.langchain4j.openai.complaint.chat-model.model-name={{ .Values.llm.complaint.modelName }}
+    quarkus.langchain4j.openai.complaint.api-key={{ .Values.llm.complaint.apiKey }}
+    quarkus.langchain4j.openai.complaint.base-url={{ .Values.llm.complaint.baseUrl }}
+
+    quarkus.langchain4j.mcp.orders.url={{ .Values.mcp.orders.url }}
+    quarkus.langchain4j.mcp.complaint.url={{ .Values.mcp.complaint.url }}
+
+    quarkus.oidc-client.orders.auth-server-url={{ .Values.oidcClient.orders.authServerUrl }}
+    quarkus.oidc-client.orders.client-id={{ .Values.spiffe.clientId }}
+    quarkus.oidc-client.orders.credentials.jwt.token-path={{ .Values.spiffe.tokenPath }}
+    quarkus.oidc-client.orders.credentials.jwt.source=bearer
+    quarkus.oidc-client.orders.refresh-token-time-skew=10S
+
+    quarkus.oidc-client.complaint.auth-server-url={{ .Values.oidcClient.complaint.authServerUrl }}
+    quarkus.oidc-client.complaint.client-id={{ .Values.spiffe.clientId }}
+    quarkus.oidc-client.complaint.credentials.jwt.token-path={{ .Values.spiffe.tokenPath }}
+    quarkus.oidc-client.complaint.credentials.jwt.source=bearer
+    quarkus.oidc-client.complaint.refresh-token-time-skew=10S
+
+    quarkus.http.cors.enabled={{ .Values.cors.enabled }}
+    quarkus.http.cors.origins= {{ .Values.cors.origins }}
+    quarkus.http.cors.methods={{ .Values.cors.methods }}
+----
+====
+
+=== Commit and push
+
+[source,sh,role="copypaste"]
+----
+git add .
+git commit -m "authenticate with a SPIFFE SVID instead of a client secret"
+git push
+----
+
+One commit, four files. This repository has no pipeline attached -- it is a chart, not an application -- so there is nothing to build and ArgoCD picks the change up directly.
+
+== Option B: one file at a time, in the browser
+
+If you would rather stay in the GitLab web editor, it works -- but the order is not the one you would guess, and two of the five commits are to the same file.
+
+[WARNING]
+====
+Follow this order exactly. `deployment.yaml` must be *last* of the four functional commits, because the rollout it triggers is the one that picks up everything else.
+====
+
+[cols="1,3,4", options="header"]
+|===
+| | File | Why here
+
+| 1
+| `values.yaml` -- add the `spiffeHelper` and `spiffe` blocks. Leave `oidcClient` alone for now.
+| Nothing reads the new keys yet, so the chart still renders. Deleting anything at this point would break the templates that are still live.
+
+| 2
+| `templates/configmap.yaml` -- create it.
+| Reads `oidcClient.orders.authServerUrl`, which is still there. Nothing mounts it yet.
+
+| 3
+| `templates/secret.yaml` -- replace it.
+| Reads `spiffe.*`, added in commit 1. The Secret changes but the pod does not restart, so the agent keeps running on the old configuration. That is expected, and it is why this comes before the deployment.
+
+| 4
+| `templates/deployment.yaml` -- replace it.
+| The pod template changes, so the pod rolls -- with the Secret from commit 3 and the ConfigMap from commit 2 already in place. This is the commit where the behaviour changes.
+
+| 5
+| `values.yaml` again -- cut `oidcClient` down to the two `authServerUrl` entries.
+| No template reads the client IDs or secrets any more, so this renders cleanly and changes nothing in the cluster. It is the cleanup, not part of the mechanism.
+|===
+
+The file contents are the same as Option A above.
+
+[NOTE]
+====
+Commit 5 is the only one you can skip without breaking anything, and skipping it leaves two working client secrets in Git.
+====
+
+== What you just configured
+
+`source=bearer` tells Quarkus the JWT is already signed and is to be sent as-is. Without it Quarkus mints and signs its own assertion, which is the normal RFC 7523 flow but would discard the SVID.
+
+Both OIDC clients now send the same `client-id`. That is the shift this page makes: the agent had two Keycloak identities, one per downstream server, each with its own secret. It has one identity now -- itself -- and proves it the same way to both.
+
+[NOTE]
+====
+One identity does not mean one audience, but on this cluster it nearly does. `globex-agent-spiffe` carries a protocol mapper that puts `globex-mcp-server` in the audience of every token it is issued, so both MCP servers now see the same `aud`. The orders server checks it and is satisfied; the complaints server does not check at all, so it accepts a token minted for its neighbour.
+
+That is not a regression -- the complaints client never had an audience of its own to lose, which is why that server has no audience check in the first place. It is worth seeing, though: client identity and token audience are separate decisions, and collapsing the first does not collapse the second for you.
+====
+
+[WARNING]
+====
+No trailing spaces at the ends of the property lines. The block is a YAML literal scalar, so a space after `}}` ends up inside the value.
+====
+
+== Check it before you move on
+
+In the https://console-openshift-console.{openshift_subdomain}/k8s/ns/globex-complaint-agent/secrets[OpenShift console^], open the `globex-complaint-agent` secret and reveal `application.properties`. Two things:
+
+* `quarkus.oidc-client.orders.client-id` and `...complaint.client-id` both read `globex-agent-spiffe`.
+* There is no `credentials.secret` anywhere in the file.
+
+Then check the pod is *2/2* with `init-spiffe-helper` completed. If either is wrong, fix it here -- the next page tests through the storefront, where a typo in this file and a broken SPIFFE identity look identical.
+
+// MERGED 2026-10-06 from 08-spiffe-helper.adoc (SPIFFE Step 2) and 09-swap-the-secret.adoc
+// (SPIFFE Step 3), which were separate pages and separate commits. Reasons for merging:
+//   * The split forced a manual `oc rollout restart` -- a Secret-only commit does not roll
+//     the Deployment, and the chart has no checksum/config annotation. That restart was the
+//     ONLY `oc` command in the entire workshop (verified by grep across m1, m2, m3, m5), in
+//     a module whose index says all work happens in the GitLab editor and the consoles.
+//     Committing deployment.yaml and secret.yaml together makes the rollout automatic.
+//   * The old Step 3 asked for two files in one "Commit" section while actually requiring
+//     three edits in a specific order; the obvious shortcut (both values.yaml edits in one
+//     pass) rendered a chart whose secret.yaml referenced deleted keys.
+// Verified for the ordering claim: neither the Secret nor the Deployment in
+// install-helm/globex-complaint-agent carries a sync-wave annotation -- the chart has no
+// `argocd` key in values.yaml, so globex-complaint-agent.argocd-syncwave renders `{}`.
+// Both are wave 0, where ArgoCD's default kind ordering puts Secret and ConfigMap ahead of
+// Deployment. CONFIRM ON THE WALKTHROUGH that the rolled pod comes up with the new Secret.
+//
+// Option A was first drafted around the GitLab Web IDE and changed to a clone on
+// 2026-10-06. The clone needs no tooling the workshop has not already established --
+// m2/01-clone-agent.adoc clones globex-complaint-agent the same way, and m3/05 and m3/07
+// both push to GitLab -- whereas the Web IDE appears nowhere else in the workshop and its
+// availability was unverified.
+//
+// VERIFIED 2026-10-06 against the repository attendees actually clone. The chart is seeded
+// into GitLab from github.com/mcp-developers-workshop/globex-complaint-agent-helm
+// (install-helm/gitlab/values.yaml:38-39), NOT from install-helm/globex-complaint-agent,
+// so the two could have drifted. They have not where it matters:
+//   * templates/secret.yaml, templates/deployment.yaml and templates/_helpers.tpl are
+//     byte-identical between the two. The whole-file blocks above are built from them.
+//   * values.yaml differs only in key order and defaults (canonical has llm.complaint.*
+//     set to REPLACE_ME, which is what m2/07-deploy-agent.adoc already shows, and cors
+//     enabled). Irrelevant here because values.yaml gets targeted edits, not a replacement.
+//   * No `argocd` key in either, so globex-complaint-agent.argocd-syncwave renders `{}`
+//     and both the Secret and the Deployment sit in sync wave 0. That is what the
+//     ordering claim in "Why one commit also saves you a restart" rests on.
+//   * No .gitlab-ci.yml and no Tekton config in the canonical repo, which is why the
+//     commit step says there is nothing to build.
+// Re-check these if the canonical chart is ever edited -- the whole-file pastes go stale
+// silently, and a stale paste reverts whatever changed.
+//
+// DROPPED from the old Step 3, deliberately:
+//   * `oidcIssuer: spiffe` from the values block. Nothing reads it. The alias and the
+//     SVID's iss are unrelated and neither is checked here -- jwt.credential.issuer on the
+//     Keycloak client is the IdP alias (FederatedJWTClientAuthenticator labels it
+//     "Identity provider"), and SpiffeIdentityProvider passes expectedTokenIssuer = null
+//     into FederatedJWTClientValidator, so AbstractJWTClientValidator.validateClient()
+//     skips the issuer check entirely.
+//   * credentials.jwt.issuer and credentials.jwt.subject, four lines, both clients. They
+//     are consumed only by OidcCommonUtils.signJwtWithKey(...), which runs only when
+//     clientJwtKey != null; initClientJwtKey returns null unless a JWT key or secret is
+//     configured, and with source=bearer neither is. The assertion IS the SVID, sent
+//     verbatim. The old page also carried a sentence claiming jwt.subject "has to match
+//     the jwt.credential.sub recorded on the Keycloak client" -- true of the SVID's own
+//     sub claim, which SPIRE sets, and false of the property it was attached to. Removed
+//     rather than reworded.
+//
+// STILL OPEN, inherited:
+//   * source=spiffe-jwt instead of source=bearer, which deletes page 07 and its Java class.
+//     CONFIRMED WORKING on the cluster 2026-10-05 -- the agent obtained tokens from
+//     Keycloak, and the failure that followed was an McpAuthenticationException (HTTP 401
+//     from the complaints server) rather than an OidcClientException, which proves the
+//     token was obtained. Verified against quarkus-oidc-common-3.37.0-sources.jar:
+//     OidcClientCommonConfig.java:148 enum Source { CLIENT, BEARER, SPIFFE_JWT };
+//     OidcConstants.java:10 SPIFFE_SVID_CLIENT_ASSERTION_TYPE is the exact URN page 07
+//     hand-writes; KubernetesServiceClientAssertionProvider.java:39-41 sets it natively;
+//     OidcCommonUtils.java:189-193 permits token-path when source != CLIENT.
+//     Not swapped in here because page 07 still ships and still rewrites a jwt-bearer body.
+//     When it lands: change the two `source=bearer` lines to `source=spiffe-jwt`, delete
+//     page 07 and SpiffeClientAssertionTypeRequestFilter.java from globex-complaint-agent,
+//     and renumber Step 2/3 to Step 1/2.
+//   * The larger simplification after that: with spiffe-jwt both named clients are
+//     identical, so the agent could drop to ONE unnamed default OIDC client plus
+//     io.quarkiverse.langchain4j:quarkus-langchain4j-oidc-client-mcp-auth-provider, whose
+//     OidcClientMcpAuthProvider holds a plain @Inject OidcClient and returns
+//     "Bearer " + tokens.getAccessToken() -- deleting both hand-written provider classes.
+//     NOT VERIFIED that langchain4j falls back to an unqualified McpClientAuthProvider when
+//     no @McpClientName-qualified bean exists; if it does not, every call goes out
+//     unauthenticated and looks like a server-side 401. The agent's pom does not have the
+//     extension today.
+//
+// RESOLVED, carried over from the old pages:
+//   * trustDomain / namespace / serviceAccount are not guesses. The realm import builds the
+//     client's jwt.credential.sub from the same three role vars in
+//     ocp4_workload_mcp_workshop (defaults/main.yml): _ztwim_trust_domain: globex.com,
+//     _oidc_internal_agent_spiffe_namespace and _oidc_internal_agent_spiffe_service_account
+//     both globex-complaint-agent. Both sides come from one set of vars so they cannot
+//     drift -- but the chart values here are typed by the attendee, and Keycloak will not
+//     say which part of a mismatched subject is wrong.
+//   * The audience NOTE above is verified against the realm import:
+//     keycloak-realmimport-internal/templates/keycloak-realmimport.yaml, globex-agent-spiffe
+//     client at lines 713-782, oidc-audience-mapper at 755-760 with
+//     included.client.audience: {{ clients.mcpServer.id }}, unconditional. complaintsClient
+//     (659-712) has no audience mapper at all. globex-complaints does no audience check --
+//     confirmed against the running deployment, whose baked-in application.properties has
+//     only auth-server-url and client-id. This NOTE is the prose that 06-workload-identity
+//     said would live on the old Step 3 and never got written; the plan recorded there
+//     ("audience is still carried per-request") was wrong and is not what this says.
+//   * The restart problem this page's single commit removes was measured, not predicted.
+//     The Deployment's pod template carries no checksum/config annotation -- the only
+//     annotation on it is kubectl.kubernetes.io/restartedAt, left by a manual restart
+//     (oc get deploy globex-complaint-agent -o jsonpath='{.spec.template.metadata.annotations}').
+//     The Secret is mounted as a volume, not envFrom: volume `config` -> secret
+//     globex-complaint-agent at /deployments/config. The kubelet does propagate new content
+//     into the running pod, so the file on disk is correct -- but Quarkus reads
+//     /deployments/config/application.properties once at boot and never again. On the 06:14
+//     test run of 2026-10-06 the pod was restarted 9 seconds BEFORE argocd-controller wrote
+//     the Secret (Secret managedFields 05:54:22Z vs Quarkus "started in" 05:54:13Z), so it
+//     booted from the old content and the whole run had to be thrown away. If a
+//     checksum/config annotation is ever added to the chart's deployment.yaml, the
+//     ordering argument in "Why one commit also saves you a restart" gets weaker but the
+//     render-order argument for a single commit still stands.
+//   * The SPIRE bundle endpoint is confirmed on the running cluster. The identity provider
+//     screenshot on 06-workload-identity.adoc shows the `internal` realm with alias
+//     `spiffe`, SPIFFE Trust Domain `spiffe://globex.com`, and SPIFFE Bundle or OIDC JWKs
+//     endpoint https://oidc-discovery.<subdomain>/keys -- the derived
+//     _spiffe_bundle_endpoint value, as installed. "Max expiration for Client Assertions"
+//     is left empty. Still unconfirmed: that Keycloak can REACH that endpoint. It is set
+//     correctly; whether the fetch succeeds only shows up as a failed assertion at runtime.

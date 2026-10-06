@@ -446,5 +446,5 @@ The next step is to stop relying on a shared secret to establish the agent's ide
 // and finds a 401 stack trace concludes they broke something, and the next page tells them
 // to go and read that log.
 //
-// Carried into 09-swap-the-secret.adoc, which rewrites these same lines and would
+// Carried into 08-spiffe-chart.adoc, which rewrites these same lines and would
 // otherwise reintroduce the bug at SPIFFE Step 3.
