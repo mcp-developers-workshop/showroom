@@ -64,8 +64,7 @@ When an MCP workflow fails or behaves unexpectedly, you should be able to follow
 
 == Lab Agenda
 1. Add distributed tracing to the agent and send its traces to Langfuse
-2. Do the same on both MCP servers, so one trace covers all three applications
-3. Follow one MCP request across the agent, both MCP servers and the services behind them
+2. Do the same on both MCP servers, then follow one request across all three applications and the services behind them
 
 == Expected Outcomes
 One trace per storefront question, covering the agent, both MCP servers and the calls they make outwards, with the prompt, the tool choice, the token counts and the per-step latency in one place.

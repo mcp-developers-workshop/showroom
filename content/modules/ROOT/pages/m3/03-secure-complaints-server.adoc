@@ -124,7 +124,7 @@ git push
 
 == Watch both rollouts
 
-Open the https://openshift-gitops-server-openshift-gitops.{openshift_subdomain}/[ArgoCD console^] and check that `globex-store-mcp` and `globex-complaints` both roll out a new pod. 
+Open the https://openshift-gitops-server-openshift-gitops.{openshift_subdomain}/[ArgoCD console^], signing in as `{openshift_gitops_user}` / `{openshift_gitops_password}` if you are asked, and check that `globex-store-mcp` and `globex-complaints` both roll out a new pod. 
 
 image::m3/argocd-applications.png[link=self,window=_blank]
 

@@ -1,53 +1,32 @@
-= From Logs to a Trace
+:experimental:
+:imagesdir: ../../assets/images
 
-Start with a single complaint in the Globex application.
+= Summary
+:numbered:
+:icons: font
+:source-highlighter: highlight.js
 
-First, look at the logs from the services involved in handling the request. Try to reconstruct what happened and answer:
+You took three applications that each logged only their own work and made one storefront question into one trace:
 
-* Which services were involved?
-* In what order were they called?
-* How long did each operation take?
-* Which MCP tools were invoked?
-* Where did an error or delay occur?
+* Added `quarkus-opentelemetry` and `quarkus-langfuse` to the agent, with the Langfuse address and project keys in `application.properties`.
+* Added the same pair to both MCP servers, plus `span-filter=all` because neither produces AI spans of its own, the server-side MCP tracing property, and JDBC tracing on the complaints server.
+* Followed one request from the agent through both MCP servers to the Globex Store API and the database.
 
-You will quickly find that the logs provide pieces of the story, but not the complete picture.
+Logs show what each component recorded. A trace connects those records into one request, with the sequence, the time spent in each operation, the MCP tools that were called, their arguments and results, and the model calls driving the whole thing.
 
-== Add tracing
+You wrote no code. Two extensions and a handful of properties per application was enough, because `quarkus-langchain4j`, the MCP extensions and Agroal already contain the instrumentation -- it produces nothing until an OpenTelemetry SDK is on the classpath to receive it. `quarkus-langfuse` did the rest: you never configured an OTLP endpoint, a protocol or an authentication header, because it derives the ingestion URL from `quarkus.langfuse.base-url` and turns on the four LangChain4j content properties that otherwise default to off.
 
-Now add distributed tracing to the applications and send the telemetry to Langfuse.
+Two things are worth carrying forward.
 
-Repeat the same request and open the resulting trace.
+*Build-time and runtime properties are not interchangeable.* `quarkus.datasource.jdbc.telemetry` decides whether the instrumentation is compiled into the image, so changing it needs a rebuild. `quarkus.langfuse.base-url` is read at boot, so changing it needs a restart.
 
-Follow the request through:
+*The trace ID is carried by the caller, not by the platform.* Over HTTP it travels as a `traceparent` header. Over MCP it travels in the `_meta` field of the JSON-RPC message, because at that layer MCP is not HTTP-shaped. A service that does not look for it starts a new trace instead of joining the existing one, which is why a propagation failure shows up in Langfuse as two unrelated traces rather than as an error.
 
-[source,text]
-----
-User → Agent → MCP Server → MCP Tool → Backend Service
-----
+The gap Module 3 left is still open. The MCP servers believe the agent about which customer is asking, because `X-User-Id` is a claim rather than proof. Tracing does not change that, and the header is not on any span, so the trace does not record the customer at all.
 
-Look at the span tree and explore the individual operations.
-
-Notice how the trace connects the different services and shows:
-
-* the sequence of operations
-* the time spent in each operation
-* the MCP tools that were called
-* the arguments and results of tool calls
-* the model interactions driving the workflow
-
-== Read the turn
-
-Follow one complete turn from the user's request through the agent, MCP server, and backend services.
-
-Compare what you can see now with what you could determine from the logs alone.
-
-The key difference is **context**. Logs show what individual components recorded. A distributed trace connects those events into one end-to-end request.
-
-For an AI application, Langfuse adds visibility into the AI interaction itself, including the model calls, tool calls, inputs, outputs, and token usage.
-
-[quote]
-____
-Logs give you pieces of the story. A trace connects the pieces.
-____
-
-By the end of this exercise, you should be able to follow an MCP request from the user prompt through the agent and MCP tools into the backend services, and understand where time was spent and what happened along the way.
+// Rewritten 2026-10-07. The previous version of this file was a draft titled "From Logs
+// to a Trace" that walked the attendee through reading the logs first. That exercise was
+// its own page (01-read-the-logs.adoc) and was deleted as redundant -- the five questions
+// in m4/index.adoc make the same point without the lab time -- so the summary could no
+// longer describe it as something they did. The logs-versus-trace contrast is kept as a
+// statement rather than an instruction.

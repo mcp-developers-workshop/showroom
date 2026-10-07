@@ -8,7 +8,7 @@
 
 [IMPORTANT]
 ====
-This page works in the *`globex-complaint-agent`* window. Two extensions and four properties, in one commit.
+This page works in the *`globex-complaint-agent`* window. Two extensions and eight properties, in one commit.
 ====
 
 == Add the extensions
@@ -35,16 +35,21 @@ quarkus.langfuse.base-url={langfuse_internal_url}
 quarkus.langfuse.public-key={langfuse_public_key}
 quarkus.langfuse.secret-key={langfuse_secret_key}
 quarkus.langfuse.devservices.enabled=false
+
+# Put the prompt, completion, tool arguments and tool result on the spans
+quarkus.langchain4j.tracing.include-prompt=true
+quarkus.langchain4j.tracing.include-completion=true
+quarkus.langchain4j.tracing.include-tool-arguments=true
+quarkus.langchain4j.tracing.include-tool-result=true
 ----
 
 `base-url` is the in-cluster service address, not the route you open in a browser. The agent and Langfuse are in the same cluster, so the traffic never leaves it and needs no TLS.
 
 The extension builds the ingestion URL from `base-url` -- the default `trace-ingestion-url` is `${quarkus.langfuse.base-url}/${quarkus.langfuse.otel.trace-ingestion-path}`, and the path defaults to `api/public/otel/v1/traces`.
 
-[NOTE]
-====
-`devservices.enabled=false` is there because the extension ships Dev Services that start Langfuse, PostgreSQL, ClickHouse, Redis and MinIO as containers. That is useful on a laptop with no Langfuse; here one already exists, and without this line a later `quarkus dev` would try to start all five.
-====
+The four `quarkus.langchain4j.tracing.include-*` properties all default to `false`. Without them the spans carry the timings and the token counts but no content, and Langfuse shows Input and Output as `undefined`.
+
+You do not set `quarkus.langfuse.otel.span-filter` here. It defaults to `ai-only`, which exports AI spans and their ancestors -- exactly what the agent produces. That is also what keeps the MCP clients' once-a-minute health pings out of the trace list, since they contain no AI span.
 
 [WARNING]
 ====
@@ -85,12 +90,35 @@ I want to raise a complaint about the Stojo Collapsible Silicone Bottle. the cap
 
 Open Langfuse at https://{langfuse_url}/[the workshop instance^] and sign in as `{langfuse_admin_email}` / `{langfuse_admin_password}`. Go to *Tracing* -> *Traces*.
 
-One trace for the turn, with the agent's HTTP request as the root and a span per model call and per tool call under it. The tool spans have no children yet -- the agent records that it called a tool and how long it took, and the next page adds the other side.
+image::m4/langfuse-agent-trace.png[link=self,window=_blank]
+
+// Screenshot replaced 2026-10-07 with a real turn: POST /api/v1/request 3.33s ->
+// langchain4j.aiservices.ComplaintAgent.process -> completion gpt-4o-mini (1285->13) ->
+// getOrdersByCustomerId -> completion gpt-4o-mini (1680->235). Two model calls either side
+// of one tool call, with per-span cost and tokens.
+// Second screenshot, langfuse-generation.png, added 2026-10-07 after the four
+// quarkus.langchain4j.tracing.include-* properties went in: Input shows the real system
+// prompt, metadata shows the gen_ai.* attributes, finish_reasons is TOOL_EXECUTION and
+// Output is empty for that reason. The extension is documented to set those four
+// automatically when quarkus-opentelemetry and quarkus-langchain4j are both present; on
+// this cluster it did not, and they had to be set by hand. Worth reporting upstream.
+// The first screenshot predates them and still shows Input/Output as `undefined` -- it is
+// kept for the span tree, which it shows better. Recapture it if convenient.
 
 [NOTE]
 ====
-`service.name` on those spans is `globex-complaint-agent`. Nothing sets it: `quarkus.otel.service-name` defaults to `quarkus.application.name`, which defaults to the Maven artifact ID.
+The short `POST` traces of 0.00s that appear every minute are the MCP clients pinging their servers. Your turn is named `POST /api/v1/request` and has a latency in seconds.
 ====
+
+Open it and the *Log View* tab shows the raw span, including `resourceAttributes`. That is where to confirm the spans are the agent's: `service.name` reads `globex-complaint-agent`, and `webengine.name` reads `Quarkus`. Nothing sets `service.name` -- `quarkus.otel.service-name` defaults to `quarkus.application.name`, which defaults to the Maven artifact ID.
+
+Open the `completion gpt-4o-mini` span. *Input* is the prompt as actually sent -- the system message, the conversation so far, and the tool definitions generated from each MCP server's `tools/list`. None of that exists in one place in the source.
+
+image::m4/langfuse-generation.png[link=self,window=_blank]
+
+The metadata carries the `gen_ai.*` attributes the model call produced, including `gen_ai.response.finish_reasons`. A value of `TOOL_EXECUTION` means the model asked for a tool rather than answering, which is why *Output* is empty on that span -- the reply comes from the second model call, after the tool returns.
+
+The tool span has no children yet. The agent records that it called a tool and how long it took; the next page adds the other side.
 
 === If no trace appears
 
@@ -118,4 +146,22 @@ Check the agent pod log. The OTLP exporter reports export failures there and the
 // in ~/.m2 but the agent pom has not been built with it. If the build fails on a platform
 // mismatch, that is the first thing to check.
 //
-// TBC: screenshot of the first trace in the Langfuse trace list.
+// Screenshot added 2026-10-07 from the live cluster: Langfuse v3.171.0 OSS, project
+// `athena`, Tracing -> Traces with one trace open on the Log View tab. It is the evidence
+// for the IMPORTANT block -- the list shows ~1K POST traces at 0.00s and the open one is
+// url.full https://globex-store-mcp.<subdomain>/mcp with service.name
+// globex-complaint-agent, i.e. the MCP client health checker, not a storefront turn. An
+// attendee will see the same thing and conclude tracing is broken.
+//
+// HEALTH-CHECK NOISE: explained on the page, deliberately not suppressed. The user
+// declined to disable it (2026-10-07) -- McpClientHealthCheck feeds /q/health/ready and is
+// what makes a misconfigured agent stop at 1/2, which the m3/07 troubleshooting NOTE
+// depends on.
+// Verified against quarkus-langchain4j-mcp 1.11.2, McpClientRuntimeConfig:
+// autoHealthCheck() is @WithDefault "true", autoHealthCheckInterval() @WithDefault "60s".
+// Matches the observed list exactly -- entries at :44 one minute apart, two per minute for
+// the two MCP clients.
+// If the noise ever becomes intolerable, auto-health-check-interval=30m cuts it 30x and
+// leaves readiness alone; auto-health-check=false removes it entirely but is the option
+// that was turned down. Note that filtering alone cannot fix it: the MCP servers run
+// span-filter=all, so they export the inbound ping even when the agent does not.

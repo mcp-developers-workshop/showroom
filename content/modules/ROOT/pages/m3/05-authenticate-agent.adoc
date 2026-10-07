@@ -275,7 +275,7 @@ The next page removes the secret entirely.
 
 == Watch the rollout
 
-Open the https://openshift-gitops-server-openshift-gitops.{openshift_subdomain}/[ArgoCD console^] and open the `globex-complaint-agent` application.
+Open the https://openshift-gitops-server-openshift-gitops.{openshift_subdomain}/[ArgoCD console^], signing in as `{openshift_gitops_user}` / `{openshift_gitops_password}` if you are asked, and open the `globex-complaint-agent` application.
 
 Both halves have to land before anything works:
 

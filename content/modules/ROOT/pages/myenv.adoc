@@ -25,13 +25,17 @@ Every address on this page is specific to your environment. Keep this page open 
 
 | Keycloak (SSO)
 | https://sso.{openshift_subdomain}[click here^, window="sso"]
-a| Customer account on the `globex` realm: `asilva` / `openshift`
+| *Admin console*: https://sso.{openshift_subdomain}/admin[click here^,         window="sso-admin"] -- `admin` / `{common_password}`
 
-Admin console: https://sso.{openshift_subdomain}/admin[click here^, window="sso-admin"] -- `admin` / `{common_password}`
+    Customer account on the `globex` realm: `asilva` / `openshift` (for Globex Web login)
 
-| Globex Store OpenAPI
-| https://globex-store.{openshift_subdomain}/q/openapi[click here^, window="globex-store"]
-| None -- the API the orders MCP server wraps
+| Langfuse (tracing)
+| https://langfuse-langfuse.{openshift_subdomain}[click here^, window="langfuse"]
+| *Login*: {langfuse_admin_email} / {langfuse_admin_password}
+    
+    *langfuse_public_key*: {langfuse_public_key}
+    
+    *langfuse_secret_key*: {langfuse_secret_key}
 |==================
 
 [NOTE]

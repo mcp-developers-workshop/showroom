@@ -8,7 +8,7 @@
 
 == Watch the rollout
 
-Open the https://openshift-gitops-server-openshift-gitops.{openshift_subdomain}/[ArgoCD console^] and open `globex-complaint-agent`.
+Open the https://openshift-gitops-server-openshift-gitops.{openshift_subdomain}/[ArgoCD console^], signing in as `{openshift_gitops_user}` / `{openshift_gitops_password}` if you are asked, and open `globex-complaint-agent`.
 
 The pod now has three containers, and the order they come up in is the thing to watch: `init-spiffe-helper` must complete before anything else starts. If it hangs, the CSI volume is not mounting and no SVID is being issued -- the agent container never starts at all.
 

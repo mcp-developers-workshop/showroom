@@ -15,9 +15,9 @@ Two repositories, two windows, two pipelines. Push the first before starting the
 
 == Why these servers need more configuration than the agent
 
-`quarkus.langfuse.otel.span-filter` defaults to `ai-only`, which exports AI spans and their ancestors and drops everything else. The agent produces AI spans, so the default suits it. An MCP server produces none -- its spans are HTTP, MCP and JDBC -- so on the default it would export nothing. Both servers set `span-filter=all`.
+`quarkus.langfuse.otel.span-filter` defaults to `ai-only`, which exports AI spans and their ancestors and drops everything else. The agent produces AI spans, so the default suits it and the previous page left it alone. An MCP server produces none -- its spans are HTTP, MCP and JDBC -- so on the default it would export nothing. Both servers set `span-filter=all`.
 
-Server-side MCP tracing is also off by default. `quarkus.mcp.server.tracing.enabled` defaults to `false`, where the agent's MCP *client* tracing defaults to `true`.
+Server-side MCP tracing is off by default too. `quarkus.mcp.server.tracing.enabled` defaults to `false`, where the agent's MCP *client* tracing defaults to `true`.
 
 == The orders server
 
@@ -111,7 +111,7 @@ git push
 
 == Watch both rollouts
 
-Open the https://openshift-gitops-server-openshift-gitops.{openshift_subdomain}/[ArgoCD console^] and wait for `globex-store-mcp` and `globex-complaints` to roll out new pods. Both, before continuing.
+Open the https://openshift-gitops-server-openshift-gitops.{openshift_subdomain}/[ArgoCD console^], signing in as `{openshift_gitops_user}` / `{openshift_gitops_password}` if you are asked, and wait for `globex-store-mcp` and `globex-complaints` to roll out new pods. Both, before continuing.
 
 == Raise another complaint
 
@@ -131,6 +131,23 @@ In Langfuse, open the newest trace. The tool spans that were leaves now have chi
 |===
 
 The Globex Store API and PostgreSQL are not instrumented. They appear only as the client spans of the services calling them, which gives their latency but nothing about what happens inside.
+
+== Open a model call
+
+In the same trace, open a span named for a model call. Langfuse shows it as a generation:
+
+* *Input* -- the prompt as actually sent, including the system message and the tool definitions that `quarkus-langchain4j-mcp` generated from each server's `tools/list`. This is assembled at runtime and is not written down anywhere in the source.
+* *Output* -- what the model returned.
+* *Usage* -- input and output token counts.
+
+Open a tool span and you get the tool name, the arguments the model chose, and the result that came back.
+
+[NOTE]
+====
+If Input and Output are empty, the agent is missing one of its two extensions. `quarkus-langfuse` only switches on prompt and completion capture when it finds `quarkus-opentelemetry` alongside it.
+
+If cost reads zero while the token counts look right, that is a missing entry in Langfuse's model price table, not missing telemetry.
+====
 
 [NOTE]
 ====

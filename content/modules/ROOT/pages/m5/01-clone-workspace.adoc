@@ -40,20 +40,43 @@ One folder per artefact kind, which is how the `orchestrate` CLI expects a works
 
 == Set your cluster subdomain
 
-Two of the files point at services on your cluster, and ship with `<OPENSHIFT_SUBDOMAIN>` where the address goes. Replace it:
+The connection and the toolkit point at services on your cluster, and both ship with `<OPENSHIFT_SUBDOMAIN>` where the address goes. From a terminal in the `globex-complaints-orchestrate` folder:
 
 [source,sh,role="copypaste",subs="attributes+"]
 ----
-grep -rl '<OPENSHIFT_SUBDOMAIN>' . | xargs sed -i '' 's|<OPENSHIFT_SUBDOMAIN>|{openshift_subdomain}|g'
+sed -i 's|<OPENSHIFT_SUBDOMAIN>|{openshift_subdomain}|g' \
+  connections/globex-complaints-connection.yaml \
+  toolkits/globex-complaints.yaml
 ----
 
-On Linux, drop the `''` after `-i`.
+`connections/globex-complaints-connection.yaml` now ends:
+
+[source,yaml,subs="attributes+"]
+----
+    server_url: https://sso.{openshift_subdomain}/realms/internal
+    token_url: https://sso.{openshift_subdomain}/realms/internal/protocol/openid-connect/token
+----
+
+and the `url` in `toolkits/globex-complaints.yaml` reads:
+
+[source,yaml,subs="attributes+"]
+----
+url: https://globex-complaints.{openshift_subdomain}/read/mcp
+----
 
 Check nothing is left:
 
 [source,sh,role="copypaste"]
 ----
-grep -rn '<OPENSHIFT_SUBDOMAIN>' .
+grep -rn '<OPENSHIFT_SUBDOMAIN>' connections toolkits
 ----
 
-No output means you are done. The agent file has no addresses in it, so it needs no change.
+No output means you are done. Both imports later in this module succeed against an address that does not resolve, so a missed replacement first shows up as a toolkit with no tools.
+
+// Verified 2026-10-07 against github.com/mcp-developers-workshop/globex-complaints-orchestrate
+// at HEAD: `<OPENSHIFT_SUBDOMAIN>` appears only in connections/globex-complaints-connection.yaml
+// (lines 9-10), toolkits/globex-complaints.yaml (line 6) and README.md (its own copy of this
+// instruction). agents/complaints_analyser.yaml and workspace_config.yaml carry no addresses.
+// README.md is deliberately left out of the sed and the check -- it is not imported.
+// `sed -i` with no argument is GNU sed, which is what the workshop VM has; this page has not
+// been run on macOS, where it needs `-i ''`.
