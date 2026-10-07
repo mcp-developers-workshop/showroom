@@ -41,16 +41,11 @@ The push prompts you for GitLab credentials. Use the workshop developer account:
 
 A webhook on the repository starts an OpenShift pipeline, which builds the image and pushes it to the internal registry. Leave it to run and move on to the chart.
 
-== Clone the chart
+== Open the chart
 
-The chart lives in its own repository, and you will come back to it in Module 3. Clone it now, the same way you cloned the agent:
+Open the `globex-complaint-agent-helm` folder in Bob -- see xref:dev-setup-intro.adoc#open-a-repository[Open a Repository in IBM Bob].
 
-[source,text,role="copypaste",subs="attributes+"]
-----
-https://gitlab-gitlab.{openshift_subdomain}/globex/globex-complaint-agent-helm.git
-----
-
-Open it in a new window when Bob offers, and leave it open for the rest of the workshop.
+Leave its window open for the rest of the workshop.
 
 [NOTE]
 ====

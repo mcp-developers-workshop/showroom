@@ -6,18 +6,13 @@
 :icons: font
 :source-highlighter: highlight.js
 
-The agent you connect to your MCP server in this module already exists. Clone it from GitLab so you can work on it in IBM Bob.
+The agent you connect to your MCP server in this module already exists. It is called Glo. Clone it from GitLab so you can work on it in IBM Bob.
 
-== Clone the repository
+== Open the repository
 
-Clone it as you did in Module 1 -- *Clone Git Repository...* on the Bob welcome page, or *File* -> *Clone Repository*:
+Open the `globex-complaint-agent` folder in Bob -- see xref:dev-setup-intro.adoc#open-a-repository[Open a Repository in IBM Bob].
 
-[source,text,role="copypaste",subs="attributes+"]
-----
-https://gitlab-gitlab.{openshift_subdomain}/globex/globex-complaint-agent.git
-----
-
-Open it in a new window when Bob offers. Leave `globex-store-mcp` open in its own window -- Module 1's dev mode and MCP Inspector may still be running there, and the agent needs that MCP server up.
+Leave `globex-store-mcp` open in its own window -- Module 1's dev mode and MCP Inspector may still be running there, and the agent needs that MCP server up.
 
 == What is in the repository
 

@@ -25,6 +25,44 @@ There are also Linux shell commands that can also be copied and pasted into a Te
 echo "This is a bash shell command that you can copy/paste by clicking"
 ----
 
+[#get-the-repositories]
+== Get the Workshop Repositories
+
+Six repositories are used across Modules 1, 2, 3 and 5. Clone them all now, into one folder, so they sit side by side.
+
+[source,sh,role="copypaste",subs="attributes+"]
+----
+mkdir -p ~/mcp-workshop && cd ~/mcp-workshop
+git clone https://gitlab-gitlab.{openshift_subdomain}/globex/globex-store-mcp.git
+git clone https://gitlab-gitlab.{openshift_subdomain}/globex/globex-complaint-agent.git
+git clone https://gitlab-gitlab.{openshift_subdomain}/globex/globex-complaint-agent-helm.git
+git clone https://gitlab-gitlab.{openshift_subdomain}/globex/globex-complaints.git
+git clone https://gitlab-gitlab.{openshift_subdomain}/globex/globex-complaints-orchestrate.git
+git clone https://github.com/mcp-developers-workshop/mcp-workshop-chatbot.git
+----
+
+The first GitLab clone asks for credentials -- sign in as `developer` / `{common_password}`. The four after it reuse them. The chatbot comes from GitHub, which is public and asks for nothing.
+
+[#open-a-repository]
+== Open a Repository in IBM Bob
+
+Each module tells you which repository to work in. Open it when you get there, not before.
+
+. On the Bob welcome page, under *Start*, click *Open...* and choose the folder from `~/mcp-workshop`. From a window that already has a folder open, use *File* -> *Open Folder* so each repository keeps its own window.
+
+. The folder opens in *Restricted Mode* -- a banner across the top, and *Restricted Mode* and *Java: Lightweight Mode* in the status bar. Click *Manage* in the banner, then *Trust*.
++
+image::bob-workspace-trust.png[link=self,window=_blank]
++
+[IMPORTANT]
+====
+Trust the folder before you do anything else in it. While it is restricted, tasks are not allowed to run, debugging is disabled, and 24 extensions -- the Quarkus and Java tooling among them -- are inactive.
+
+Trust applies to one folder. You do this once per repository, as you open each one.
+====
+
+The status bar shows *Java: Ready* and the branch name once the Java tooling has finished starting. Bob may also open a Quarkus Tools page, which you can close.
+
 == Create your watsonx.ai API Key
 
 Several modules in this workshop call a Large Language Model hosted on *IBM watsonx.ai*. Before you start Module 1, create an IBM Cloud API key and note your watsonx.ai project details. You only need to do this once.
@@ -108,4 +146,14 @@ curl -s -X POST https://iam.cloud.ibm.com/identity/token \
 ----
 
 If you get an `BXNIM0415E` / "Provided API key could not be found" error, the key was copied incorrectly or has been deleted -- create a new one and export it again.
+
+// Clone procedure captured 2026-10-07 from IBM Bob on macOS. Confirmed on the live VM:
+// the welcome-page entry point, the Clone from URL / Clone from GitHub pair, the
+// "Select as Repository Destination" picker with New Folder, the "Would you like to open
+// the repository?" prompt, the Restricted Mode banner and status bar, and the Workspace
+// Trust dialog (58 settings, 24 extensions).
+// Not verified: *File* -> *Clone Repository* from an already-open window (carried over from
+// the previous wording on m1/01-setup.adoc, not re-tested); whether the Quarkus Tools page
+// opens on every clone or only the first; whether the credential prompt appears once per
+// session or once per GitLab repository.
 

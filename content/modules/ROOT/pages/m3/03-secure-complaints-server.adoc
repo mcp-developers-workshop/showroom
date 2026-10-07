@@ -10,14 +10,9 @@ The orders server is locked down; the complaints server is still open. Module 2 
 
 Both have to be secured before the next page. Which tool the agent reaches for is the model's choice for a given prompt, so with only one server closed the failure may not show up at all.
 
-== Clone the repository
+== Open the repository
 
-Clone it the same way, into its own window:
-
-[source,text,role="copypaste",subs="attributes+"]
-----
-https://gitlab-gitlab.{openshift_subdomain}/globex/globex-complaints.git
-----
+Open the `globex-complaints` folder in Bob -- see xref:dev-setup-intro.adoc#open-a-repository[Open a Repository in IBM Bob].
 
 == What is in the repository
 

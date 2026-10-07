@@ -16,14 +16,9 @@ Each is a YAML file imported with the `orchestrate` CLI, and the order matters. 
 The commands in this module use the watsonx Orchestrate ADK CLI (`orchestrate`). It must be installed and pointed at an active environment before you start.
 ====
 
-== Clone the workspace
+== Open the workspace
 
-The three YAML files are written for you. Clone the repository the same way as the others, into its own window:
-
-[source,text,role="copypaste"]
-----
-https://github.com/mcp-developers-workshop/globex-complaints-orchestrate.git
-----
+Open the `globex-complaints-orchestrate` folder in Bob -- see xref:dev-setup-intro.adoc#open-a-repository[Open a Repository in IBM Bob].
 
 [source,text]
 ----

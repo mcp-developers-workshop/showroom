@@ -13,14 +13,9 @@ The chatbot is for local testing only. You run it on your own machine to drive t
 
 The agent is a REST endpoint, so testing it by hand means posting JSON at it. The chatbot front end holds the conversation, keeps the session, and lets you watch the agent call your MCP server.
 
-== Clone the chatbot
+== Open the chatbot
 
-Clone it the same way, into its own window:
-
-[source,text,role="copypaste"]
-----
-https://github.com/mcp-developers-workshop/mcp-workshop-chatbot.git
-----
+Open the `mcp-workshop-chatbot` folder in Bob -- see xref:dev-setup-intro.adoc#open-a-repository[Open a Repository in IBM Bob].
 
 The chatbot runs alongside the agent, so both stay running at once.
 

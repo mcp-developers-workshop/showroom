@@ -1,6 +1,6 @@
 
 :experimental:
-:imagesdir: ../assets/images
+:imagesdir: ../../assets/images
 
 = Module 1: Build Your First MCP Server
 :numbered:
@@ -10,16 +10,19 @@
 == Overview & Objectives
 The Globex store already has a REST API, and it is not going to change. In this module you put a Model Context Protocol server in front of it with the help of an AI code assistant, narrow what that server exposes, move the customer identifier off the model's contract, and deploy the result to Red Hat OpenShift through GitLab and ArgoCD.
 
-[NOTE]
-====
+== Custom MCP Patterns
 A custom MCP server is built one of two ways, and the workshop uses both.
 
 *Brownfield* wraps a system that already exists and is not going to change. The server sits in front of it and translates between the protocol and endpoints designed for something else -- a REST API, a SOAP service, a mainframe transaction, a vendor SDK. The existing endpoints are not the tools: which ones to expose, under what name, returning how much, is the work. The orders server you build in this module is brownfield. The Globex Store REST API is untouched and never learns that anything is wrapping it, which is the ordinary enterprise case.
 
+image::m1/mcp-brownfield.png[link=self,window=_blank]
+
 *Greenfield* writes the server and the logic behind it together, with the tools as the system's primary interface. There is no contract to preserve, so tool names, arguments and payloads are designed for a model from the start. The complaints server you connect in Module 2 is greenfield -- it was built as an MCP server and reaches the Globex database directly, with no REST API in between.
 
-Either way the client cannot tell the difference. An agent sees a list of tools and calls them; whether a tool runs SQL or forwards to a legacy endpoint is the server's business.
-====
+image::m1/mcp-greenfield.png[link=self,window=_blank]
+
+Either way the client cannot tell the difference. Glo, the agent you build in Module 2 -- sees a list of tools and calls them; whether a tool runs SQL or forwards to a legacy endpoint is the server's business.
+
 
 === Learning Objectives
 * Generate a Quarkus MCP server from an OpenAPI specification using IBM Bob.
