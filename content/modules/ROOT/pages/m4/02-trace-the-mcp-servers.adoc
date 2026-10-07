@@ -6,18 +6,29 @@
 :icons: font
 :source-highlighter: highlight.js
 
-The same two extensions on both MCP servers, with two extra properties each.
+One extension on each MCP server, and the exporter configured by hand.
 
 [IMPORTANT]
 ====
 Two repositories, two windows, two pipelines. Push the first before starting the second so both builds run together.
 ====
 
-== Why these servers need more configuration than the agent
+== Why these servers are configured differently
 
-`quarkus.langfuse.otel.span-filter` defaults to `ai-only`, which exports AI spans and their ancestors and drops everything else. The agent produces AI spans, so the default suits it and the previous page left it alone. An MCP server produces none -- its spans are HTTP, MCP and JDBC -- so on the default it would export nothing. Both servers set `span-filter=all`.
+The agent uses `quarkus-langfuse` because it has LangChain4j spans to enrich. These servers have none -- their spans are HTTP, MCP and JDBC -- so for them the extension would do nothing but build an endpoint URL and an auth header. Three properties of plain OpenTelemetry configuration do the same job.
 
-Server-side MCP tracing is off by default too. `quarkus.mcp.server.tracing.enabled` defaults to `false`, where the agent's MCP *client* tracing defaults to `true`.
+Server-side MCP tracing is off by default. `quarkus.mcp.server.tracing.enabled` defaults to `false`, where the agent's MCP *client* tracing defaults to `true`.
+
+== Build the credential
+
+The exporter authenticates to Langfuse with HTTP Basic auth. Build the header value once and use it on both servers:
+
+[source,sh,role="copypaste",subs="attributes+"]
+----
+echo -n '{langfuse_public_key}:{langfuse_secret_key}' | base64 -w 0
+----
+
+Without `-n`, `echo` adds a newline and the credential is wrong. Without `-w 0`, `base64` wraps the output and you paste a two-line value into a single-line property.
 
 == The orders server
 
@@ -25,27 +36,25 @@ In the `globex-store-mcp` window. This repository has a Maven wrapper:
 
 [source,sh,role="copypaste"]
 ----
-./mvnw quarkus:add-extension -Dextensions="opentelemetry,io.quarkiverse.langfuse:quarkus-langfuse"
+./mvnw quarkus:add-extension -Dextensions="opentelemetry"
 ----
 
 Add to `src/main/resources/application.properties`:
 
 [source,properties,role="copypaste",subs="attributes+"]
 ----
-# Langfuse
-quarkus.langfuse.base-url={langfuse_internal_url}
-quarkus.langfuse.public-key={langfuse_public_key}
-quarkus.langfuse.secret-key={langfuse_secret_key}
-quarkus.langfuse.devservices.enabled=false
-
-# This server has no AI spans of its own, so export everything
-quarkus.langfuse.otel.span-filter=all
+# Export traces to Langfuse
+quarkus.otel.exporter.otlp.traces.protocol=http/protobuf
+quarkus.otel.exporter.otlp.traces.endpoint={langfuse_internal_url}/api/public/otel
+quarkus.otel.exporter.otlp.traces.headers=Authorization=Basic <the base64 string from above>
 
 # Trace the MCP endpoint
 quarkus.mcp.server.tracing.enabled=true
 ----
 
-The same keys as the agent. All three applications report into one Langfuse project, which is what makes their spans one trace rather than three.
+`protocol=http/protobuf` is mandatory -- Quarkus defaults to gRPC and Langfuse does not accept it. The endpoint stops at `/api/public/otel`; the exporter appends `/v1/traces` itself.
+
+All three applications report into the same Langfuse project, which is what makes their spans one trace rather than three.
 
 [source,sh,role="copypaste"]
 ----
@@ -67,21 +76,17 @@ In the `globex-complaints` window. No Maven wrapper here:
 
 [source,sh,role="copypaste"]
 ----
-mvn quarkus:add-extension -Dextensions="opentelemetry,io.quarkiverse.langfuse:quarkus-langfuse"
+mvn quarkus:add-extension -Dextensions="opentelemetry"
 ----
 
 Add to `src/main/resources/application.properties`:
 
 [source,properties,role="copypaste",subs="attributes+"]
 ----
-# Langfuse
-quarkus.langfuse.base-url={langfuse_internal_url}
-quarkus.langfuse.public-key={langfuse_public_key}
-quarkus.langfuse.secret-key={langfuse_secret_key}
-quarkus.langfuse.devservices.enabled=false
-
-# This server has no AI spans of its own, so export everything
-quarkus.langfuse.otel.span-filter=all
+# Export traces to Langfuse
+quarkus.otel.exporter.otlp.traces.protocol=http/protobuf
+quarkus.otel.exporter.otlp.traces.endpoint={langfuse_internal_url}/api/public/otel
+quarkus.otel.exporter.otlp.traces.headers=Authorization=Basic <the base64 string from above>
 
 # Trace both MCP endpoints
 quarkus.mcp.server.tracing.enabled=true
@@ -155,12 +160,15 @@ The trace ID does not travel in an HTTP header on the MCP hop. The client puts `
 ====
 
 // VERIFIED 2026-10-06 against the jars in ~/.m2 and the working copies in ~/workshop:
-//   * SpanFilterType is { ALL, AI_ONLY }, @WithDefault "AI_ONLY", in
-//     io.quarkiverse.langfuse.config.LangfuseOtelConfig (quarkus-langfuse 0.7.2). That is
-//     the basis for span-filter=all on these two servers. The CONSEQUENCE -- that the
-//     default would drop their spans entirely -- follows from the documented "AI spans and
-//     their ancestors" behaviour and has NOT been observed. If the default turns out to
-//     export them anyway, drop the two lines and the section explaining them.
+//   * quarkus-langfuse is NOT used on these two servers, deliberately. It stalled the
+//     Tekton build in `quarkus:3.38.0:build` augmentation -- both MCP servers pin Quarkus
+//     3.38.0 where the agent pins 3.37.0, and 0.7.2 is only known to work on 3.37.0. The
+//     extension bought them nothing anyway: no LangChain4j spans to enrich, so it would
+//     only have derived the OTLP endpoint and the Basic auth header, which are three
+//     plain quarkus.otel.exporter.otlp.traces.* properties instead.
+//     Dropping it also drops quarkus.langfuse.otel.span-filter, which these servers had
+//     to set to `all` (SpanFilterType is { ALL, AI_ONLY }, @WithDefault "AI_ONLY").
+//     With no extension there is no filter and everything they produce is exported.
 //   * Build setup: globex-store-mcp HAS mvnw, globex-complaints does NOT. Verified
 //     separately for m3/02 and m3/03. Do not unify.
 //   * Both MCP servers pin Quarkus 3.38.0, not the agent's 3.37.0.
@@ -183,4 +191,7 @@ The trace ID does not travel in an HTTP header on the MCP hop. The client puts `
 //     reliably is not, the orders row above needs a second order-related prompt.
 //   * Whether MCP server spans nest under the agent's tool span or arrive as siblings.
 //     Page 03's "open the tool span" assumes nesting.
-//   * Whether quarkus-langfuse 0.7.2 resolves against Quarkus 3.38.0 on these two.
+//   * Whether exporting everything from these two brings back the MCP health-check
+//     noise. With no span filter they export every request they handle, including the
+//     agent's once-a-minute ping. If it is bad, the fix is auto-health-check=false on the
+//     agent's two MCP clients, which the user declined on 2026-10-07.

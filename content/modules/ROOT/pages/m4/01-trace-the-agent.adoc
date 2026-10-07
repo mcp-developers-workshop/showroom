@@ -88,9 +88,13 @@ raise a complaint
 I want to raise a complaint about the Stojo Collapsible Silicone Bottle. the cap was broken on arrival. It is such a critical problem for me. I want a replacement
 ----
 
-Open Langfuse at https://{langfuse_url}/[the workshop instance^] and sign in as `{langfuse_admin_email}` / `{langfuse_admin_password}`. Go to *Tracing* -> *Traces*.
+Open Langfuse at {langfuse_url}/[the workshop instance^] and sign in as `{langfuse_admin_email}` / `{langfuse_admin_password}`.
 
-image::m4/langfuse-agent-trace.png[link=self,window=_blank]
+You land on *Organizations*. Under *langfuse*, click *Go to project* on `athena`, then *Tracing* in the left sidebar.
+
+image::m4/langfuse-trace-list.png[link=self,window=_blank]
+
+One row per turn, with the prompt under *Input* and the agent's reply under *Output*. Open yours.
 
 // Screenshot replaced 2026-10-07 with a real turn: POST /api/v1/request 3.33s ->
 // langchain4j.aiservices.ComplaintAgent.process -> completion gpt-4o-mini (1285->13) ->
@@ -102,15 +106,19 @@ image::m4/langfuse-agent-trace.png[link=self,window=_blank]
 // Output is empty for that reason. The extension is documented to set those four
 // automatically when quarkus-opentelemetry and quarkus-langchain4j are both present; on
 // this cluster it did not, and they had to be set by hand. Worth reporting upstream.
-// The first screenshot predates them and still shows Input/Output as `undefined` -- it is
-// kept for the span tree, which it shows better. Recapture it if convenient.
+// langfuse-trace-list.png added 2026-10-07 from the rebuilt cluster: org `langfuse`,
+// project `athena`, one trace with Input and Output populated. Both names are whatever
+// the installer seeded -- if a future environment names them differently this paragraph
+// and the screenshot go stale. They are written literally because no Showroom attribute
+// exists for either.
+// The health-check NOTE that used to sit here is GONE and should not come back on this
+// page: the agent runs span-filter=ai-only, so pings produce no exported span. The noise
+// only appeared when the agent was briefly set to span-filter=all. The MCP servers on
+// page 02 DO run span-filter=all, so if it resurfaces it belongs there.
+// langfuse-agent-trace.png is no longer referenced -- kept on disk in case the span-tree
+// view is wanted back.
 
-[NOTE]
-====
-The short `POST` traces of 0.00s that appear every minute are the MCP clients pinging their servers. Your turn is named `POST /api/v1/request` and has a latency in seconds.
-====
-
-Open it and the *Log View* tab shows the raw span, including `resourceAttributes`. That is where to confirm the spans are the agent's: `service.name` reads `globex-complaint-agent`, and `webengine.name` reads `Quarkus`. Nothing sets `service.name` -- `quarkus.otel.service-name` defaults to `quarkus.application.name`, which defaults to the Maven artifact ID.
+The *Log View* tab shows the raw span, including `resourceAttributes`. That is where to confirm the spans are the agent's: `service.name` reads `globex-complaint-agent`, and `webengine.name` reads `Quarkus`. Nothing sets `service.name` -- `quarkus.otel.service-name` defaults to `quarkus.application.name`, which defaults to the Maven artifact ID.
 
 Open the `completion gpt-4o-mini` span. *Input* is the prompt as actually sent -- the system message, the conversation so far, and the tool definitions generated from each MCP server's `tools/list`. None of that exists in one place in the source.
 

@@ -28,7 +28,7 @@ Every address on this page is specific to your environment. Keep this page open 
     Customer account on the `globex` realm: `asilva` / `openshift` (for Globex Web login)
 
 | Langfuse (tracing)
-| https://langfuse-langfuse.{openshift_subdomain}[click here^, window="langfuse"]
+| {langfuse_url}[click here^, window="langfuse"]
 | *Login*: \{langfuse_admin_email} / {langfuse_admin_password}
     
     *langfuse_public_key*: {langfuse_public_key}
