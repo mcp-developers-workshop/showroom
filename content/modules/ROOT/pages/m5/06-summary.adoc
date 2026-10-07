@@ -19,7 +19,7 @@ The split between the connection and the toolkit is the part worth keeping. The 
 
 Note too that the reach of the agent is limited in two separate places. The toolkit took `tools: "*"` and imported everything the server advertises, but the agent lists its four tools explicitly and cannot call anything outside that list. Narrowing at the toolkit controls what exists in the workspace; narrowing at the agent controls what one agent can do with it.
 
-The same MCP server you built and secured in earlier modules is being consumed here by something that is not a Quarkus application and shares no code with one. That is the protocol doing its job.
+The same MCP server you built and secured in earlier modules is consumed here by something that is not a Quarkus application and shares no code with one.
 
 What this does not solve is scale. You configured one connection and one tool list by hand; at twenty servers and thirty agents, every consumer carries its own copy of the credentials and its own copy of the rules about who may call what, and they drift. A gateway is where that same separation lives when it has to be enforced once rather than repeated -- one place holding the credentials, one place defining which consumer sees which tools.
 

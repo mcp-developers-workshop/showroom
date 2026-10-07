@@ -10,13 +10,13 @@ The agent you connect to your MCP server in this module already exists. It is ca
 
 == Open the repository
 
-Open the `globex-complaint-agent` folder in Bob -- see xref:dev-setup-intro.adoc#open-a-repository[Open a Repository in IBM Bob].
+Open the `globex-complaint-agent` folder in a separate IBM Bob window. You have already cloned it from GitLab. See xref:dev-setup-intro.adoc#open-a-repository[Open a Repository in IBM Bob].
 
-Leave `globex-store-mcp` open in its own window -- Module 1's dev mode and MCP Inspector may still be running there, and the agent needs that MCP server up.
+Leave `globex-store-mcp` open in its own window - Module 1's dev mode and MCP Inspector may still be running there, and the agent needs that MCP server up.
 
 == What is in the repository
 
-A small Quarkus application -- three classes and a configuration file:
+A small Quarkus application - three classes and a configuration file:
 
 [source,text]
 ----

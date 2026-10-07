@@ -39,12 +39,28 @@ In the `globex-complaint-agent-helm` window, pull first:
 git pull
 ----
 
-=== `values.yaml`
+=== Changes to `values.yaml`
 
-Two blocks to add and two entries to delete. This file holds your OpenAI API key and your cluster URLs, so edit it rather than replacing it.
+This file holds your OpenAI API key and your cluster URLs, so edit it rather than replacing it.
 
-Add at the end:
 
+1. *Update `oidcClient` block* 
++
+Replace the existing `oidcClient` block down to the following two URLs. Once we move to SPIFFE based authentication, the client IDs or the secrets are not needed anymore and leaving a live secret in Git after a page about removing it defeats the exercise:
++
+[source,yaml,role="copypaste",subs="attributes+"]
+----
+oidcClient:
+  orders:
+    authServerUrl: https://sso.{openshift_subdomain}/realms/internal
+  complaint:
+    authServerUrl: https://sso.{openshift_subdomain}/realms/internal
+----
+
+2. *SPIFEE related configuration:*
++
+Add this new block at the end of the file:
++
 [source,yaml,role="copypaste"]
 ----
 spiffeHelper:
@@ -58,25 +74,11 @@ spiffe:
   tokenPath: /svids/jwt.token
 ----
 
-Then cut the `oidcClient` block down to the two URLs. Nothing reads the client IDs or the secrets once `secret.yaml` below is in place, and leaving a live secret in Git after a page about removing it defeats the exercise:
 
-[source,yaml,role="copypaste",subs="attributes+"]
-----
-oidcClient:
-  orders:
-    authServerUrl: https://sso.{openshift_subdomain}/realms/internal
-  complaint:
-    authServerUrl: https://sso.{openshift_subdomain}/realms/internal
-----
-
-[WARNING]
-====
-Keep both `authServerUrl` entries. `configmap.yaml` below reads `oidcClient.orders.authServerUrl` to decide which audience SPIRE mints the SVID for, so deleting the whole block -- the tidy-looking thing to do, since almost everything in it is now dead -- produces an SVID that Keycloak rejects, two pages after the edit that caused it.
-====
 
 === `templates/configmap.yaml`
 
-New file:
+Create a new file `templates/configmap.yaml` and paste in the following. It is a ConfigMap that tells `spiffe-helper` which socket to use, where to write, and what audience to ask for:
 
 [source,yaml,role="copypaste"]
 ----
@@ -98,22 +100,25 @@ data:
     jwt_bundle_file_name  = "jwt_bundle.json"
 ----
 
-`jwt_audience` is the Keycloak realm URL. SPIRE mints the SVID *for* that audience and Keycloak rejects one minted for anything else. Both OIDC clients point at the same realm, so either key gives the same value.
+`jwt_audience` is the Keycloak realm URL. SPIRE creates the SVID *for* that audience and Keycloak rejects an SVID created for anything else. Both OIDC clients point at the same realm, so either key gives the same value.
 
 === `templates/deployment.yaml`
 
-The file describes a single-container pod today. It gains four things:
+The existing file describes a single-container pod today, but needs to be changed to add the following four things:
+[cols="1,3", options="header"]
+|===
+| Term | What it means
+| `init-spiffe-helper` | An *init container* which fetches the first SVID and exits before the agent starts.
+| `spiffe-helper` | A *sidecar* that renews the SVID for the life of the pod. Same image and same configuration - `-daemon-mode=false`  is the only difference between them.
+| `svids` *mount* | The mount (`/svids/jwt.token`) where the SVID tokens are placed for the application to read from.
+| Three more *volumes*: | `spiffe-helper-config` for the ConfigMap, `svids` as the scratch directory all three containers share, and `spiffe-workload-agent` for the socket.
+|===
 
-* An *init container*, `init-spiffe-helper`, which fetches the first SVID and exits before the agent starts.
-* A *sidecar*, `spiffe-helper`, which renews it for the life of the pod. Same image and same configuration -- `-daemon-mode=false` is the only difference between them. Neither needs a `securityContext`; the pod-level one already in the file applies to all three containers.
-* A `svids` *mount on the application container*, next to the `/deployments/config` mount it already has. This is the one that matters: everything else here exists to put a current token at `/svids/jwt.token` for the application to read.
-* Three more *volumes*: `spiffe-helper-config` for the ConfigMap, `svids` as the scratch directory all three containers share, and `spiffe-workload-agent` for the socket.
+That is four edits scattered through a YAML file where indentation decides whether it parses. Select all and replace with the following full deployment.yaml. It is a complete file, not a patch. The only changes are the four items above, and the rest of the file is unchanged from the original chart. This is just to make it easier to avoid indentation errors.
 
-That is four edits scattered through a YAML file where indentation decides whether it parses. Select all and replace:
 
 .The complete `templates/deployment.yaml`
-[%collapsible]
-====
+
 [source,yaml,role="copypaste"]
 ----
 apiVersion: apps/v1
@@ -229,22 +234,21 @@ spec:
         {{- toYaml . | nindent 8 }}
       {{- end }}
 ----
-====
+
 
 [NOTE]
 ====
 `csi.spiffe.io` carries no data. It mounts the node's SPIRE agent socket into the pod. The SPIRE agent on the other end identifies the caller from the kernel, by process, and cross-checks it with the kubelet, so the pod supplies no credential and cannot misreport which pod it is.
 
-The SPIFFE ID it is issued is built from the pod's namespace and service account, and the Keycloak client is pinned to that exact string. Leave `serviceAccountName` alone.
+The *SPIFFE ID* is built from the pod's namespace and service account, and the Keycloak client is pinned to that exact string. Don't change the `serviceAccountName`.
 ====
 
 === `templates/secret.yaml`
 
-This file is pure template -- no API key, no cluster URL -- so replace it rather than editing around the `quarkus.oidc-client.*` lines:
+This file is pure template, so replace it rather than editing around the `quarkus.oidc-client.*` lines. The only change is to point both OIDC clients at the token file instead of at a secret. The rest of the file is unchanged from the original chart.
 
 .The complete `templates/secret.yaml`
-[%collapsible]
-====
+
 [source,yaml,role="copypaste"]
 ----
 apiVersion: v1
@@ -290,7 +294,7 @@ stringData:
     quarkus.oidc-client.complaint.credentials.jwt.source=spiffe-jwt
     quarkus.oidc-client.complaint.refresh-token-time-skew=10S
 ----
-====
+
 
 === Commit and push
 
@@ -301,7 +305,7 @@ git commit -m "authenticate with a SPIFFE SVID instead of a client secret"
 git push
 ----
 
-There is no pipeline on this repository, so nothing builds. ArgoCD picks the commit up directly.
+ArgoCD picks the commit up directly.
 
 == What you just configured
 
@@ -321,10 +325,7 @@ One identity does not mean one audience, but on this cluster it nearly does. `gl
 That is not a regression -- the complaints client never had an audience of its own to lose, which is why that server has no audience check in the first place.
 ====
 
-[WARNING]
-====
-No trailing spaces at the ends of the property lines. The block is a YAML literal scalar, so a space after `}}` ends up inside the value.
-====
+
 
 == Check it before you move on
 
@@ -343,7 +344,7 @@ Then check the pod is *2/2* with `init-spiffe-helper` completed.
 
 [NOTE]
 ====
-If the pod sits at *1/2* with the application container running but never ready, open its log. A repeating health check like this is the symptom:
+If the pod sits at *1/2*, with the application container running but never ready, open its log. The symptom is a health check repeating:
 
 ....
 "status":"DOWN","checks":[{"name":"MCP clients health check","status":"DOWN",
@@ -351,9 +352,9 @@ If the pod sits at *1/2* with the application container running but never ready,
  configuration is not initialized","orders":"..."}}]
 ....
 
-That message is the same for every cause -- a missing `auth-server-url`, a missing `client-id`, a `token-path` that is not set when `jwt.source` is. Quarkus logs the real reason at DEBUG and shows you only this. Go back to the Secret and look for the empty value; do not go looking at SPIRE or Keycloak, because neither has been reached yet.
+That message is the same for every cause, so go back to the Secret and look for an empty value rather than at SPIRE or Keycloak -- neither has been reached yet. Fix it, then restart the pod: *Workloads* -> *Deployments* -> `globex-complaint-agent` -> *Actions* -> *Restart rollout*.
 
-The pod stays at *1/2* rather than crash-looping, and the previous pod keeps serving traffic, so the storefront still works. Nothing looks broken until the next page.
+The old pod keeps serving while this one is unready, so the storefront still works and nothing looks broken until the next page.
 ====
 
 // MAINTENANCE HAZARD. The whole-file blocks above are copied from the chart attendees

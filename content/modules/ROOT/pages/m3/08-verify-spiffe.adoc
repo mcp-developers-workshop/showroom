@@ -37,7 +37,19 @@ That is Keycloak rejecting an expired SVID. The init container wrote one token a
 
 == Test it
 
-Nothing about the behaviour should change. Open the https://globex-web-globex.{openshift_subdomain}/[Globex storefront^], sign in as `asilva` / `openshift`, go to *Customer Care*, and raise a complaint exactly as you did before.
+Nothing about the behaviour should change. Open the https://globex-web-globex.{openshift_subdomain}/[Globex storefront^], sign in as `asilva` / `openshift`, go to *Customer Care*, and raise a complaint exactly as you did before. 
+
+Use these prompts and confirm the complaint ID comes back:
+
+[source,text,role="copypaste"]
+----
+I want to raise a complaint
+----
+
+[source,text,role="copypaste"]
+----
+The Red Hat Recycled Facemask came used. This is absolutely unacceptable, I want an immediate refund for this critical defect. I want to raise a complaint and I want it resolved immediately.
+----
 
 It still works, and the agent authenticated to Keycloak twice with no secret anywhere in the chart, the repository, or the image.
 
@@ -105,7 +117,7 @@ cut -d. -f2 /svids/jwt.token | base64 -d 2>/dev/null; echo
 }
 ----
 
-Three of those are worth stopping on:
+Three of the claims matter here:
 
 * `exp - iat` is *300* -- five minutes, as set on the `SpireServer` resource.
 * `aud` is the realm URL you typed into `helper.conf`. SPIRE minted the token for that audience and Keycloak rejects one minted for anything else.
@@ -113,42 +125,32 @@ Three of those are worth stopping on:
 
 [NOTE]
 ====
-This file is a live credential. For the next few minutes anyone holding it can authenticate to Keycloak as the agent. That it stops mattering so quickly is the point of the exercise -- compare it with the client secret from the previous page, which was valid until someone went and changed it.
+This file is a live credential. For the next few minutes anyone holding it can authenticate to Keycloak as the agent. The client secret it replaced was valid until someone changed it.
 
 Do not paste it into an online JWT decoder. The command above does the same job without sending the token anywhere.
 ====
 
 == Confirm the secret is gone
 
-Two views, one on each side.
+Open the https://sso.{openshift_subdomain}/admin[Keycloak admin console^] as `admin` / `{common_password}`, switch to the `internal` realm, and open *Clients* -> `globex-agent-spiffe` -> *Credentials*.
 
-*The chart.* In the console, go to *Workloads* -> *Secrets* in the `globex-complaint-agent` project, open the `globex-complaint-agent` secret, and reveal `application.properties`. Back on `Authenticate the Agent to the MCP Servers` this showed `quarkus.oidc-client.orders.credentials.secret=` with the secret in clear. The `quarkus.oidc-client.*` lines are still there and there is no `credentials.secret` among them.
-
-*Keycloak.* Open the https://sso.{openshift_subdomain}/admin[admin console^] as `admin` / `{common_password}`, switch to the `internal` realm, and open *Clients* -> `globex-agent-spiffe` -> *Credentials*. The *Client Authenticator* is *Signed JWT - Federated*, with *Identity provider* `spiffe` and *Federated subject* set to the SPIFFE ID you just decoded. There is no client secret field and no regenerate button. Compare with `globex-mcp-client` in the same realm, which still has both.
+The *Client Authenticator* is *Signed JWT - Federated*, with *Identity provider* `spiffe` and *Federated subject* set to the SPIFFE ID you just decoded. There is no client secret field and no regenerate button. Compare with `globex-mcp-client` in the same realm, which still has both.
 
 // TBC: globex-agent-spiffe does carry a `secret` in the realm import, never consulted
 // because clientAuthenticatorType is federated-jwt. The prose above is worded to survive
 // that -- it describes the Credentials tab. Confirm the tab really shows no secret field;
 // if it does, say "Keycloak does not consult it" rather than "there is none".
-
-== Optional: do the grant by hand
-
-This removes the application from the picture entirely. Copy the token out of the pod, then from a terminal:
-
-[source,sh,subs="attributes+"]
-----
-curl -s https://sso.{openshift_subdomain}/realms/internal/protocol/openid-connect/token \
-  -d grant_type=client_credentials \
-  -d client_id=globex-agent-spiffe \
-  -d client_assertion_type=urn:ietf:params:oauth:client-assertion-type:jwt-spiffe \
-  --data-urlencode client_assertion="<the contents of /svids/jwt.token>"
-----
-
-An access token comes back and no secret was involved anywhere in the exchange.
-
-Run it again six minutes later with the same assertion and Keycloak answers `{"error":"invalid_client","error_description":"Token is not active"}` -- the five-minute lifetime, demonstrated rather than asserted. It is also the error you would see in the agent log if the renewing sidecar were missing.
-
-// UNVERIFIED on this page, all of it below "See the identity the platform issued":
+//
+// CUT 2026-10-07, do not restore:
+//   * The chart half of this section -- "go to Workloads -> Secrets and check there is no
+//     credentials.secret". Page 07's "Check it before you move on" already has the
+//     attendee read that same Secret. Reading it twice proves nothing new.
+//   * "Optional: do the grant by hand" -- a curl of the client_credentials grant with the
+//     SVID as client_assertion, plus a re-run six minutes later to show the 5-minute
+//     expiry. Accurate, and no attendee is going to copy a token out of a pod to watch a
+//     grant they have already seen the agent make.
+//
+// UNVERIFIED on this page, everything below "See the identity the platform issued":
 //   * That `base64` and `cut` exist in the Quarkus runtime image. If not, move the decode
 //     to the spiffe-helper container (rhel9, likelier to have them), or use
 //     `keytool -printcert -file /svids/svid.pem` -- a SPIFFE cert has an empty subject and

@@ -48,7 +48,7 @@ Each line item keeps its product code and quantity, and gains a product name.
 
 [NOTE]
 ====
-The orders endpoint returns product codes, not names, so Bob has to call a second endpoint from the same OpenAPI specification to resolve them. That is what the sentence about additional calls allows for.
+The orders endpoint returns product codes, not names, so Bob has to call a second endpoint from the same OpenAPI specification to resolve them. That is why the prompt mentions additional calls.
 
 `/services/catalog/product/list/{ids}` takes a list, so one call resolves every code -- not one call per line item.
 ====

@@ -16,7 +16,7 @@ Logs show what each component recorded. A trace connects those records into one 
 
 You wrote no code. Two extensions and a handful of properties per application was enough, because `quarkus-langchain4j`, the MCP extensions and Agroal already contain the instrumentation -- it produces nothing until an OpenTelemetry SDK is on the classpath to receive it. `quarkus-langfuse` did the rest: you never configured an OTLP endpoint, a protocol or an authentication header, because it derives the ingestion URL from `quarkus.langfuse.base-url` and turns on the four LangChain4j content properties that otherwise default to off.
 
-Two things are worth carrying forward.
+Two things to remember:
 
 *Build-time and runtime properties are not interchangeable.* `quarkus.datasource.jdbc.telemetry` decides whether the instrumentation is compiled into the image, so changing it needs a rebuild. `quarkus.langfuse.base-url` is read at boot, so changing it needs a restart.
 

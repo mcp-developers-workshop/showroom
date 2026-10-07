@@ -118,7 +118,7 @@ The tool call failed because the agent's MCP client is not sending the `X-User-I
 ====
 The agent is talking to the MCP server deployed on the cluster, so the reason is in that pod's log.
 
-Open the https://console-openshift-console.{openshift_subdomain}/k8s/ns/globex-store-mcp/pods[pods in the `globex-store-mcp` project^], click the running `globex-store-mcp` pod and select the *Logs* tab:
+Open the https://console-openshift-console.{openshift_subdomain}/k8s/ns/globex-store-mcp/pods[pods in the `globex-store-mcp` project^], signing in with your IBM ID if you are asked. Click the running `globex-store-mcp` pod and select the *Logs* tab:
 
 image::m2/mcp-missing-header-log.png[link=self,window=_blank]
 

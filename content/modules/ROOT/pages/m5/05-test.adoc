@@ -42,7 +42,7 @@ Watch the tool calls in the reply. The agent works through them in order:
 . `read_query`, to pull the 100 most recent complaints ordered by `created_at`, and to group them by issue type and severity.
 . Its own reasoning over the result, to turn the counts into a ranked list of improvements.
 
-The reply should be a prioritised list -- the recurring issue types, ordered by volume and severity, each with the change it implies. It is displayed in the chat and nothing is written anywhere. That is the end of the chain.
+The reply should be a prioritised list -- the recurring issue types, ordered by volume and severity, each with the change it implies. It is displayed in the chat and nothing is written anywhere.
 
 _TBC: screenshot -- the Orchestrate chat UI showing the custom welcome message and the five starter prompts._
 

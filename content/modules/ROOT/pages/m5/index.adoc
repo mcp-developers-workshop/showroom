@@ -19,7 +19,7 @@ The lab works through that separation against the Globex complaints MCP server. 
 
 [NOTE]
 ====
-The client platform used in the lab is watsonx Orchestrate, but it is incidental. It is the artefacts that matter: a connection, a toolkit, and an agent with an explicit tool list. That is the same separation a gateway applies centrally, and the MCP server behind it is unchanged either way.
+The lab uses watsonx Orchestrate, but the platform is incidental. What you define is a connection, a toolkit, and an agent with an explicit tool list -- the same separation a gateway applies centrally, with the MCP server behind it unchanged either way.
 ====
 
 === Learning Objectives

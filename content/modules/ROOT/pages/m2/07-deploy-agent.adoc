@@ -43,14 +43,7 @@ A webhook on the repository starts an OpenShift pipeline, which builds the image
 
 == Open the chart
 
-Open the `globex-complaint-agent-helm` folder in Bob -- see xref:dev-setup-intro.adoc#open-a-repository[Open a Repository in IBM Bob].
-
-Leave its window open for the rest of the workshop.
-
-[NOTE]
-====
-You could edit these files in the GitLab web editor, but it commits one file at a time. The two changes below depend on each other -- a template that reads a value which does not exist yet fails to render, and ArgoCD reports the whole application as broken until the second commit lands. From a clone both files go in one commit and that gap never exists.
-====
+Open the `globex-complaint-agent-helm` folder in another IBM Bob window. You have already cloned it from GitLab. See xref:dev-setup-intro.adoc#open-a-repository[Open a Repository in IBM Bob]. Leave its window open for the rest of the workshop.
 
 == Edit the values
 
