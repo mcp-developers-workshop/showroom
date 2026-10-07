@@ -1,5 +1,9 @@
 * xref:index.adoc[Workshop Overview]
-* xref:dev-setup-intro.adoc[Navigating this Lab]
+* xref:dev-setup/index.adoc[Before You Start]
+** xref:dev-setup/01-click-to-copy.adoc[Click-to-Copy]
+** xref:dev-setup/02-get-the-repositories.adoc[Get the Workshop Repositories]
+** xref:dev-setup/03-open-in-bob.adoc[Open a Repository in IBM Bob]
+** xref:dev-setup/04-watsonx.adoc[Set Up watsonx.ai]
 
 * xref:m1/index.adoc[Module 1: Build Your First MCP Server]
 ** xref:m1/01-setup.adoc[Set Up the Workshop Environment]
@@ -37,7 +41,7 @@
 ** xref:m4/03-summary.adoc[Summary]
 
 * xref:m5/index.adoc[Module 5: Centralized Governance]
-** xref:m5/01-clone-workspace.adoc[Clone the Workspace]
+** xref:m5/01-clone-workspace.adoc[Open the Workspace]
 ** xref:m5/02-connection.adoc[Create the Connection]
 ** xref:m5/03-toolkit.adoc[Register the MCP Toolkit]
 ** xref:m5/04-agent.adoc[Define and Deploy the Agent]

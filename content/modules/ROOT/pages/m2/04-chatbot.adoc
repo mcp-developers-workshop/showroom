@@ -15,7 +15,7 @@ The agent is a REST endpoint, so testing it by hand means posting JSON at it. Th
 
 == Open the chatbot
 
-Open the `mcp-workshop-chatbot` folder in Bob -- see xref:dev-setup-intro.adoc#open-a-repository[Open a Repository in IBM Bob].
+Open the `mcp-workshop-chatbot` folder in Bob -- see xref:dev-setup/03-open-in-bob.adoc[Open a Repository in IBM Bob].
 
 The chatbot runs alongside the agent, so both stay running at once.
 

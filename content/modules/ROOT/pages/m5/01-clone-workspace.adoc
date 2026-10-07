@@ -1,7 +1,7 @@
 :experimental:
 :imagesdir: ../../assets/images
 
-= Clone the Workspace
+= Open the Workspace
 
 :numbered:
 :icons: font
@@ -18,7 +18,7 @@ The commands in this module use the watsonx Orchestrate ADK CLI (`orchestrate`).
 
 == Open the workspace
 
-Open the `globex-complaints-orchestrate` folder in Bob -- see xref:dev-setup-intro.adoc#open-a-repository[Open a Repository in IBM Bob].
+Open the `globex-complaints-orchestrate` folder in Bob -- see xref:dev-setup/03-open-in-bob.adoc[Open a Repository in IBM Bob].
 
 [source,text]
 ----

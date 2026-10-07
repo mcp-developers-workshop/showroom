@@ -57,7 +57,7 @@ image::m1/bob-mcp-add.png[link=self,window=_blank]
 
 === Open the Globex MCP repository
 
-Open the `globex-store-mcp` folder in Bob -- see xref:dev-setup-intro.adoc#open-a-repository[Open a Repository in IBM Bob].
+Open the `globex-store-mcp` folder in Bob -- see xref:dev-setup/03-open-in-bob.adoc[Open a Repository in IBM Bob].
 
 `globex-store-mcp` is now the open folder in its window, and any terminal you open (*Terminal* -> *New Terminal*) starts there.
 

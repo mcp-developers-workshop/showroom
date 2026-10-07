@@ -9,8 +9,6 @@
 
 == Overview & Objectives
 
-Establishing a centralized MCP Gateway to configure virtual servers, manage authentication, and enforce strict tool filtering rules.
-
 One MCP server consumed by one agent needs no governance. Twenty servers and thirty agents do. Every agent needs credentials for every server it touches, and the rules about which agent may call which tool get copied into each one, where they drift apart.
 
 This module is about where those controls belong: a centralized gateway that holds the credentials, presents each consumer a virtual server carrying only the tools it is allowed to see, and enforces the filtering rules in one place.
@@ -40,7 +38,7 @@ The lab uses watsonx Orchestrate, but the platform is incidental. What you defin
 
 == Prerequisites
 
-* A watsonx Orchestrate instance and an API key for it
+* A watsonx Orchestrate instance -- it is in the same IBM TechZone reservation as watsonx.ai, listed as `itz-wxo-...` in the resource list (see xref:dev-setup/04-watsonx.adoc[Set Up watsonx.ai])
 * The complaints MCP server from the earlier modules deployed and reachable from outside the cluster
 
 == Lab Agenda

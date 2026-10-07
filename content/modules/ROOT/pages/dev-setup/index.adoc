@@ -1,0 +1,25 @@
+:experimental:
+:imagesdir: ../../assets/images
+
+= Before You Start
+:icons: font
+:source-highlighter: highlight.js
+
+Three things to do once, before Module 1. None of them take long and all of them are needed by more than one module.
+
+[cols="1,3", options="header"]
+|===
+| Page | What it covers
+
+| xref:dev-setup/01-click-to-copy.adoc[Click-to-Copy]
+| How the copyable code blocks in these guides work.
+
+| xref:dev-setup/02-get-the-repositories.adoc[Get the Workshop Repositories]
+| Clone all six repositories into one folder.
+
+| xref:dev-setup/03-open-in-bob.adoc[Open a Repository in IBM Bob]
+| The procedure each module refers back to, including the Trust step.
+
+| xref:dev-setup/04-watsonx.adoc[Set Up watsonx.ai]
+| Create the API key the agent uses to call a model.
+|===

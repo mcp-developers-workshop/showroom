@@ -9,7 +9,7 @@
 
 You put the Globex complaints MCP server behind a watsonx Orchestrate agent without writing any code:
 
-* Cloned a workspace of three YAML files, one folder per artefact kind, and pointed two of them at your cluster.
+* Opened a workspace of three artefact YAML files, one folder per kind, and pointed two of them at your cluster.
 * Created a connection holding the Keycloak realm and the client credentials grant, then set the client ID and secret as flags so they live in Orchestrate rather than in the repository.
 * Registered the complaints MCP server as a toolkit backed by that connection, and listed the tools to prove Orchestrate had really reached the server rather than just accepted the file.
 * Defined a native agent naming the four tools it may call, with its own instructions, welcome message and starter prompts.

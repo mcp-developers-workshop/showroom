@@ -12,7 +12,7 @@ Both have to be secured before the next page. Which tool the agent reaches for i
 
 == Open the repository
 
-Open the `globex-complaints` folder in Bob -- see xref:dev-setup-intro.adoc#open-a-repository[Open a Repository in IBM Bob].
+Open the `globex-complaints` folder in Bob -- see xref:dev-setup/03-open-in-bob.adoc[Open a Repository in IBM Bob].
 
 == What is in the repository
 

@@ -6,13 +6,6 @@
 :icons: font
 :source-highlighter: highlight.js
 
-One extension on each MCP server, and the exporter configured by hand.
-
-[IMPORTANT]
-====
-Two repositories, two windows, two pipelines. Push the first before starting the second so both builds run together.
-====
-
 == Why these servers are configured differently
 
 The agent uses `quarkus-langfuse` because it has LangChain4j spans to enrich. These servers have none -- their spans are HTTP, MCP and JDBC -- so for them the extension would do nothing but build an endpoint URL and an auth header. Three properties of plain OpenTelemetry configuration do the same job.
@@ -23,16 +16,16 @@ Server-side MCP tracing is off by default. `quarkus.mcp.server.tracing.enabled` 
 
 The exporter authenticates to Langfuse with HTTP Basic auth. Build the header value once and use it on both servers:
 
+Run the following command in a Terminal. You will be using this shortly. The output is a single line of base64 text which looks like this `cGstbGYtSlBVZWhVcko6c2stbGYtSlBVZWhVcko=`
+
 [source,sh,role="copypaste",subs="attributes+"]
 ----
 echo -n '{langfuse_public_key}:{langfuse_secret_key}' | base64 -w 0
 ----
 
-Without `-n`, `echo` adds a newline and the credential is wrong. Without `-w 0`, `base64` wraps the output and you paste a two-line value into a single-line property.
+== Update the `globex-store-mcp` orders server
 
-== The orders server
-
-In the `globex-store-mcp` window. This repository has a Maven wrapper:
+In the `globex-store-mcp` window run the following command. 
 
 [source,sh,role="copypaste"]
 ----
@@ -114,13 +107,41 @@ git commit -m "send traces to Langfuse"
 git push
 ----
 
-== Watch both rollouts
+== Watch both builds
 
-Open the https://openshift-gitops-server-openshift-gitops.{openshift_subdomain}/[ArgoCD console^], signing in as `{openshift_gitops_user}` / `{openshift_gitops_password}` if you are asked, and wait for `globex-store-mcp` and `globex-complaints` to roll out new pods. Both, before continuing.
+Each push started a pipeline. Watch them in the OpenShift console, signing in with your IBM ID if you are asked:
+
+* https://console-openshift-console.{openshift_subdomain}/pipelines/ns/globex-store-mcp-build[globex-store-mcp-build^]
+* https://console-openshift-console.{openshift_subdomain}/pipelines/ns/globex-complaints-build[globex-complaints-build^]
+
+image::m4/pipeline-run-succeeded.png[link=self,window=_blank]
+
+Make sure the *Task status* is all green indicating that the pipeline is working correctly and *Last run status* reaches *Succeeded*. 
+
+
+[NOTE]
+====
+In this workshop, the image tag does not change. The code changes are deployed on OpenShift through redploying the image, not through an Argo sync.
+====
+
+Wait for both pipelines to succeed, then check both pods have restarted before continuing.
 
 == Raise another complaint
 
-Same complaint, same way, from the https://globex-web-globex.{openshift_subdomain}/[storefront^].
+Raise another complaint from the https://globex-web-globex.{openshift_subdomain}/[Globex Web^].
+
+
+Use these prompts and confirm the complaint ID comes back:
+
+[source,text,role="copypaste"]
+----
+I want to raise a complaint
+----
+
+[source,text,role="copypaste"]
+----
+The Red Hat Recycled Facemask came used. This is absolutely unacceptable, I want an immediate refund for this critical defect. I want to raise a complaint and I want it resolved immediately.
+----
 
 In Langfuse, open the newest trace. The tool spans that were leaves now have children, and the spans carry three different `service.name` values.
 

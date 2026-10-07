@@ -43,7 +43,7 @@ A webhook on the repository starts an OpenShift pipeline, which builds the image
 
 == Open the chart
 
-Open the `globex-complaint-agent-helm` folder in another IBM Bob window. You have already cloned it from GitLab. See xref:dev-setup-intro.adoc#open-a-repository[Open a Repository in IBM Bob]. Leave its window open for the rest of the workshop.
+Open the `globex-complaint-agent-helm` folder in another IBM Bob window. You have already cloned it from GitLab. See xref:dev-setup/03-open-in-bob.adoc[Open a Repository in IBM Bob]. Leave its window open for the rest of the workshop.
 
 == Edit the values
 

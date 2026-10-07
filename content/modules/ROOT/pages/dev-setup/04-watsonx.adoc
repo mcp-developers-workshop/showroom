@@ -1,0 +1,142 @@
+:experimental:
+:imagesdir: ../../assets/images
+
+= Set Up watsonx.ai
+:numbered:
+:icons: font
+:source-highlighter: highlight.js
+
+[IMPORTANT]
+====
+*Placeholder.* This page is being written. The workshop currently runs the agent on OpenAI; moving it to watsonx.ai is in progress, and until that lands Module 2 still asks for an OpenAI key.
+====
+
+The agent calls a model hosted on *IBM watsonx.ai*. Your watsonx environment is a separate IBM TechZone reservation from the OpenShift cluster, with its own login and its own credentials. Work through this page once, before Module 1.
+
+== Find your reservation details
+
+Open your *MCP Workshop Watsonx setup* reservation in IBM TechZone and expand *OUTPUTS*.
+
+image::dev-setup/watsonx-reservation-outputs.png[link=self,window=_blank]
+
+
+Use the *IBM Cloud Login URL* from your reservation, and be logged out of IBM Cloud first - or open it in a private browser window. Signing in the normal way lands you in your own IBM account, where none of these resources exist.
+
+== Sign in
+
+Open the *IBM Cloud Login URL*. The sign-in page is IBM Technology Zone's, not the usual IBM ID page. Enter the username and password from *watsonx Login Credentials for App ID*.
+
+image::dev-setup/watsonx-signin.png[link=self,window=_blank]
+
+You land on the IBM Cloud dashboard, with your environment ID shown in the top bar.
+
+== Open watsonx
+
+Click the *Resource list* icon in the left sidebar.
+
+image::dev-setup/watsonx-dashboard-resource-list.png[link=self,window=_blank]
+
+Under *AI / Machine Learning*, open the *watsonx.ai Runtime* row. Its name ends in your environment ID, which is how you tell it from the shared `watsonx` group entries above it.
+
+image::dev-setup/watsonx-resource-list.png[link=self,window=_blank]
+
+image::dev-setup/watsonx-runtime-launch.png[link=self,window=_blank]
+
+Click the drop down button in *Launch in* button and choose *IBM watsonx*.
+
+image::dev-setup/watsonx-launch-in.png[link=self,window=_blank]
+
+Pick your account on *Provide your information to continue* and click *Continue*.
+
+== Accept the terms
+
+On first launch watsonx asks you to accept the terms.
+
+image::dev-setup/watsonx-terms.png[link=self,window=_blank]
+
+Tick *I agree to the terms*, then *Start tour*. You can run through the tour or close it.
+
+== Create a project
+
+Your sandbox project may still be provisioning, or may not have been created at all.
+
+image::dev-setup/watsonx-create-project.png[link=self,window=_blank]
+
+Click *Create a project*, name it `MCP Project`, and click *Create*. Leave *Storage* as it is -- it is already pointing at the Cloud Object Storage instance that came with your reservation.
+
+image::dev-setup/watsonx-create-project-form.png[link=self,window=_blank]
+
+== Get your project ID and API key
+
+Click *IBM watsonx* at the top left to go back to the home page, and find the *Developer access* card.
+
+image::dev-setup/watsonx-developer-access.png[link=self,window=_blank]
+
+Choose `MCP Project` under *Project or deployment space*. The *Project ID* and *watsonx.ai URL* fill in below it. Keep both.
+
+image::dev-setup/watsonx-developer-access-filled.png[link=self,window=_blank, width=60%]
+
+Then click *Create API key*, name it `MCP`, and click *Create*.
+
+image::dev-setup/watsonx-create-api-key.png[link=self,window=_blank]
+
+[IMPORTANT]
+====
+Click *Download* to save it. If you lose it, create another one.
+====
+
+image::dev-setup/watsonx-api-key-created.png[link=self,window=_blank]
+
+== Export the values
+
+Open a Terminal in your Development Environment and export the three values:
+
+[source,sh,role="copypaste"]
+----
+export WATSONX_API_KEY="<the API key you just created>"
+export WATSONX_PROJECT_ID="<the Project ID from Developer access>"
+export WATSONX_BASE_URL="<the watsonx.ai URL from Developer access>"
+----
+
+The Quarkus LangChain4j watsonx extension reads them through these properties, so no code changes are needed:
+
+[source,properties,role="copypaste"]
+----
+quarkus.langchain4j.watsonx.base-url=${WATSONX_BASE_URL}
+quarkus.langchain4j.watsonx.api-key=${WATSONX_API_KEY}
+quarkus.langchain4j.watsonx.project-id=${WATSONX_PROJECT_ID}
+----
+
+[NOTE]
+====
+The exports last for the lifetime of that Terminal session. When you deploy to OpenShift, the same values go into the chart instead.
+====
+
+== Verify the key works
+
+Exchange the API key for a short-lived IAM token. A successful call returns JSON containing an `access_token`:
+
+[source,sh,role="copypaste"]
+----
+curl -s -X POST https://iam.cloud.ibm.com/identity/token \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -d "grant_type=urn:ibm:params:oauth:grant-type:apikey&apikey=${WATSONX_API_KEY}" \
+  | head -c 200
+----
+
+A `BXNIM0415E` / "Provided API key could not be found" error means the key was copied incorrectly.
+
+// What the pivot needs beyond this page:
+//   * m2/02-add-openai-extension.adoc installs quarkus-langchain4j-openai and sets
+//     quarkus.langchain4j.openai.complaint.api-key. That page is the real switch.
+//   * m2/01-clone-agent.adoc:83-87 documents the agent's shipped application.properties:
+//     quarkus.langchain4j.chat-model.provider=openai plus four openai.complaint.* lines.
+//     Those come from the globex-complaint-agent repo, so the repo changes too.
+//   * m2/07-deploy-agent.adoc puts the OpenAI key in the chart's values.yaml under
+//     llm.complaint.{modelName,apiKey,baseUrl} and renders it into the Secret. The chart
+//     repo globex-complaint-agent-helm changes with it.
+//   * m4 reads gen_ai.* span attributes and names gpt-4o-mini in the Langfuse cost note.
+//     Langfuse prices from its own model table, so a watsonx model may show zero cost.
+//   * Module 5 uses watsonx ORCHESTRATE -- a different product with its own API key,
+//     already a prerequisite on m5/index.adoc. It appears in the same resource list as
+//     itz-wxo-..., so say which row is which if that ever confuses anyone.
