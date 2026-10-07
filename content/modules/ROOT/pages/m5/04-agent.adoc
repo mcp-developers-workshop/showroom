@@ -2,17 +2,17 @@
 :imagesdir: ../../assets/images
 
 = Define and Deploy the Agent
-
 :numbered:
 :icons: font
 :source-highlighter: highlight.js
 
+The agent is the one artefact worth writing as YAML. `orchestrate agents create` takes the model, style and tools as flags, but has nothing for the starter prompts or the welcome message.
 
-The agent specification carries the tool mappings, instructions, starter prompts, and a custom welcome message.
+== Step 1: Write the agent specification
 
-.agents/complaints_analyser.yaml
-[source,yaml]
+[source,sh,role="copypaste"]
 ----
+cat > complaints_analyser.yaml <<'EOF'
 spec_version: v1
 kind: native
 name: complaints_analyser
@@ -21,10 +21,10 @@ description: An agent that retrieves and analyses customer complaints, providing
 llm: groq/openai/gpt-oss-120b
 style: react_core
 tools:
-  - globex-complaints:get_last_1000_complaints
-  - globex-complaints:read_query
+  - globex-complaints:database_info
   - globex-complaints:list_tables
   - globex-complaints:describe_tables
+  - globex-complaints:read_query
 starter_prompts:
   is_default_prompts: false
   prompts:
@@ -51,7 +51,7 @@ starter_prompts:
     - id: prompt_5
       title: Product improvement report
       subtitle: ''
-      prompt: "Based on the last 100 complaints, give me a prioritised list of product improvements."
+      prompt: "Give me a product improvement report based on the last 1000 complaints."
       state: active
 welcome_content:
   welcome_message: Welcome to Complaints Analyser
@@ -60,22 +60,14 @@ welcome_content:
 instructions: |
   You are the Complaints Analyser, an AI assistant specialising in customer complaint analysis for product improvement.
 
-  You have access to a complaints database through the globex-complaints toolkit. Use the available tools to retrieve and analyse complaint data.
+  You have access to a complaints database through the globex-complaints toolkit.
 
-  ## Your responsibilities:
-  - Retrieve complaint records when asked, using get_last_1000_complaints for recent data or read_query for specific queries
-  - Use list_tables and describe_tables to understand the data structure before querying
-  - Summarise complaints clearly, grouping them by theme, category, or severity where relevant
-  - Identify recurring issues and highlight the most impactful problems affecting customers
-  - Provide actionable product improvement recommendations based on complaint patterns
-  - Answer specific questions about complaints (e.g. by date range, product, category, or customer)
-
-  ## Guidelines:
-  - Always be concise, factual, and evidence-based — ground your analysis in the actual data
-  - When summarising, highlight the top issues by frequency and severity
-  - Frame insights from a product improvement perspective, not just a support perspective
-  - If a query returns a large dataset, summarise key trends rather than listing every record
-  - Ask clarifying questions if the user's request is ambiguous
+  - Run database_info first to learn the SQL dialect, then list_tables and describe_tables to understand the schema before querying.
+  - Use read_query to pull the complaints you need.
+  - Group complaints by theme, category or severity, and highlight the top issues by frequency and severity.
+  - Frame insights as product improvements, not support tickets.
+  - Ground every claim in the data. If a query returns a large result, summarise the trends rather than listing records.
+EOF
 ----
 
 [cols="1,2", options="header"]
@@ -83,39 +75,49 @@ instructions: |
 | Field | Meaning
 
 | `kind: native`
-| An agent built and run by Orchestrate, as opposed to an external agent it federates to.
+| An agent Orchestrate builds and runs, as opposed to an external one it federates to.
 
 | `llm`
-| The model backing the agent, as `provider/model`. Orchestrate hosts this one, so it needs no API key of your own.
+| The model, as `provider/model`. Orchestrate hosts this one, so it needs no API key of your own.
 
 | `style: react_core`
-| ReAct-style reasoning: the agent plans, calls a tool, reads the result, and decides what to do next.
+| ReAct reasoning: plan, call a tool, read the result, decide what to do next.
 
 | `tools`
-| The four toolkit tools the agent is allowed to call. The agent cannot call anything not listed here.
+| The four toolkit tools this agent may call. It cannot call anything outside this list.
 
 | `starter_prompts`
-| The suggested prompts shown in the chat UI. `is_default_prompts: false` replaces the generated ones with your list.
+| The suggested prompts in the chat UI. `is_default_prompts: false` replaces the generated ones.
 
 | `welcome_content`
-| The heading and description shown before the first message.
+| The heading shown before the first message.
 
 | `instructions`
-| The system prompt. It tells the agent when to use each tool and how to present results.
+| The system prompt. It names the tools and the order to use them in.
 |===
 
-Import the agent:
+== Step 2: Import and deploy
 
-[source,bash,role=execute]
+[source,sh,role="copypaste"]
 ----
-orchestrate agents import -f agents/complaints_analyser.yaml
+orchestrate agents import -f complaints_analyser.yaml
 ----
 
-Deploy it to make it live:
-
-[source,bash,role=execute]
+[source,sh,role="copypaste"]
 ----
 orchestrate agents deploy --name complaints_analyser
 ----
 
-Importing registers the agent; deploying makes it available to chat with. Re-import after any change to the YAML, then deploy again.
+Importing registers the agent; deploying makes it available to chat with. After any change to the YAML, import again and redeploy.
+
+// The heredoc is deliberate. `orchestrate agents create` can set name, description, llm,
+// style, tools and instructions as flags, but has no flag for starter_prompts or
+// welcome_content, and those are what the chat UI shows on first open. Writing the file
+// also keeps the field-by-field table meaningful.
+// Chosen over cloning globex-complaints-orchestrate (a whole repo for one file) and over
+// a gist (a second copy to maintain, outside the org, unversioned against the workshop).
+//
+// Tool names corrected 2026-10-07: database_info, list_tables, describe_tables,
+// read_query. The previous version listed get_last_1000_complaints, which does not exist
+// -- see the comment on 03-toolkit.adoc. The instructions block was rewritten to name the
+// real tools and put database_info first, which is what its own @Tool description says.

@@ -2,53 +2,66 @@
 :imagesdir: ../../assets/images
 
 = Test the Agent
-
 :numbered:
 :icons: font
 :source-highlighter: highlight.js
 
-== Confirm the agent is deployed
+== Step 1: Confirm it is deployed
 
-[source,bash,role=execute]
+[source,sh,role="copypaste"]
 ----
 orchestrate agents list
 ----
 
-`complaints_analyser` should appear as deployed.
+`complaints_analyser` should appear as deployed. You may see other agents too.
 
-== Ask for a product improvement report
+== Step 2: Chat with the agent
 
-Start a chat with the agent:
-
-[source,bash,role=execute]
+[source,sh,role="copypaste"]
 ----
-orchestrate chat start -a complaints_analyser
+orchestrate chat ask --agent-name complaints_analyser --include-reasoning
 ----
 
-Then send the request:
+That opens an interactive session. `--include-reasoning` prints the tool calls as the agent makes them; without it you get the answer only.
 
-[source,text,role=copypaste]
+Ask for a report:
+
+[source,text,role="copypaste"]
 ----
-Based on the last 100 complaints, give me a prioritised list of product improvements.
+Give me a product improvement report based on the last 100 complaints.
 ----
 
-This is the fifth starter prompt, so you can also click it in the chat UI rather than typing it.
+Or use the web UI. Open it with *Launch watsonx Orchestrate* on the instance page in IBM Cloud -- the same page you took the credentials from in xref:m5/01-setup.adoc[Set Up Orchestrate] -- then select *Complaints Analyser* and click the relevant starter prompt.
 
-== What the agent does
+== Troubleshooting
 
-Watch the tool calls in the reply. The agent works through them in order:
+[cols="1,2", options="header"]
+|===
+| Symptom | Fix
 
-. `list_tables` and `describe_tables`, to find the `complaints` table and learn that it has `issue_type`, `severity`, `status`, and `created_at` columns.
-. `read_query`, to pull the 100 most recent complaints ordered by `created_at`, and to group them by issue type and severity.
-. Its own reasoning over the result, to turn the counts into a ranked list of improvements.
+| `401 Unauthorized` when registering the toolkit
+| The connection has no valid credentials. Re-run `orchestrate connections set-credentials` with the correct client ID, secret and token URL, then register the toolkit again.
 
-The reply should be a prioritised list -- the recurring issue types, ordered by volume and severity, each with the change it implies. It is displayed in the chat and nothing is written anywhere.
+| `Token expired`
+| Run `orchestrate env activate globex` and paste your API key again.
 
-_TBC: screenshot -- the Orchestrate chat UI showing the custom welcome message and the five starter prompts._
+| `Tool not found` when the agent runs
+| Run `orchestrate tools list` and check the names in the agent YAML match it exactly, including the `globex-complaints:` prefix.
 
-_TBC: screenshot -- the product improvement reply, with the `read_query` tool calls expanded._
+| The agent answers without calling any tools, or says it has no data
+| The toolkit tools are not reaching the agent. Same check as above.
+|===
 
-[NOTE]
-====
-If the agent answers without calling any tools, or reports that it has no data, the toolkit tools are not reaching the agent. Re-run `orchestrate tools list` and confirm the tool names in the agent YAML match it exactly.
-====
+// Schema claim in Step 3 VERIFIED 2026-10-07 against the live database:
+// `psql -c '\d complaints'` on globex-db in the globex namespace returns id, user_id,
+// order_id, product_code, issue_type, severity, complaint, status, resolution,
+// created_at, updated_at, version. The four columns named above all exist.
+//
+// The command is `orchestrate chat ask --agent-name <name> --include-reasoning` with no
+// prompt argument, which opens an interactive session. Confirmed by the user 2026-10-07.
+// Two wrong versions have been through this page: `orchestrate chat start -a <name>`, and
+// `chat start` followed by `chat ask`. `chat start` is not part of this flow.
+// Web UI is reached with the *Launch watsonx Orchestrate* button on the instance page in
+// IBM Cloud -- the itz-wxo-... resource, same page as the Credentials panel on m5/01.
+// Confirmed by the user 2026-10-07. It is visible in the orchestrate-credentials.png
+// screenshot on that page, above the Credentials card.

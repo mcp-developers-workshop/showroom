@@ -1,0 +1,133 @@
+= Module 5.4: Configuring Asset Controls & PII Redaction
+:navtitle: 5.4 Asset Controls & PII Redaction
+:order: 54
+
+== Overview
+
+When deploying AI agents in enterprise environments, preventing the exposure and transmission of Personally Identifiable Information (PII) is critical. Customer complaints frequently contain sensitive personal data such as customer email addresses, phone numbers, or account references.
+
+**watsonx Orchestrate Asset Controls** enable you to apply policy artifacts and guardrails directly to agents, tools, or models at specific lifecycle hooks.
+
+In this section, you will use the `orchestrate controls` CLI to bind a **PII Redaction Control** to the `complaints_analyser` agent, ensuring email addresses and other PII in complaint records are automatically masked before reaching the model or end user.
+
+=== Control Lifecycle Hooks
+
+Controls can intercept data across different lifecycle phases:
+
+* `agent_pre_invoke`: Inspects and sanitizes user input / agent prompts before reaching the LLM.
+* `agent_post_invoke`: Inspects and sanitizes final agent responses before returning them to the user.
+* `tool_pre_invoke` / `tool_post_invoke`: Sanitizes tool inputs and raw MCP query outputs (e.g., database records containing raw customer email addresses).
+
+[mermaid]
+----
+sequenceDiagram
+    autonumber
+    actor User as User / Analyst
+    participant PreHook as Pre-Invoke Control (PII Filter)
+    participant Agent as Agent (Complaints Analyser)
+    participant MCP as MCP Server (Database)
+    participant PostHook as Post-Invoke Control (PII Filter)
+
+    User->>PreHook: Prompt with potential PII
+    PreHook->>Agent: Redacted Prompt
+    Agent->>MCP: Execute Query (read_query)
+    MCP-->>Agent: Raw DB rows (contains email addresses)
+    Agent->>PostHook: Generated Response
+    PostHook->>User: Final Response with Masked Emails ([REDACTED_EMAIL])
+----
+
+== Step 1: Discover Available Control Artifact Types
+
+You can list the policy artifact types supported by your Orchestrate environment:
+
+[source,bash]
+----
+orchestrate controls list-types
+----
+
+To view detailed JSON schema requirements for a specific policy artifact (such as `pii_filter` or `PII Filter`):
+
+[source,bash]
+----
+orchestrate controls get-type -n "PII Filter" --verbose
+----
+
+== Step 2: Create Email PII Redaction Control
+
+Create and bind the PII redaction control to your `complaints_analyser` agent:
+
+[source,bash]
+----
+orchestrate controls create \
+  --name "redact-complaint-emails" \
+  --display-name "Complaints Email PII Redactor" \
+  --artifact "PII Filter" \
+  --description "Automatically mask customer email addresses in complaint data and agent responses" \
+  --agent "complaints_analyser" \
+  --hook "agent_pre_invoke" \
+  --hook "agent_post_invoke" \
+  --hook "tool_post_invoke" \
+  --priority 10 \
+  --config '{"action": "redact", "entities": ["EMAIL_ADDRESS"]}'
+----
+
+=== Parameter Breakdown:
+
+[cols="1,2", options="header"]
+|===
+| Flag | Description
+| `--name` | Unique internal identifier for this control (`redact-complaint-emails`).
+| `--artifact` | The policy artifact type (`PII Filter`).
+| `--agent` | Binds this guardrail to the `complaints_analyser` agent.
+| `--hook` | Attaches hooks to intercept incoming prompts (`agent_pre_invoke`), raw database query outputs (`tool_post_invoke`), and final agent answers (`agent_post_invoke`).
+| `--priority` | Execution priority (`10` runs before default priority 100 controls).
+| `--config` | JSON configuration directing the filter to perform `redact` on detected `EMAIL_ADDRESS` entities.
+|===
+
+== Step 3: Verify Active Controls
+
+List all controls bound to your agent to verify successful attachment:
+
+[source,bash]
+----
+orchestrate controls list --agent complaints_analyser
+----
+
+You can inspect the details and JSON configuration of the created control:
+
+[source,bash]
+----
+orchestrate controls get-details --name redact-complaint-emails
+----
+
+== Step 4: Test Email Redaction
+
+Run a test query via CLI asking for individual complaint records that contain contact details:
+
+[source,bash]
+----
+orchestrate chat ask \
+  --agent-name complaints_analyser \
+  "Show me the contact details and text of the latest 3 complaints."
+----
+
+=== Expected Result:
+Customer email addresses will appear masked (e.g., `[EMAIL_REDACTED]` or `***@***.com`), protecting sensitive customer data while still allowing the agent to analyze problem patterns.
+
+== Managing Controls
+
+* **Update a Control:**
++
+[source,bash]
+----
+orchestrate controls update \
+  --name "redact-complaint-emails" \
+  --config '{"action": "redact", "entities": ["EMAIL_ADDRESS", "PHONE_NUMBER"]}'
+----
+
+* **Remove a Control:**
++
+[source,bash]
+----
+orchestrate controls remove --name "redact-complaint-emails"
+----

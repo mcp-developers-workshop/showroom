@@ -2,78 +2,66 @@
 :imagesdir: ../../assets/images
 
 = Register the MCP Toolkit
-
 :numbered:
 :icons: font
 :source-highlighter: highlight.js
 
-The MCP toolkit connects to the remote MCP server using the connection you just configured.
+The toolkit registers the remote MCP server and binds it to the connection.
 
-== The toolkit specification
+== Step 1: Register the toolkit
 
-.toolkits/globex-complaints.yaml
-[source,yaml,subs="attributes+"]
+[source,sh,role="copypaste",subs="attributes+"]
 ----
-spec_version: v1
-kind: mcp
-name: globex-complaints
-description: This MCP server helps in getting details about complaints that were raised and also provide a nice summary for product improvement perspective.
-transport: streamable_http
-url: https://globex-complaints.{openshift_subdomain}/read/mcp
-app_id:
-  - globex-complaints-connection
-tools:
-  - "*"
+orchestrate toolkits add \
+  --kind mcp \
+  --name globex-complaints \
+  --description "Details about complaints that were raised, and summaries from a product improvement perspective." \
+  --url "https://globex-complaints.{openshift_subdomain}/read/mcp" \
+  --transport "streamable_http" \
+  --tools "*" \
+  --app-id "globex-complaints-connection"
 ----
 
 [cols="1,2", options="header"]
 |===
-| Field | Meaning
+| Flag | Meaning
 
-| `kind: mcp`
-| Registers a remote MCP server rather than a local Python or OpenAPI tool.
+| `--kind mcp`
+| A remote MCP server, rather than a local Python or OpenAPI tool.
 
-| `transport: streamable_http`
-| Matches the transport the MCP server was built with in Module 1.
+| `--url`
+| The read-only endpoint on the complaints server, secured in Module 3.
 
-| `url`
-| The MCP endpoint on the complaints server. The `/read/mcp` path exposes the read-only tools.
+| `--transport`
+| Matches the transport the server was built with in Module 1.
 
-| `app_id`
-| References the connection created above. Orchestrate attaches a token from that connection to every call.
+| `--tools "*"`
+| Imports every tool the server advertises. Naming tools here is one way to limit what reaches the workspace; the agent's own tool list is the other.
 
-| `tools: "*"`
-| Imports every tool the server advertises. Naming tools individually here is one way to limit what reaches the workspace; the agent's own `tools` list, set in the next step, is the other.
+| `--app-id`
+| The connection from the previous page. Orchestrate attaches a token from it to every call.
 |===
 
-Import it:
+== Step 2: Verify the discovered tools
 
-[source,bash,role=execute]
-----
-orchestrate toolkits import -f toolkits/globex-complaints.yaml
-----
+The toolkit registers even if the server cannot be reached, so list the tools to confirm Orchestrate actually connected and read the definitions:
 
-== Verify the imported tools
-
-The import succeeds even if the server is unreachable, so list the tools to confirm Orchestrate actually connected and read the tool definitions:
-
-[source,bash,role=execute]
+[source,sh,role="copypaste"]
 ----
 orchestrate tools list
 ----
 
-You should see:
+Four tools, namespaced by toolkit name are displayed in the terminal. The descriptions are the same as the `@Tool` annotations in the server code.
 
-* `globex-complaints:get_last_1000_complaints`
-* `globex-complaints:read_query`
-* `globex-complaints:list_tables`
-* `globex-complaints:describe_tables`
 
-Tools are namespaced by toolkit name, which is why each entry is prefixed with `globex-complaints:`.
 
-_TBC: screenshot -- `orchestrate tools list` output with the four globex-complaints tools._
-
-[NOTE]
-====
-If no tools are listed, the toolkit imported but Orchestrate could not reach the MCP server or could not authenticate. Check the `url` and re-run the `set-credentials` step.
-====
+// Tool names VERIFIED 2026-10-07 against the source, not the earlier draft of this page:
+// ~/workshop/globex-complaints/src/main/java/org/globex/retail/complaints/mcp/
+// ComplaintsReadMcp.java declares exactly four @Tool methods -- describe_tables (line 23),
+// list_tables (34), database_info (48), read_query (58). The descriptions above are
+// shortened from the @Tool description strings.
+// The previous version of this page, and m5/04 and m5/05 with it, listed
+// `get_last_1000_complaints`, which does not exist anywhere in the codebase. An agent
+// granted that name would fail at run time. Do not reintroduce it.
+// ComplaintsMcp.java (the /mcp endpoint, not /read/mcp) has create_complaint,
+// update_complaint and get_complaint -- none of them are reachable from this toolkit.

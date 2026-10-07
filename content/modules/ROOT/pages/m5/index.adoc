@@ -9,15 +9,49 @@
 
 == Overview & Objectives
 
+=== The use case
+
+A product manager wants to know what customers are complaining about, and to turn that into work.
+
+The complaints live behind the Globex complaints MCP server -- internal, read-only, and secured in Module 3. The work has to end up in Jira, which is reached through Atlassian's own MCP server. One agent spans both: it queries the complaints to derive product improvements, then opens the resulting tickets.
+
+[NOTE]
+====
+The two servers are not the same kind of thing.
+
+The complaints server is *internal*. You built it, you chose which tools it exposes and what each one returns, and you secured it.
+
+Atlassian's is *external*. You integrate with it, but the tools, the data shape and the authentication mechanism are all the provider's decisions. The protocol is the same; the control is not.
+====
+
+=== Why governance
+
 One MCP server consumed by one agent needs no governance. Twenty servers and thirty agents do. Every agent needs credentials for every server it touches, and the rules about which agent may call which tool get copied into each one, where they drift apart.
 
 This module is about where those controls belong: a centralized gateway that holds the credentials, presents each consumer a virtual server carrying only the tools it is allowed to see, and enforces the filtering rules in one place.
 
 The lab works through that separation against the Globex complaints MCP server. You keep its credentials in a connection, distinct from the tool definitions that use them, and you narrow what is reachable in two independent places -- what is imported from the server, and what a single agent is permitted to call.
 
+A prompt to the agent travels like this:
+
+....
+Orchestrate agent
+   |  uses its MCP toolkit, globex-complaints
+   v
+OAuth2 connection  -- fetches a bearer token from Keycloak
+   |
+   v
+https://globex-complaints.<subdomain>/read/mcp   over streamable HTTP
+   |
+   v
+complaints table in the Globex database
+....
+
 [NOTE]
 ====
 The lab uses watsonx Orchestrate, but the platform is incidental. What you define is a connection, a toolkit, and an agent with an explicit tool list -- the same separation a gateway applies centrally, with the MCP server behind it unchanged either way.
+
+The same is true of the consumer. The agent here acts as a personal assistant for one product manager, not as part of an automated enterprise workflow, and a desktop assistant such as Claude would connect to these same two servers the same way. MCP is used for both; the servers do not distinguish between them.
 ====
 
 === Learning Objectives
@@ -43,7 +77,7 @@ The lab uses watsonx Orchestrate, but the platform is incidental. What you defin
 
 == Lab Agenda
 
-1. Clone the workspace and point it at your cluster
+1. Point the Orchestrate CLI at your instance
 2. Create a connection holding the Keycloak realm and OAuth client credentials
 3. Register the complaints MCP server as a toolkit backed by that connection
 4. Define an agent over a narrowed subset of the toolkit's tools and deploy it

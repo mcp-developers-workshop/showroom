@@ -41,11 +41,12 @@
 ** xref:m4/03-summary.adoc[Summary]
 
 * xref:m5/index.adoc[Module 5: Centralized Governance]
-** xref:m5/01-clone-workspace.adoc[Open the Workspace]
+** xref:m5/01-setup.adoc[Set Up Orchestrate]
 ** xref:m5/02-connection.adoc[Create the Connection]
 ** xref:m5/03-toolkit.adoc[Register the MCP Toolkit]
 ** xref:m5/04-agent.adoc[Define and Deploy the Agent]
 ** xref:m5/05-test.adoc[Test the Agent]
-** xref:m5/06-summary.adoc[Summary]
+** xref:m5/06-asset-controls.adoc[Asset Controls]
+** xref:m5/07-summary.adoc[Summary]
 
 * xref:myenv.adoc[My Env Details]

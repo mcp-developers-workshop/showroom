@@ -1,7 +1,7 @@
 :experimental:
 :imagesdir: ../../assets/images
 
-= Open the Workspace
+= Set Up Orchestrate
 
 :numbered:
 :icons: font
@@ -9,69 +9,66 @@
 
 You put the Globex complaints MCP server behind a watsonx Orchestrate agent with three artefacts: a *connection* that authenticates to Keycloak, an *MCP toolkit* that registers the remote server, and a *native agent* that uses its tools.
 
-Each is a YAML file imported with the `orchestrate` CLI, and the order matters. The toolkit's `app_id` refers to the connection, so the connection must exist and hold valid credentials first. The agent's `tools` refer to the toolkit's tools, so the toolkit must be imported before the agent.
+== Get your Orchestrate credentials
 
-[NOTE]
-====
-The commands in this module use the watsonx Orchestrate ADK CLI (`orchestrate`). It must be installed and pointed at an active environment before you start.
-====
+Your watsonx Orchestrate instance is in the same IBM TechZone reservation as watsonx.ai. Sign in to IBM Cloud with the reservation's login URL and student credentials, as you did in xref:dev-setup/04-watsonx.adoc[Set Up watsonx.ai], and open the *Resource list*.
 
-== Open the workspace
+Under *AI / Machine Learning*, open the row whose *Product* is *watsonx Orchestrate* -- its name starts `itz-wxo-`.
 
-Open the `globex-complaints-orchestrate` folder in Bob -- see xref:dev-setup/03-open-in-bob.adoc[Open a Repository in IBM Bob].
+image::m5/orchestrate-resource-list.png[link=self,window=_blank]
 
-[source,text]
-----
-├── connections/
-│   └── globex-complaints-connection.yaml
-├── toolkits/
-│   └── globex-complaints.yaml
-├── agents/
-│   └── complaints_analyser.yaml
-└── workspace_config.yaml
-----
+The *Credentials* panel on that page holds the two values the CLI needs. Click *Show credentials* to reveal the API key, and keep the URL beside it.
 
-One folder per artefact kind, which is how the `orchestrate` CLI expects a workspace to be laid out.
+image::m5/orchestrate-credentials.png[link=self,window=_blank]
 
-== Set your cluster subdomain
+== Verify Orchestrate CLI is installed
 
-The connection and the toolkit point at services on your cluster, and both ship with `<OPENSHIFT_SUBDOMAIN>` where the address goes. From a terminal in the `globex-complaints-orchestrate` folder:
-
-[source,sh,role="copypaste",subs="attributes+"]
-----
-sed -i 's|<OPENSHIFT_SUBDOMAIN>|{openshift_subdomain}|g' \
-  connections/globex-complaints-connection.yaml \
-  toolkits/globex-complaints.yaml
-----
-
-`connections/globex-complaints-connection.yaml` now ends:
-
-[source,yaml,subs="attributes+"]
-----
-    server_url: https://sso.{openshift_subdomain}/realms/internal
-    token_url: https://sso.{openshift_subdomain}/realms/internal/protocol/openid-connect/token
-----
-
-and the `url` in `toolkits/globex-complaints.yaml` reads:
-
-[source,yaml,subs="attributes+"]
-----
-url: https://globex-complaints.{openshift_subdomain}/read/mcp
-----
-
-Check nothing is left:
+The commands in this module use the watsonx Orchestrate ADK CLI. In a terminal in Bob, check whether it is already there:
 
 [source,sh,role="copypaste"]
 ----
-grep -rn '<OPENSHIFT_SUBDOMAIN>' connections toolkits
+orchestrate --version
 ----
 
-No output means you are done. Both imports later in this module succeed against an address that does not resolve, so a missed replacement first shows up as a toolkit with no tools.
+If that fails, install it:
 
-// Verified 2026-10-07 against github.com/mcp-developers-workshop/globex-complaints-orchestrate
-// at HEAD: `<OPENSHIFT_SUBDOMAIN>` appears only in connections/globex-complaints-connection.yaml
-// (lines 9-10), toolkits/globex-complaints.yaml (line 6) and README.md (its own copy of this
-// instruction). agents/complaints_analyser.yaml and workspace_config.yaml carry no addresses.
-// README.md is deliberately left out of the sed and the check -- it is not imported.
-// `sed -i` with no argument is GNU sed, which is what the workshop VM has; this page has not
-// been run on macOS, where it needs `-i ''`.
+[source,sh,role="copypaste"]
+----
+python3 -m pip install --upgrade ibm-watsonx-orchestrate
+----
+
+If the install also fails, ask your proctor.
+
+== Point the CLI at your instance
+
+Register the instance as an environment named `globex`, using the URL from the Credentials panel:
+
+image::m5/orchestrate-env-add.png[link=self,window=_blank]
+
+[source,sh,role="copypaste"]
+----
+orchestrate env add -n globex -u <the URL from the Credentials panel>
+----
+
+Then activate it:
+
+[source,sh,role="copypaste"]
+----
+orchestrate env activate globex
+----
+
+When prompted with `Please enter WXO API key:`, paste the API key from the same panel from the Watsonx Orchestrate instance.
+
+....
+[INFO] - Environment 'globex' is now active
+[INFO] - Active workspace: Global workspace.
+....
+
+Every `orchestrate` command from here on runs against that environment.
+
+// RESTRUCTURED 2026-10-07 to drop the globex-complaints-orchestrate clone entirely.
+// This page used to clone that repo and sed <OPENSHIFT_SUBDOMAIN> into two YAML files.
+// The connection and toolkit are now created with CLI flags, and the agent YAML is written
+// with a heredoc on its own page, so there is no second repository and no placeholder
+// substitution. The repo still exists and is still seeded into GitLab -- nothing in the
+// workshop points at it any more.
