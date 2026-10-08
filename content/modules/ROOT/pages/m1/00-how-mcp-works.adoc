@@ -1,7 +1,12 @@
 == MCP: A quick primer
 
-Before building your first MCP server, here is what MCP actually is: An open protocol for connecting AI applications to external systems. +
-_Ref https://modelcontextprotocol.io/docs/2026-07-28/getting-started/intro[modelcontextprotocol.io^, window="content"]_
+Before building your first MCP server, here is what MCP actually is: 
+
+[quote, modelcontextprotocol.io]
+____
+An open protocol for connecting AI applications to external systems.
+____
+
 
 At a high level:
 
@@ -10,7 +15,7 @@ At a high level:
 AI Application -> MCP protocol ->  MCP Server -> Enterprise Systems
 ----
 
-The *MCP server* exposes capabilities that an MCP client can discover and use. These capabilities inclue Tools, Resources, and Prompts. Of which, tools are model-controlled, resources are application-controlled, and prompts are user-controlled. 
+An *MCP server* exposes capabilities that an MCP client can discover and use. These capabilities inclue Tools, Resources, and Prompts. Of which, tools are model-controlled, resources are application-controlled, and prompts are user-controlled. 
 
 For this workshop, tools are the main focus because they are where an agent gains access to enterprise capabilities.
 

@@ -1,16 +1,15 @@
 :experimental:
 :imagesdir: ../../assets/images
 
-= Pass the Customer Identifier as an HTTP Header
+= Keep Identities Out of the Model Context
 :numbered:
 :icons: font
 :source-highlighter: highlight.js
 
-The tool takes `customerId` as a parameter, which means the model supplies it. Whatever the model puts in that field decides whose orders come back.
 
-The model's input is the conversation: the customer's own words, plus any text that reached the context from somewhere else. So "show me the orders for another customer" is a valid tool call, and so is an instruction hidden in a document the agent was asked to read. The server cannot tell any of them apart from a legitimate request.
+The tool currently takes `customerId` as a parameter, which means the model supplies it. The model can therefore decide whose data to retrieve, or be steered by a user into retrieving someone else's data.
 
-Next you move the customer ID to an HTTP header on the MCP request, set by the caller. It leaves the tool's schema entirely, so the model has no field to fill in.
+Instead, pass the customer ID as an HTTP header set by the caller. The identifier is no longer part of the tool schema, so the model has nothing to provide or change.
 
 == Prompt IBM Bob
 
@@ -21,38 +20,18 @@ The 'getOrdersByCustomerId' tool GlobexStoreMcpServer.java takes the customerId 
 
 Read Bob's questions and click *Approve*.
 
-== What changes
-
-[cols="1,2", options="header"]
-|===
-| Change | Effect
-
-| `customerId` removed from the tool signature
-| The identifier is no longer part of the tool contract the model sees.
-
-| Read from the `X-User-Id` header
-| The identity travels on the transport, set by the caller.
-
-| Exception when the header is missing or empty
-| No header means no data, rather than a default or an unfiltered result set.
-|===
-
-[NOTE]
-====
-`X-User-Id` is unverified -- the caller can set it to anything. It gets replaced with a verified identity later in the workshop.
-====
-
 == Verify the change
 
 Once dev mode restarts, open http://localhost:8080/q/dev-ui/quarkus-mcp-server-http/tools[the Dev UI tools page^] and click the tool name:
 
 image::m1/devui-getorders-no-parameters.png[link=self,window=_blank]
 
-The tool now declares no parameters, so the model has nothing to supply.
+The tool now has no parameters. The customer ID is no longer part of the tool contract.
+
 
 == Test the header with MCP Inspector
 
-The Dev UI cannot set request headers. *MCP Inspector* is a standalone MCP client with a browser UI, and it connects to your server the same way an agent would.
+The Dev UI cannot set request headers, so use *MCP Inspector* to test the server with a custom header.
 
 Leave dev mode running and start the Inspector from a second terminal:
 
@@ -61,15 +40,15 @@ Leave dev mode running and start the Inspector from a second terminal:
 npx @modelcontextprotocol/inspector
 ----
 
-It prints a URL for the UI (default `http://localhost:6274`) and opens it in the browser.
+The Inspector opens in your browser.
 
 image::m1/mcp-inspector-servers.png[link=self,window=_blank]
 
-=== Add your server
+=== Add your MCP server
 
-The three servers listed are the Inspector's built-in examples. Click *Add Servers* -> *Add Manually* and fill in the dialog:
+Click *Add Servers* -> *Add Manually* and enter:
 
-image::m1/mcp-inspector-add-server.png[link=self,window=_blank]
+image::m1/mcp-inspector-add-server.png[link=self,window=_blank, width=70%]
 
 [cols="1,2", options="header"]
 |===
@@ -93,40 +72,33 @@ Click the *Disconnected* toggle on the new `order-mcp-local` card.
 
 image::m1/mcp-inspector-server-added.png[link=self,window=_blank]
 
-The card turns green, the server reports itself as `GlobexStoreMcpServer`, and a *Tools* tab appears:
+The card turns green, and a *Tools* tab appears:
 
 image::m1/mcp-inspector-connected.png[link=self,window=_blank]
 
 === Check the tool schema
 
-Open the *Tools* tab and click `getOrdersByCustomerId`:
+Open the *Tools* tab and select `getOrdersByCustomerId`:
 
 image::m1/mcp-inspector-tool-detail.png[link=self,window=_blank]
 
-A description and an *Execute Tool* button, and no input fields. This is the tool contract as a model receives it -- there is no customer ID in it.
+There are no input fields. The customer ID is not part of the tool schema exposed to the model.
 
 === Call the tool without the header
 
-Click *Execute Tool*. The call fails, because the tool throws when `X-User-Id` is missing:
+Click *Execute Tool*. 
+
+The call fails, because the tool throws when `X-User-Id` is missing:
 
 image::m1/mcp-inspector-tool-error.png[link=self,window=_blank]
 
-[NOTE]
-====
-The *Network* panel records the request as `200 OK`. The HTTP request succeeded; the failure is carried inside the MCP response, which is how tool errors are reported.
-====
-
 === Add the header
 
-Go back to the *Servers* tab and click *Settings* on the `order-mcp-local` card:
+Go back to the *Servers* tab and click *Settings* for `order-mcp-local`.
 
 image::m1/mcp-inspector-card-settings.png[link=self,window=_blank]
 
-Scroll to the bottom of the *Options* section and expand *Custom Headers*:
-
-image::m1/mcp-inspector-server-settings.png[link=self,window=_blank]
-
-Click *+ Add Header* and fill in the two fields:
+Under the *Options*, expand *Custom Headers*, and click *+ Add Header*.
 
 [cols="1,2", options="header"]
 |===
@@ -145,13 +117,17 @@ Close the dialog.
 
 [IMPORTANT]
 ====
-Custom headers only take effect on a new connection, and a reconnect is not enough. Reload the browser page, then connect to `order-mcp-local` again.
+Reload the browser page before reconnecting to the server. Custom headers are applied when the connection is established.
 ====
 
 === Call the tool with the header
 
-Go to the *Tools* tab, select `getOrdersByCustomerId`, and click *Execute Tool*.
+Reconnect to `order-mcp-local`, then go to the *Tools* tab and execute `getOrdersByCustomerId`.
 
 image::m1/mcp-inspector-tool-result.png[link=self,window=_blank]
 
-The call took no arguments, and `asilva`'s shaped order history came back. Whose orders those were was decided entirely by the `X-User-Id` header -- a value the model never sees and cannot change.
+The tool was called with no arguments, but asilva's order history was returned.
+
+The customer ID came from the `X-User-Id` header, not from the model.
+
+The header is still unverified. Module 3 closes that gap by authenticating the caller and using a verified identity.

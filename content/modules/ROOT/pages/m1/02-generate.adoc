@@ -8,9 +8,9 @@
 
 == Generate the MCP Server with IBM Bob
 
-The Globex store exposes a REST API described by an OpenAPI specification. Instead of writing the MCP server by hand, you ask Bob to build a Quarkus MCP server that wraps that API and exposes one tool.
+The Globex Store exposes a REST API described by an OpenAPI specification. Rather than writing the MCP server by hand, use IBM Bob to generate a Quarkus MCP server that wraps the existing API and exposes a single tool.
 
-This is the brownfield pattern: the existing API is untouched, and the MCP server sits in front of it.
+This is the brownfield pattern: the existing API remains unchanged, while the MCP server sits in front of it and exposes selected capabilities to the AI application.
 
 === Prompt IBM Bob
 
@@ -23,26 +23,19 @@ Within the globex-store-mcp folder, Download the openapi spec document located a
 
 === Approve Bob's tasks
 
-Bob breaks the request into tasks and asks for confirmation before running them -- downloading the specification, adding the Quarkus extension, creating files, running commands. Expect several prompts.
+Bob breaks the request into tasks and asks for confirmation before running them. You can expect several prompts. 
 
-Read each question, click *Approve*, and keep going until Bob reports that it has finished.
+Read each prompt, click *Approve*, and continue until Bob reports that the work is complete.
 
 === Review Bob's summary
 
-Bob builds and tests the project, then prints a summary of what was created. Check it against what you asked for:
+Bob builds and tests the project, then provides a summary of what it created.
 
-* A Quarkus project inside the `globex-store-mcp` folder.
-* The `quarkus-mcp-server-http` extension in the build file.
-* A `getOrdersByCustomerId` tool that takes a customer ID and returns that customer's orders.
-* A client generated from the downloaded OpenAPI specification.
-* Configuration selecting the streamable HTTP transport.
-* A passing build and test run.
+Review the summary to understand what Bob changed before moving on.
 
-If something is missing, tell Bob in a follow-up prompt and let it correct the project before continuing.
+=== Review the generated configuration
 
-=== The generated configuration
-
-Open `src/main/resources/application.properties`. Bob has written the server's identity and the base URL of the API it wraps:
+Open `src/main/resources/application.properties`. Bob should have configured the MCP server's identity and the base URL of the Globex Store API:
 
 [source,properties,subs="attributes+"]
 ----
@@ -58,11 +51,11 @@ The URL came from the `servers` block of the OpenAPI document Bob downloaded.
 
 == Verify the Tool in the Quarkus Dev UI
 
-The MCP server extension adds a Dev UI page listing the registered tools.
+The Quarkus MCP server extension adds a Dev UI page where you can view and invoke the tools registered by your MCP server.
 
 === Start the application in dev mode
 
-If Bob left the application running after its test run, dev mode is already up. Otherwise start it from a terminal in the `globex-store-mcp` folder:
+Start the new MCP server from a terminal in the `globex-store-mcp` folder:
 
 [source,sh,role="copypaste"]
 ----
@@ -91,12 +84,14 @@ If nothing is listed, check the dev mode terminal for a failed restart.
 
 [NOTE]
 ====
-Bob may have named the tool something else -- `getOrders`, for example -- and may rename it again later. Use whatever name your Dev UI shows wherever these instructions say `getOrdersByCustomerId`.
+Bob may have chosen a different name for the tool such as `getOrders`. Use whatever name your Dev UI shows wherever these instructions say `getOrdersByCustomerId`.
 ====
 
 === Call the tool
 
-Click the tool name to open the *Tool call input* dialog. Enter a customer ID and click *Call*:
+Click the tool name to open the Tool call input dialog.
+
+Enter the following customer ID and click *Call*:
 
 image::m1/devui-tool-call-input.png[link=self,window=_blank]
 
@@ -108,8 +103,10 @@ image::m1/devui-tool-call-input.png[link=self,window=_blank]
 | `asilva`
 |===
 
-Leave *Force new session* unticked and *Bearer Token* empty. The server has no authentication yet -- anyone who can reach it can ask for any customer's orders, which is the gap Module 3 closes.
+Leave *Force new session* unticked and *Bearer Token* empty. 
+
+At this point, the server has no authentication. Anyone who can reach the server can invoke the tool and request any customer's orders. Module 3 addresses this by adding authentication and verifying the identity associated with the request.
 
 image::m1/devui-tool-call-result-full.png[link=self,window=_blank]
 
-The result is the API response passed straight through with the complete order information for that customer `asilva`. 
+Notice that the complete API response is returned, including information that the AI application may not actually need. Later in this module, you will minimise the tool response to expose only the data required by the agent.

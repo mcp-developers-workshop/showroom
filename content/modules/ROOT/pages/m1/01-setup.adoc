@@ -6,41 +6,12 @@
 :icons: font
 :source-highlighter: highlight.js
 
-== Log in to GitLab
 
-The workshop environment includes a GitLab instance. You will push your MCP server to it later in this module, and ArgoCD deploys from it.
-
-Open https://gitlab-gitlab.{openshift_subdomain}[GitLab^].
-
-Sign in with the workshop developer account:
-
-image::m1/gitlab-login.png[link=self,window=_blank]
-
-[cols="1,2", options="header"]
-|===
-| Field | Value
-
-| Username
-| `developer`
-
-| Password
-| `{common_password}`
-|===
-
-[NOTE]
-====
-The workshop cluster uses a self-signed certificate. Accept the browser warning if you see one.
-====
-
-You land on the GitLab *Projects* dashboard.
-
-== Open IBM Bob and Clone the Repository
+== Set up IBM Bob for the Workshop
 
 *IBM Bob* is the AI code assistant used throughout this workshop.
 
-=== Open IBM Bob
-
-On the desktop of your workshop VM, double-click the *IBM Bob* shortcut and wait for the workbench to load.
+On the desktop of your workshop VM, double-click the *IBM Bob* shortcut to open it.
 
 === Give Bob the Quarkus tooling
 

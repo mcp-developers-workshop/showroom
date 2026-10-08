@@ -8,9 +8,7 @@
 
 == Commit Your MCP Server
 
-=== Stage and commit
-
-Open a new terminal in IBM Bob (*Terminal* -> *New Terminal*) -- dev mode and the MCP Inspector are still running in the other two. From inside the `globex-store-mcp` folder:
+Open a new terminal in IBM Bob (*Terminal* -> *New Terminal*). From inside the `globex-store-mcp` folder, run the following commands to stage and commit your changes:
 
 [source,sh,role="copypaste"]
 ----
@@ -25,7 +23,7 @@ git commit -m "my first MCP server"
 git push
 ----
 
-The push is the first command that talks to GitLab, so this is where you are prompted for credentials. Bob asks for them in an input box at the top of the window, username first and then password, each confirmed with kbd:[Enter]:
+The push is the first command that connects to GitLab, so Bob prompts you for credentials. Enter your username in the input box at the top of the window and press kbd:[Enter]. Enter your password and press kbd:[Enter] again.
 
 image::m1/bob-git-credentials.png[link=self,window=_blank]
 
@@ -42,11 +40,17 @@ Use the workshop developer account:
 | `{common_password}`
 |===
 
-Refresh the project in GitLab to see the pushed code.
 
-== Watch the Deployment in ArgoCD
+== Watch the Deployment in OpenShift Pipelines
 
-ArgoCD (Red Hat OpenShift GitOps) manages both the build and the deployment of the MCP server. Your push triggers a build, and the deployment rolls out the image the build produces.
+The GitLab push triggers an OpenShift Pipelines build, which creates a new container image. Argo CD (Red Hat OpenShift GitOps) then detects the updated image and deploys it to OpenShift.
+
+You can access the Pipeline Runs via the OpenShift console at https://console-openshift-pipelines.apps.{openshift_subdomain}/[the OpenShift console^]. Sign in with your IBM ID if prompted. 
+
+Access the  *Pipeline Runs* page uner the `globex-mcp-buiild` namespace to view the the status of the build:
+
+<TBC>
+
 
 === Log in
 

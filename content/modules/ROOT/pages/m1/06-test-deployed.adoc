@@ -6,9 +6,7 @@
 :icons: font
 :source-highlighter: highlight.js
 
-The deployment exposes the MCP server on an OpenShift route. Point the Inspector at that route instead of `localhost` and run the same checks against the version running on the cluster.
-
-The steps are the ones you used in xref:m1/04-header.adoc[Pass the Customer Identifier as an HTTP Header], with a different URL.
+The MCP server is now running on OpenShift. Point the Inspector at that route instead of `localhost` and run the same checks against the version running on the cluster.
 
 == Add the deployed server
 
@@ -64,5 +62,5 @@ Leave both entries in place. `order-mcp-local` points at dev mode on your VM, `o
 
 [IMPORTANT]
 ====
-The deployed server is not secured. The route is open, and anything that can reach it can set `X-User-Id` to any value and read that customer's orders. You fix this later in the workshop.
+The deployed server is not secured yet. Anyone who can reach the route can set `X-User-Id` to any value and retrieve that customer's orders. Module 3 replaces this unverified header with a verified identity.
 ====

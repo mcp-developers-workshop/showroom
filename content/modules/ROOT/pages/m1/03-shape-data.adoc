@@ -1,20 +1,18 @@
 :experimental:
 :imagesdir: ../../assets/images
 
-= Shape the Data Returned by the Tool
+= Minimize the Data Returned by the Tool
 :numbered:
 :icons: font
 :source-highlighter: highlight.js
 
-The tool returns the API response untouched, and that response contains `asilva`'s home address.
+The tool currently returns the API response unchanged, including `asilva`'s home address and the prices of the products they ordered.
 
-Everything a tool returns is sent to the model. In most deployments, that means customer data leaves your network and is sent to a hosted model provider. It becomes part of the prompt, and may then appear in model logs, traces, transcripts, and later responses.
-
-The address and prices make sense for the Globex web application, which needs them to render the page. An agent answering "what did I order?" needs neither.
+Everything returned by a tool becomes part of the model context. If the agent only needs to answer "what did I order?", it does not need the address or prices.
 
 [NOTE]
 ====
-This is data minimisation, and the tool is where you enforce it. Once data is in the prompt, you cannot reliably take it back.
+Minimize data at the tool. Once data reaches the model, you cannot reliably take it back.
 ====
 
 == Prompt IBM Bob
@@ -28,37 +26,15 @@ As before, read Bob's questions and click *Approve*.
 
 [NOTE]
 ====
-The last sentence saves time. Without a customer ID that exists, Bob tests against invented ones, gets empty responses back, and cannot tell a working change from a broken one.
-====
-
-== What changes
-
-[cols="1,2", options="header"]
-|===
-| Dropped | Why
-
-| Shipping address
-| Personal data. Identifies where a named customer lives.
-
-| Line item price
-| Commercially sensitive, and irrelevant to the question being asked.
-|===
-
-Each line item keeps its product code and quantity, and gains a product name.
-
-[NOTE]
-====
-The orders endpoint returns product codes, not names, so Bob has to call a second endpoint from the same OpenAPI specification to resolve them. That is why the prompt mentions additional calls.
-
-`/services/catalog/product/list/{ids}` takes a list, so one call resolves every code -- not one call per line item.
+The customer ID gives Bob real data to test with. Otherwise, Bob tests against invented ones, gets empty responses back, and cannot tell a working change from a broken one.
 ====
 
 == Verify the new minimised response 
 
-Bob rebuilds and re-tests. Once dev mode has restarted, call the tool again from http://localhost:8080/q/dev-ui/quarkus-mcp-server-http/tools[the Dev UI tools page^] with the same `asilva` customer ID:
+After Bob rebuilds the application, call the tool again from the http://localhost:8080/q/dev-ui/quarkus-mcp-server-http/tools[Dev UI tools page^] using `asilva`:
 
 image::m1/devui-tool-call-result-shaped.png[link=self,window=_blank]
 
-Each order is now `id`, `customer`, `timestamp`, and a `lineItems` array of `productCode`, `productName` and `quantity`. No shipping address and no prices.
+The response now contains only the data the agent needs: order details, product codes, product names, and quantities. No shipping address and no prices.
 
-The address and the prices are still in the Globex Store API, available to anything with a legitimate reason to read them. They no longer leave the network on a tool call.
+The address and the prices are still in the Globex Store API, available to the web application and no longer available on a tool call.

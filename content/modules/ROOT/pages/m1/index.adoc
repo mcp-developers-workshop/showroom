@@ -22,52 +22,39 @@ expose tools to fetch a user's order history
 
 == Building your own MCP Servers
 
-A custom MCP server is built one of two ways, and the workshop uses both.
+There are two common ways to introduce MCP into an enterprise environment, and this workshop uses both.
 
-*Brownfield* wraps a system that already exists and is not going to change. The server sits in front of it and translates between the protocol and endpoints designed for something else -- a REST API, a SOAP service, a mainframe transaction, a vendor SDK. The existing endpoints are not the tools: which ones to expose, under what name, returning how much, is the work. The orders server you build in this module is brownfield. The Globex Store REST API is untouched and never learns that anything is wrapping it, which is the ordinary enterprise case.
+=== Brownfield
 
-image::m1/mcp-brownfield.png[link=self,window=_blank]
+In most enterprises, you're not starting from scratch. You already have APIs and existing services. In these cases, you can introduce a standalone MCP server in front of those APIs. The MCP server defines which capabilities to expose as tools and how the data is shaped for the AI application. The underlying API or service does not need to change.
 
-*Greenfield* writes the server and the logic behind it together, with the tools as the system's primary interface. There is no contract to preserve, so tool names, arguments and payloads are designed for a model from the start. The complaints server you connect in Module 2 is greenfield -- it was built as an MCP server and reaches the Globex database directly, with no REST API in between.
+The orders server is brownfield: it sits in front of the existing Globex Store REST API.
 
-image::m1/mcp-greenfield.png[link=self,window=_blank]
+image::m1/mcp-brownfield.png[link=self,window=_blank,width=60%]
 
-Either way the client cannot tell the difference. Glo, the agent you build in Module 2 -- sees a list of tools and calls them; whether a tool runs SQL or forwards to a legacy endpoint is the server's business.
+=== Greenfield
 
+When you're building something new, you can design the application for AI support from the beginning. The MCP server and the application's REST endpoints can be developed together as part of the same application.
 
-=== Learning Objectives
+The complaints server is greenfield: it accesses the Globex database directly, with the MCP tools designed alongside the application logic.
+
+image::m1/mcp-greenfield.png[link=self,window=_blank,width=60%]
+
+From Glo's perspective, both approaches look the same: it discovers MCP tools and invokes them. What happens behind the MCP server is an implementation detail.
+
+NOTE: In this workshop, you build the brownfield Orders MCP server. The greenfield complaints server is pre-deployed so that you can use it in the later modules without having to build a second server.
+
+== Learning Objectives
+
+By the end of this module, you will:
+
 * Generate a Quarkus MCP server from an OpenAPI specification using IBM Bob.
-* Expose a single narrow tool over the streamable HTTP transport instead of mapping every REST endpoint.
-* Apply data minimization: return only the fields the agent needs, and drop personal and commercial data the API happens to include.
-* Move a confidential identifier out of the tool's parameters and onto an HTTP header, so the caller sets it and the model never sees it.
+* Expose a single defined tool over the streamable HTTP transport instead of mapping every REST endpoint.
+* Apply data minimization by returning only the fields the agent needs, and dropping personal data such as addresses, prices etc that usually existing APIs include.
+* Move confidential identifier such as _*userId*_ out of the tool's parameters and onto an HTTP header, so the caller sets it and the model never sees it.
 * Test an MCP server with the Quarkus Dev UI and with the MCP Inspector.
 * Deploy the server to OpenShift by pushing to GitLab and letting ArgoCD sync it.
 
-== Architecture & Components
-* *AI code assistant:* IBM Bob
-* *Framework:* Quarkus with the `quarkus-mcp-server-http` extension
-* *Backend system:* the Globex Store REST API, described by an OpenAPI specification
-* *Transport:* streamable HTTP
-* *Deployment target:* Red Hat OpenShift, via GitLab and ArgoCD
-* *Testing:* Quarkus Dev UI and MCP Inspector
-
-== Prerequisites
-* A workshop VM with IBM Bob installed
-* An account on the workshop GitLab instance
-* Access to the workshop OpenShift cluster and its ArgoCD instance
-
-[NOTE]
-====
-There is nothing to install. Quarkus runs through the Maven wrapper in the project, the Quarkus tooling reaches Bob over MCP through `jbang`, and the MCP Inspector runs through `npx`.
-====
-
-== Lab Agenda
-1. Set up the workshop environment: sign in to GitLab, open IBM Bob, give it the Quarkus tooling, and clone the repository
-2. Generate the MCP server from the Globex Store OpenAPI specification and confirm the tool in the Dev UI
-3. Shape the data the tool returns, dropping the shipping address and line item prices
-4. Pass the customer identifier as the `X-User-Id` HTTP header and test it with the MCP Inspector
-5. Commit and deploy: push to GitLab and watch ArgoCD roll it out
-6. Test the deployed MCP server over its public route
-
 == Expected Outcomes
-A Quarkus MCP server running on OpenShift that wraps the existing Globex Store API, publishes one tool, returns only the fields an agent needs, and takes the customer identity from a header rather than from the model. Module 2 gives that tool to an agent; nothing yet verifies the header, which is the gap Module 3 closes.
+
+By the end of this module, you will have a Quarkus MCP server running on OpenShift that wraps the existing Globex Store API, exposes a single focused tool, returns only the data the agent needs, and takes the customer identity from an HTTP header rather than from the model.
