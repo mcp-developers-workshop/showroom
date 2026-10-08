@@ -1,0 +1,30 @@
+== MCP: A quick primer
+
+Before building your first MCP server, here is what MCP actually is: An open protocol for connecting AI applications to external systems. +
+_Ref https://modelcontextprotocol.io/docs/2026-07-28/getting-started/intro[modelcontextprotocol.io^, window="content"]_
+
+At a high level:
+
+[source,text]
+----
+AI Application -> MCP protocol ->  MCP Server -> Enterprise Systems
+----
+
+The *MCP server* exposes capabilities that an MCP client can discover and use. These capabilities inclue Tools, Resources, and Prompts. Of which, tools are model-controlled, resources are application-controlled, and prompts are user-controlled. 
+
+For this workshop, tools are the main focus because they are where an agent gains access to enterprise capabilities.
+
+For example, instead of giving Glo direct access to Globex's backend APIs, an MCP server might expose the right tools such as:
+
+[source,text]
+----
+get_customer_orders()
+get_product_details()
+create_complaint()
+----
+
+The agent can discover these tools and decide when to use them. The MCP server remains responsible for implementing the tool and controlling what happens behind it.
+
+While making your existing APIs available through MCP, avoid mapping every API directly to an MCP tool. Instead, expose only the tools the AI application needs, and return only the data required to perform the task.
+
+Ok, let's build an MCP server and see how it works in practice.

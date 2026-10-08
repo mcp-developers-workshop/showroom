@@ -9,9 +9,19 @@
 
 == Overview & Objectives
 
+As MCP environments grow, several capabilities start to appear.
+
+* A *registry* helps discover MCP servers.
+* A *gateway* controls access to MCP servers and tools.
+* A *control plane* can provide broader lifecycle, governance, and operational management across agents, tools, and MCP services.
+
+These solve related but different problems.
+In this workshop, we focus on the *MCP Gateway* because the immediate problem is controlling which MCP capabilities are exposed to a client.
+
+
 === The use case
 
-A product manager wants to know what customers are complaining about, and to turn that into work.
+A product manager wants to know about the various are complaining about, and to turn that into product improvements. The complaints are stored in a database, and the Globex complaints MCP server exposes them as a read-only tool. The product manager's agent can query the complaints and generate a report.
 
 The complaints live behind the Globex complaints MCP server -- internal, read-only, and secured in Module 3. The work has to end up in Jira, which is reached through Atlassian's own MCP server. One agent spans both: it queries the complaints to derive product improvements, then opens the resulting tickets.
 

@@ -1,113 +1,93 @@
-:experimental:
-:imagesdir: ../assets/images
+= MCP in Practice
+A Hands-on Workshop for developers, architects, and platform engineers
 
-= Workshop Overview: MCP in Practice for Developers
-:numbered:
-:icons: font
-:source-highlighter: highlight.js
+Welcome to the *MCP in Practice* hands-on workshop.
 
-== Workshop Overview
+Model Context Protocol (MCP) provides a standard way for AI applications to discover and use tools and data from external systems. MCPs are to AI apps what APIs are to traditional applications: a standard way for AI apps/agents to access enterprise capabilities without needing to know how those capabilities are implemented.
 
-Welcome to the *MCP in Practice for Developers* hands-on workshop.
+That sounds simple. In an enterprise environment, it is not.
 
-This workshop is engineered to guide software architects, platform engineers, and developers from initial local prototyping ("laptops") to deploying secure, observable, and enterprise-ready Model Context Protocol (MCP) servers and AI agents in production ("production").
+Connecting an AI application to enterprise systems such as database, REST API, SaaS platform, or internal service means deciding what capabilities to expose, what data those capabilities return, who is allowed to use them, and how to understand what happened when something goes wrong.
 
-As enterprises move from Generative AI experimentation to agentic workflows, AI applications increasingly need to interact with enterprise systems and take action on behalf of users. Giving agents direct access to backend APIs and services, however, introduces significant security, data exposure, governance, and operational challenges.
+This is the flow in a traditional application:
 
-The *Model Context Protocol (MCP)* provides a standardized way to expose capabilities to AI applications. In an enterprise architecture, MCP can become more than an integration mechanism: it can provide a controlled boundary between AI applications and enterprise capabilities.
+[source,text][source,text]
+----
+Customer → Web Application → REST API → Backend Systems
+----
 
-This workshop demonstrates how to build that boundary using MCP, applying principles such as intent-based tool exposure, data minimization, zero-trust identity, end-to-end observability, and centralized governance on modern enterprise platforms such as Red Hat OpenShift.
+Now introduce an AI application using MCP, and it looks like this:
 
-== The Enterprise Challenge
+## [source,text]
+----
+Customer → AI Application → MCP → MCP Server → Backend Systems
+----
 
-AI agents are moving beyond generating text and are increasingly being used to *take action*: retrieving customer data, creating orders, updating records, invoking business services, and orchestrating workflows across enterprise systems.
+The AI application can discover available tools and determine when to use them. MCP standardizes how those capabilities are exposed and invoked, but it does not decide what an enterprise should expose, who should be allowed to use it, or what data should be returned.
 
-This creates a new architectural challenge. An agent needs access to the *right capabilities and data*, but giving it direct access to enterprise APIs, databases, and services creates challenges around security, data exposure, governance, and operational visibility.
+Those remain engineering and governance decisions decisions, and they are the focus of this workshop.
 
-As agents and tools multiply, enterprises need to answer:
+* What capabilities should an MCP server expose?
+* How much data should a tool return to the model?
+* Who is making the request, and what are they authorized to do?
+* How do you trace a request across the AI application, MCP server, and backend?
+* How do you control MCP access as the number of servers, clients, and tools grows?
 
-* *What should an agent be allowed to do?* +
-How do we expose business capabilities without giving an agent unrestricted access to underlying APIs and systems?
+This workshop explores those questions through the story of *Globex, a fictitious retail company* introducing an AI-powered customer support agent called *Glo*.
 
-* *What data should an agent see?* +
-How do we prevent unnecessary, sensitive, or irrelevant backend data from entering the LLM context?
+You will start by building an MCP server and exposing purposeful tools. You will then connect those tools to an AI application, add identity and authorization, make the interactions observable, and finally introduce a gateway to control MCP access at scale.
 
-* *Who is the agent?* +
-How do we establish workload identity and enforce authorization when an autonomous agent, rather than a human user, is making a request?
+The goal is not simply to build an MCP server. It is to understand what changes when MCP moves from a local developer experiment to an enterprise integration point.
 
-* *How do we know what happened?* +
-How do we trace an agent's actions across LLM calls, MCP tools, APIs, and backend services when something goes wrong?
+== The Globex journey
 
-* *How do we govern hundreds or thousands of tools?* +
-How do we prevent every agent from maintaining its own credentials, tool definitions, policies, and integrations?
+Globex starts with a simple requirement: give *Glo, the agent* access to its existing enterprise systems to helps its customers.
 
-The enterprise challenge is therefore not simply connecting an LLM to enterprise systems. It is creating a controlled, secure, and observable way for agents to interact with enterprise capabilities.
+As the application evolves, so do the engineering requirements 
 
-== The Solution: Model Context Protocol (MCP)
-This workshop addresses these challenges by establishing an *Intentional Agent Architecture*:
+* *What should the agent be allowed to access?* +
+Expose the right capabilities without giving the agent unrestricted access to backend systems.
+* *What data reaches the model?* +
+Return only what the agent needs rather than passing entire backend responses into the model context.
+* *Who is making the request?* +
+Give agents and services a verifiable identity and enforce authorization.
+* *What happened when something goes wrong?* +
+Trace requests across the agent, MCP servers, model, and backend services.
+* *How do you manage MCP at scale?* +
+Apply tool access, credentials, and policies centrally rather than configuring every agent independently.
 
-1. *Exposing Intent over Resources:* Standardize agent capabilities into well-defined MCP tools rather than granting raw API access.
-2. *Data Minimization & Sanitization:* Filter and massage backend payloads before they enter the LLM context window.
-3. *Zero-Trust Security & Identity:* Authenticate agents using cryptographic SPIFFE/SPIRE workload identities and Keycloak OIDC service accounts.
-4. *Observability:* Trace a single agent turn across the agent, both MCP servers and the model with OpenTelemetry, and read it in Langfuse.
-5. *Centralized Governance:* Control tool sprawl with an enterprise MCP Gateway, keeping credentials and tool filtering rules in one place rather than copied into every agent.
+This workshop walks you through this journey through a series of modules, each building on the previous one. 
 
-== Target Audience & Prerequisites
+=== Workshop Modules Map
 
-=== Target Audience
-* Backend Developers & Java Engineers
-* AI / ML Engineers integrating agents with enterprise APIs
-* Cloud Platform Engineers & Architects
-* Enterprise Security & IAM Specialists
 
-=== Technical Prerequisites
-* Basic familiarity with Java/Quarkus or microservices concepts
-* Fundamental knowledge of Docker/Containers and OpenShift/Kubernetes
-* Understanding of basic REST APIs, OpenAPI specs, and OAuth2/OIDC concepts
-* Access to the provided Red Hat OpenShift Sandbox environment
-
-== Workshop Structure & Module Index
-
-The workshop is structured into 5 progressive, hands-on modules:
-
-[cols="1,3,3", options="header"]
+[cols="3,3,3", options="header"]
 |===
-| Module | Title | Key Technologies
+| Module | What you will do | Key technologies
 
-| *Module 1*
-| xref:m1/index.adoc[Build Your First MCP Server]
-| Quarkus CLI, AI Code Assist, OpenAPI, ArgoCD
+| xref:m1/index.adoc[1. Your First MCP Server] +
+What capabilities should Glow have access to?
+| Build MCP capabilities for Globex using brownfield and greenfield approaches.
+| Quarkus, MCP, OpenAPI, AI Code Assist
 
-| *Module 2*
-| xref:m2/index.adoc[Expand Agent Capability with MCP Server]
-| LangChain4j Agent, MCP Client, Prompt Tuning, Helm, ArgoCD
+| xref:m2/index.adoc[2. Equip Your Agent with MCP] +
+How does Glow use those capabilities to work with enterprise services?
+| Connect an AI agent to MCP servers and enterprise services.
+| LangChain4j, MCP Client, OpenShift
 
-| *Module 3*
-| xref:m3/index.adoc[Enable Security & Identity (Zero-Trust)]
-| Native SPIFFE/SPIRE, Keycloak OIDC, Guardrails
+| xref:m3/index.adoc[3. Secure MCP] +
+Who is making the request, and what are they allowed to do?
+| Add authentication, workload identity, authorization, and token exchange.
+| Keycloak, OIDC, SPIFFE/SPIRE
 
-| *Module 4*
-| xref:m4/index.adoc[Make MCP Observable]
-| OpenTelemetry, OTLP, Langfuse, Distributed Tracing
+| xref:m4/index.adoc[4. Make MCP Observable] +
+What happened when Glow called those services?
+| Trace requests across agents, MCP servers, and backend services.
+| OpenTelemetry, Langfuse
 
-| *Module 5*
-| xref:m5/index.adoc[Centralized Governance]
-| MCP Gateway, Virtual Servers, Tool Filtering
+| xref:m5/index.adoc[5. Govern MCP with a Gateway] +
+How does Globex control MCP access as its environment grows?
+| Centrally control access to MCP servers and tools.
+| watsonx Orchestrate, MCP Gateway, tool filtering, policies, metrics
 |===
 
-== Environment & Architecture Overview
-
-During this workshop, you will work within a dedicated Red Hat OpenShift Sandbox environment equipped with:
-
-* *OpenShift Cluster Namespace:* Pre-provisioned workspace for building, running, and deploying microservices.
-* *Quarkus Runtime & AI Assistance:* Modern Java framework with Quarkus MCP extensions and AI-assisted developer tooling.
-* *Keycloak IAM & SPIRE Provider:* Identity management pre-configured for OIDC service accounts and native SPIFFE workload attestation.
-* *Observability:* A Langfuse instance receiving OpenTelemetry traces over OTLP from the agent and both MCP servers.
-* *MCP Gateway:* Centralized proxy and policy engine for managing agent-to-server connections, virtual servers and tool filtering.
-
-== How to Use the Lab Guides
-
-1. Review this introductory document to understand the overarching architecture and zero-trust philosophy.
-2. Work through xref:dev-setup/index.adoc[Before You Start]: how the click-to-copy blocks work, cloning the workshop repositories, and creating your watsonx.ai API key.
-3. Proceed through the modules sequentially using the left-hand navigation, starting with xref:m1/index.adoc[Module 1: Build Your First MCP Server].
-4. Complete each lab exercise in your OpenShift Sandbox environment, verifying outcomes before advancing to the next module.

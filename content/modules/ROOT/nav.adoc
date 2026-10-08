@@ -6,6 +6,7 @@
 ** xref:dev-setup/04-watsonx.adoc[Set Up watsonx.ai]
 
 * xref:m1/index.adoc[Module 1: Build Your First MCP Server]
+** xref:m1/00-how-mcp-works.adoc[MCP: A quick primer]
 ** xref:m1/01-setup.adoc[Set Up the Workshop Environment]
 ** xref:m1/02-generate.adoc[Generate the MCP Server]
 ** xref:m1/03-shape-data.adoc[Shape the Data Returned by the Tool]

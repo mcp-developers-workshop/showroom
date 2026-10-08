@@ -1,7 +1,7 @@
 :experimental:
 :imagesdir: ../../assets/images
 
-= Set Up Orchestrate
+= Set Up IBM watsonx Orchestrate
 
 :numbered:
 :icons: font
