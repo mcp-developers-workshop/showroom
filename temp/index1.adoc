@@ -1,0 +1,75 @@
+= MCP in Practice for Developers
+
+Welcome to the *MCP in Practice for Developers* hands-on workshop.
+
+This hands-on workshop takes you from building your first MCP server to running MCP-based applications securely and observably on OpenShift.
+
+The workshop is aimed at software architects, platform engineers, and developers who want to understand what it takes to move MCP from a local prototype to an enterprise environment.
+
+MCP makes it easier for AI applications and agents to use capabilities provided by other applications and services. In an enterprise, however, simply connecting an agent to backend APIs is not enough.
+
+== The story behind the workshop
+
+In this workshop, you will follow *Globex*, a fictitious retail company introducing AI-powered customer support. Globex already has the systems you would expect in an ecommerce business: customers authenticate, place orders, and interact with backend services through a web application.
+
+Now Globex introduces *Glo*, an AI agent that can help customers with product information, order queries, and product complaints.
+
+The challenge is that an AI agent is not a traditional application.
+
+If Glo is given direct access to backend APIs, a probabilistic system is now deciding what to call, when to call it, and how to use the results.
+
+Globex needs a safer approach.
+
+== The Globex journey
+
+Globex starts with a simple goal: give its AI customer-support agent access to useful enterprise capabilities.
+
+As the agent becomes more capable, new challenges emerge. 
+
+* *What should the agent be allowed to access?* +
+Expose the right capabilities without giving the agent unrestricted access to backend systems.
+* *What data reaches the model?* +
+Return only what the agent needs rather than passing entire backend responses into the model context.
+* *Who is making the request?* +
+Give agents and services a verifiable identity and enforce authorization.
+* *What happened when something goes wrong?* +
+Trace requests across the agent, MCP servers, model, and backend services.
+* *How do you manage MCP at scale?* +
+Apply tool access, credentials, and policies centrally rather than configuring every agent independently.
+
+The workshop modules follow that progression from building MCP capabilities to securing, observing, and governing them.
+
+=== Workshop modules
+
+[cols="2,3,3", options="header"]
+|===
+| Module | What you will do | Key technologies
+
+| xref:m1/index.adoc[1. Your First MCP Server]
+| Build MCP capabilities for Globex using brownfield and greenfield approaches.
+| Quarkus, MCP, OpenAPI, AI Code Assist
+
+| xref:m2/index.adoc[2. Equip Your Agent with MCP]
+| Connect an AI agent to MCP servers and enterprise services.
+| LangChain4j, MCP Client, OpenShift
+
+| xref:m3/index.adoc[3. Secure MCP]
+| Add authentication, workload identity, authorization, and token exchange.
+| Keycloak, OIDC, SPIFFE/SPIRE
+
+| xref:m4/index.adoc[4. Make MCP Observable]
+| Trace requests across agents, MCP servers, and backend services.
+| OpenTelemetry, Langfuse
+
+| xref:m5/index.adoc[5. Govern MCP with a Gateway]
+| Centrally control access to MCP servers and tools.
+| watsonx Orchestrate, MCP Gateway, tool filtering, policies, metrics
+|===
+
+== Before you start
+
+The workshop runs on a pre-provisioned IBM Techzone environment with a Red Hat OpenShift, a VM with IBM Bob, and a watsonx Orchestrate instance. You will not need to install anything on your laptop.
+
+You will work through the modules in order, starting with xref:before-you-start.adoc[Before You Start]. Each module builds on the previous one, so you will need to complete them in sequence.
+
+Start with xref:before-you-start.adoc[Before You Start], then follow the modules in order.

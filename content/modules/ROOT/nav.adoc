@@ -1,9 +1,7 @@
 * xref:index.adoc[Workshop Overview]
 * xref:dev-setup/index.adoc[Before You Start]
-** xref:dev-setup/01-click-to-copy.adoc[Click-to-Copy]
-** xref:dev-setup/02-get-the-repositories.adoc[Get the Workshop Repositories]
-** xref:dev-setup/03-open-in-bob.adoc[Open a Repository in IBM Bob]
-** xref:dev-setup/04-watsonx.adoc[Set Up watsonx.ai]
+** xref:dev-setup/01-get-the-repositories.adoc[Workshop Repositories]
+// ** xref:dev-setup/02-watsonx.adoc[Set Up watsonx]
 
 * xref:m1/index.adoc[Module 1: Build Your First MCP Server]
 ** xref:m1/00-how-mcp-works.adoc[MCP: A quick primer]

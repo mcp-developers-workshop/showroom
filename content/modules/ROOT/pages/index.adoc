@@ -18,7 +18,7 @@ Customer → Web Application → REST API → Backend Systems
 
 Now introduce an AI application using MCP, and it looks like this:
 
-## [source,text]
+[source,text]
 ----
 Customer → AI Application → MCP → MCP Server → Backend Systems
 ----

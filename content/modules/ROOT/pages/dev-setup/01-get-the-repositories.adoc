@@ -1,0 +1,41 @@
+:experimental:
+:imagesdir: ../../assets/images
+
+= Get the Workshop Repositories
+:icons: font
+:source-highlighter: highlight.js
+
+The workshop uses a number of repositories hosted in public Github and in the workshop's Gitlab instance. 
+
+Open a Terminal in your Development Environment and run the folliwing commands to create a root folder and clone the repositories. None of these ask for credentials. 
+
+[source,sh,role="copypaste",subs="attributes+"]
+----
+mkdir -p ~/mcp-workshop && cd ~/mcp-workshop
+git clone https://gitlab-gitlab.{openshift_subdomain}/globex/globex-store-mcp.git
+git clone https://gitlab-gitlab.{openshift_subdomain}/globex/globex-complaint-agent.git
+git clone https://gitlab-gitlab.{openshift_subdomain}/globex/globex-complaint-agent-helm.git
+git clone https://gitlab-gitlab.{openshift_subdomain}/globex/globex-complaints.git
+git clone https://github.com/mcp-developers-workshop/mcp-workshop-chatbot.git
+----
+
+
+
+== Open a Repository in IBM Bob
+
+You will use https://bob.ibm.com/[IBM Bob^], your AI-Powered Development Partner, to work through the workshop modules.
+
+. Double-click the *IBM Bob* shortcut on the desktop of your workshop VM to open the editor. You will be asked to log in with your IBMid. 
+
+. Open each of the repositories as instructed in IBM Bob. One Bob window per repository works best rather than opening the root folder `~/mcp-workshop` directly in Bob. 
+
+. The folder opens in *Restricted Mode* with a banner across the topClick the link *Manage* to open the Workspace Trust dialog, and then choose *Trust*.
++
+image::dev-setup/bob-workspace-trust.png[link=self,window=_blank]
++
+[IMPORTANT]
+====
+Trust the folder before you do anything else in it. While it is restricted, tasks are not allowed to run, debugging is disabled, and 24 extensions -- the Quarkus and Java tooling among them -- are inactive.
+
+Trust applies to one folder. You do this once per repository, as you open each one.
+====
