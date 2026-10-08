@@ -1,51 +1,52 @@
+:experimental:
+:imagesdir: ../assets/images
+
 = MCP in Practice
 A Hands-on Workshop for developers, architects, and platform engineers
 
 Welcome to the *MCP in Practice* hands-on workshop.
 
-Model Context Protocol (MCP) provides a standard way for AI applications to discover and use tools and data from external systems. MCPs are to AI apps what APIs are to traditional applications: a standard way for AI apps/agents to access enterprise capabilities without needing to know how those capabilities are implemented.
+Model Context Protocol (MCP) provides a standard way for AI applications to discover and use tools and data from external systems. MCP servers are to AI applications what APIs are to traditional applications: a standard way to access enterprise capabilities without needing to know how those capabilities are implemented.
 
 That sounds simple. In an enterprise environment, it is not.
 
-Connecting an AI application to enterprise systems such as database, REST API, SaaS platform, or internal service means deciding what capabilities to expose, what data those capabilities return, who is allowed to use them, and how to understand what happened when something goes wrong.
+== The Globex journey
 
-This is the flow in a traditional application:
+Let's explore the journey through the lens of Globex, a fictitious retail company. 
+
+Like most ecommerce retail platform, customers login and place orders. Usually an identity provider authenticates the user, and the web app calls the backend systems, passing information such as the userid or email address on behalf of the user.
+
+This is the flow such a traditional application:
 
 [source,text][source,text]
 ----
-Customer → Web Application → REST API → Backend Systems
+Customer → Web Application → REST API → Backend Systems [Catalogue, Orders, etc.]
 ----
 
-Now introduce an AI application using MCP, and it looks like this:
+image::intro/globex-intro.png[Globex AI Journey]
+
+Globex now wants to provide online customer support to handle customer queries faster and provide a better customer experience. To do so, Globex introduces Glo, an AI-powered customer support agent that can help customers with their order queries and product complaints.
+
+Connecting an AI application to enterprise systems such as databases, REST APIs, SaaS platforms, means deciding what capabilities to expose, what data those capabilities should return, who is allowed to use them, and how to understand what happened when something goes wrong.
+
+With MCP, the architecture looks like this:
 
 [source,text]
 ----
-Customer → AI Application → MCP → MCP Server → Backend Systems
+Customer → AI Application → MCP/MCP Server → Backend Systems [Catalogue, Orders, etc.]
 ----
 
-The AI application can discover available tools and determine when to use them. MCP standardizes how those capabilities are exposed and invoked, but it does not decide what an enterprise should expose, who should be allowed to use it, or what data should be returned.
+image::intro/globex-intro-ai.png[Globex AI Journey]
 
-Those remain engineering and governance decisions decisions, and they are the focus of this workshop.
+The AI application can discover available tools and determine when to use them. MCP standardizes how the enterprise capabilities are exposed and invoked, but it does not decide what an enterprise should expose, who should be allowed to use it, or what data should be returned.
 
-* What capabilities should an MCP server expose?
-* How much data should a tool return to the model?
-* Who is making the request, and what are they authorized to do?
-* How do you trace a request across the AI application, MCP server, and backend?
-* How do you control MCP access as the number of servers, clients, and tools grows?
+These areas remain engineering and governance decisions, and they are the focus of this workshop.
 
-This workshop explores those questions through the story of *Globex, a fictitious retail company* introducing an AI-powered customer support agent called *Glo*.
+=== The Challenges
 
-You will start by building an MCP server and exposing purposeful tools. You will then connect those tools to an AI application, add identity and authorization, make the interactions observable, and finally introduce a gateway to control MCP access at scale.
+As Glo moves from a simple prototype toward a production application, Globex encounters a few practical challenges:
 
-The goal is not simply to build an MCP server. It is to understand what changes when MCP moves from a local developer experiment to an enterprise integration point.
-
-== The Globex journey
-
-Globex starts with a simple requirement: give *Glo, the agent* access to its existing enterprise systems to helps its customers.
-
-As the application evolves, so do the engineering requirements 
-
-* *What should the agent be allowed to access?* +
+* *What should Glo be allowed to access?* +
 Expose the right capabilities without giving the agent unrestricted access to backend systems.
 * *What data reaches the model?* +
 Return only what the agent needs rather than passing entire backend responses into the model context.
@@ -56,22 +57,27 @@ Trace requests across the agent, MCP servers, model, and backend services.
 * *How do you manage MCP at scale?* +
 Apply tool access, credentials, and policies centrally rather than configuring every agent independently.
 
-This workshop walks you through this journey through a series of modules, each building on the previous one. 
+This workshop takes you through the Globex journey, with each module addressing one of these challenges.
 
-=== Workshop Modules Map
+You will start by building an MCP server and exposing purposeful, intentional tools. You will then connect those tools to an AI application, add identity and authorization, make the interactions observable, and finally introduce a gateway to control MCP access at scale.
 
+== Workshop Modules Map
+
+The map below shows the modules and the questions they answer. 
+
+Each module builds on the previous one, taking the same MCP-based architecture from a working integration toward a more controlled and production-oriented deployment.
 
 [cols="3,3,3", options="header"]
 |===
 | Module | What you will do | Key technologies
 
 | xref:m1/index.adoc[1. Your First MCP Server] +
-What capabilities should Glow have access to?
+What capabilities should Glo have access to?
 | Build MCP capabilities for Globex using brownfield and greenfield approaches.
 | Quarkus, MCP, OpenAPI, AI Code Assist
 
 | xref:m2/index.adoc[2. Equip Your Agent with MCP] +
-How does Glow use those capabilities to work with enterprise services?
+How does Glo use those capabilities to work with enterprise services?
 | Connect an AI agent to MCP servers and enterprise services.
 | LangChain4j, MCP Client, OpenShift
 
@@ -81,7 +87,7 @@ Who is making the request, and what are they allowed to do?
 | Keycloak, OIDC, SPIFFE/SPIRE
 
 | xref:m4/index.adoc[4. Make MCP Observable] +
-What happened when Glow called those services?
+What happened when Glo called those services?
 | Trace requests across agents, MCP servers, and backend services.
 | OpenTelemetry, Langfuse
 

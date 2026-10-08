@@ -8,9 +8,20 @@
 :source-highlighter: highlight.js
 
 == Overview & Objectives
-The Globex store already has a REST API, and it is not going to change. In this module you put a Model Context Protocol server in front of it with the help of an AI code assistant, narrow what that server exposes, move the customer identifier off the model's contract, and deploy the result to Red Hat OpenShift through GitLab and ArgoCD.
 
-== Custom MCP Patterns
+While building such agents and AI systems in an enterprise environment, you will use a mix of internal custom-built MCP servers built within your organization, and external MCP servers to access other 3rd party services such as ticketing and order management systems. 
+
+This module guides you through building a a Globex MCP server from an existing Globex Store API using AI-driven development with IBM Bob.  _Glo, the agent_ will use this MCP server to access the Globex Store API to retrieve a user's order history. 
+
+A few architectural considerations while building an MCP server:
+
+* *Intentional Toolbox:* Expose minimal, intent-driven tools via MCP Servers
+expose tools to fetch a user's order history 
+* *Data massaging:* Restrict scope of data retrieved from API before sending to agent.
+* *Confidential Data:* Use MCP headers for confidential info and identifiers (e.g. userId)
+
+== Building your own MCP Servers
+
 A custom MCP server is built one of two ways, and the workshop uses both.
 
 *Brownfield* wraps a system that already exists and is not going to change. The server sits in front of it and translates between the protocol and endpoints designed for something else -- a REST API, a SOAP service, a mainframe transaction, a vendor SDK. The existing endpoints are not the tools: which ones to expose, under what name, returning how much, is the work. The orders server you build in this module is brownfield. The Globex Store REST API is untouched and never learns that anything is wrapping it, which is the ordinary enterprise case.
