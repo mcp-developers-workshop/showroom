@@ -47,16 +47,15 @@ The GitLab push triggers an OpenShift Pipelines build, which creates a new conta
 
 You can access the Pipeline Runs via the OpenShift console at https://console-openshift-pipelines.apps.{openshift_subdomain}/[the OpenShift console^]. Sign in with your IBM ID if prompted. 
 
-Access the  *Pipeline Runs* page uner the `globex-mcp-buiild` namespace to view the the status of the build:
+Navigate to the *PipelineRuns* tab in the `globex-store-mcp-build` namespace to view the status of the build:
 
-<TBC>
+image::m1/pipeline-runs.png[link=self,window=_blank]
 
+The build typically completes in a few minutes. Once *Last run status* shows a checkmark and *Succeeded*, the new image is built and Argo CD will deploy it to OpenShift.
 
-=== Log in
+=== [Optional] Watch in ArgoCD
 
-Open https://openshift-gitops-server-openshift-gitops.{openshift_subdomain}/[the ArgoCD console^].
-
-Sign in with the workshop GitOps account:
+If you want to see how the deployment is reflected in Argo CD, you can monitor it there. Open https://openshift-gitops-server-openshift-gitops.{openshift_subdomain}/[the ArgoCD console^] and sign in with the workshop GitOps account:
 
 [cols="1,2", options="header"]
 |===
@@ -74,16 +73,12 @@ Sign in with the workshop GitOps account:
 Accept the certificate warning if your browser shows one. If the page shows a *Log in via OpenShift* button instead of a login form, use the plain login option below it.
 ====
 
-=== Find the application
-
-You land on the *Applications* dashboard, which lists every application the workshop environment manages:
+You land on the *Applications* dashboard:
 
 image::m1/argocd-applications.png[link=self,window=_blank]
 
-Click the `globex-store-mcp` tile. The application details tree opens:
+Click the `globex-store-mcp` tile to view the application details:
 
 image::m1/argocd-globex-store-mcp.png[link=self,window=_blank]
 
-The tree shows the resources that make up the application. When the build pushes the new image, a new replica set and pod appear with an age of a few seconds while the older ones are scaled down.
-
-*App Health* reads *Progressing* while the new pod starts, then switches to *Healthy* once the new image is serving. This might take a minute or two, depending on how long the build took.
+The *App Health* status changes from *Progressing* to *Healthy* as the new pod starts serving traffic.

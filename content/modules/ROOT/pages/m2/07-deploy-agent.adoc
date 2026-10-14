@@ -39,58 +39,31 @@ The push prompts you for GitLab credentials. Use the workshop developer account:
 | `{common_password}`
 |===
 
-A webhook on the repository starts an OpenShift pipeline, which builds the image and pushes it to the internal registry. Leave it to run and move on to the chart.
+A webhook on the repository starts an OpenShift pipeline, which builds the image and pushes it to the internal registry.
 
-== Open the chart
+You can monitor the pipeline in the OpenShift console:
 
-Open the `globex-complaint-agent-helm` folder in another IBM Bob window. You have already cloned it from GitLab. See xref:dev-setup/03-open-in-bob.adoc[Open a Repository in IBM Bob]. Leave its window open for the rest of the workshop.
+[source]
+----
+https://console-openshift-console.apps.{openshift_subdomain}/pipelines/ns/globex-complaint-agent-build
+----
+
+The build typically takes a few minutes. While it runs, move on to editing the chart.
+
+== Configure the Agent's Helm Chart
+
+The Helm chart is the deployed equivalent of your local `.env` file. It takes configuration values (API key, MCP server URLs) and renders them into a Kubernetes Secret. When you push changes to the chart, ArgoCD picks them up and re-deploys the agent with the new configuration.    
+
+Open the `globex-complaint-agent-helm` folder in another IBM Bob window. You have already cloned it from GitLab. Leave the Bob window open for the rest of the workshop.
 
 == Edit the values
 
-The chart renders a complete `application.properties` into a Secret, from `templates/secret.yaml`. The deployment mounts that Secret at `/deployments/config`, which is where Quarkus reads configuration at runtime. It has blocks for OIDC, the model and CORS, but nothing for MCP -- so the URLs that were in your `.env` have to come from here instead.
+`values.yaml` is where you provide the configuration that the chart will render. It holds the OpenAI API key and the URLs of the two MCP servers. When you push this file, ArgoCD picks it up and re-renders the agent's Kubernetes Secret with these new values.
 
-Open `values.yaml`. Two things to change here.
-
-First, the model settings, which ship unset:
-
-[source,yaml]
-----
-llm:
-  complaint:
-    modelName: REPLACE_ME
-    apiKey: REPLACE_ME
-    baseUrl: REPLACE_ME
-----
-
-Replace all three. For `apiKey`, copy the value of `quarkus.langchain4j.openai.complaint.api-key` out of your `.env` -- the same key the proctor gave you:
-
-[source,yaml,role="copypaste"]
-----
-llm:
-  complaint:
-    modelName: gpt-4o-mini
-    apiKey: <the API key from your .env>
-    baseUrl: https://api.openai.com/v1
-----
-
-Second, add the URLs for the two MCP clients, which the template will read in the next step:
+Open `values.yaml` and add both the LLM configuration and MCP server URLs. Copy the API key from your `.env`:
 
 [source,yaml,role="copypaste",subs="attributes+"]
 ----
-mcp:
-  orders:
-    url: https://globex-store-mcp.{openshift_subdomain}/mcp
-  complaint:
-    url: https://globex-complaints.{openshift_subdomain}/mcp
-
-----
-
-These are the same two URLs from your `.env`.
-
-The end of the file now reads:
-
-[source,yaml,subs="attributes+"]
-----
 llm:
   complaint:
     modelName: gpt-4o-mini
@@ -102,7 +75,6 @@ mcp:
     url: https://globex-store-mcp.{openshift_subdomain}/mcp
   complaint:
     url: https://globex-complaints.{openshift_subdomain}/mcp
-
 ----
 
 [WARNING]

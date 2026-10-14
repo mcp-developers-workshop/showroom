@@ -1,7 +1,7 @@
 :experimental:
 :imagesdir: ../../assets/images
 
-= Give the Agent the Complaints Tool
+= Introduce Complaints Tool
 :numbered:
 :icons: font
 :source-highlighter: highlight.js

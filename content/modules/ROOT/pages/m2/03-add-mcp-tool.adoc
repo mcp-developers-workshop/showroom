@@ -1,7 +1,7 @@
 :experimental:
 :imagesdir: ../../assets/images
 
-= Give the Agent the Orders Tool
+= Introduce Orders Tool
 :numbered:
 :icons: font
 :source-highlighter: highlight.js

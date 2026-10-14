@@ -6,13 +6,13 @@
 :icons: font
 :source-highlighter: highlight.js
 
-The MCP server reads `X-User-Id` off the request, and the agent's MCP client is not sending it. The value has to be the user who signed in, so it changes on every request -- it cannot be a fixed header in the configuration.
+The MCP server expects an `X-User-Id` header on every tool call. The agent's HTTP request carries the signed-in user's identity in the token, but the MCP client does not automatically pass it forward. You need to:
 
-The signed-in user is already known: `AgentResource` reads `preferred_username` from the token. What is missing is a way to carry that value from the incoming HTTP request to the outgoing MCP call, which happens later, inside the agent, on a different thread.
+1. Extract the user ID from the incoming token
+2. Hold it in a request-scoped container (so each user's ID stays separate)
+3. Supply it as a header on every MCP tool call
 
-Three pieces: a request-scoped bean to hold the value, the resource to put it there, and a headers supplier the MCP client asks for headers on every call.
-
-== Hold the user ID for the request
+== Create a user ID holder
 
 Open a new terminal in IBM Bob -- the agent and the chatbot are running in theirs. From the `globex-complaint-agent` folder:
 

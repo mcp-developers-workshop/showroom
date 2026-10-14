@@ -14,12 +14,12 @@
 ** xref:m1/07-summary.adoc[Summary]
 
 * xref:m2/index.adoc[Module 2: Expand Agent Capability with MCP Server]
-** xref:m2/01-clone-agent.adoc[Clone the Agent Repository]
+** xref:m2/01-clone-agent.adoc[The Complaint Agent Repository]
 ** xref:m2/02-add-openai-extension.adoc[Connect the Agent to the Model]
-** xref:m2/03-add-mcp-tool.adoc[Give the Agent the Orders Tool]
+** xref:m2/03-add-mcp-tool.adoc[Introduce Orders Tool]
 ** xref:m2/04-chatbot.adoc[Test the Agent from the Chatbot]
 ** xref:m2/05-pass-user-id.adoc[Send the User ID with the Tool Call]
-** xref:m2/06-add-complaints-tool.adoc[Give the Agent the Complaints Tool]
+** xref:m2/06-add-complaints-tool.adoc[Introduce Complaints Tool]
 ** xref:m2/07-deploy-agent.adoc[Deploy the Agent to OpenShift]
 ** xref:m2/08-summary.adoc[Summary]
 

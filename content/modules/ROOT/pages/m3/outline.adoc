@@ -773,3 +773,23 @@ section 05 leaves open.
 
 . *Guardrails.* `m3/index.adoc` lists tool guardrails and prompt injection as a fifth
   section. Not mentioned in the two-step plan -- dropped, or a later module?
+
+. *Token exchange: MCP server to backend system.* When the MCP server (e.g., `globex-store-mcp`)
+  makes downstream calls to the backend API (e.g., `globex-store-app`) via `@RestClient`, it
+  needs to authenticate. Two approaches:
++
+--
+* **Config-driven token exchange** (no code change): Add OIDC client properties to `application.properties`
+  and use `rest-client-oidc-token-propagation` extension with `@AccessToken` on the RestClient methods.
+  Token is fetched via `OidcClient` and automatically added to outbound requests.
+* **User ID header for data filtering** (already in Module 2): The `X-User-Id` header ensures the MCP
+  server returns only data for the authenticated user and keeps the user ID server-side so the LLM
+  cannot manipulate it. This stays separate from the token exchange -- it is a data scoping mechanism,
+  not authentication.
+--
++
+Research notes: See `quarkus-mcp-demo/mcp-demo-poc/apps/globex-agent/src/main/java/org/globex/ai/agent/auth/`
+for `GlobexMcpAuthProvider.java` and `ComplaintsMcpAuthProvider.java` (agent-to-MCP token exchange).
+For MCP-to-backend, add `rest-client-oidc-token-propagation` extension and `@AccessToken` on the
+RestClient methods. Configure via `quarkus.oidc-client.<name>.*` properties in the resource
+server's `application.properties`. No manual HTTP client needed -- Quarkus handles token refresh.
